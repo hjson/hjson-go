@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"hjson"
+	"github.com/laktak/hjson-go"
 	"io/ioutil"
 	"os"
 )

@@ -4,10 +4,10 @@ package main
 
 import (
 	"bytes"
-	"hjson"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/laktak/hjson-go"
 	"io/ioutil"
 	"os"
 	"path/filepath"

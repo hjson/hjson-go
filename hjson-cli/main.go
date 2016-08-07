@@ -16,6 +16,8 @@ func fixJson(data []byte) ([]byte) {
 	data = bytes.Replace(data, []byte("\\u003c"), []byte("<"), -1)
 	data = bytes.Replace(data, []byte("\\u003e"), []byte(">"), -1)
 	data = bytes.Replace(data, []byte("\\u0026"), []byte("&"), -1)
+	data = bytes.Replace(data, []byte("\\u0008"), []byte("\\b"), -1)
+	data = bytes.Replace(data, []byte("\\u000c"), []byte("\\f"), -1)
 	return data
 }
 
@@ -52,8 +54,6 @@ func main() {
 	}
 	if err != nil { panic(err) }
 
-	// fmt.Print(string(data))
-
 	var value interface{}
 
 	if err := hjson.Unmarshal(data, &value); err != nil {
@@ -62,15 +62,15 @@ func main() {
 
 	var out []byte
 	if *showCompact {
-		out, _ = json.Marshal(value)
+		out, err = json.Marshal(value)
+		if err != nil { panic(err) }
 		out = fixJson(out)
 	} else if *showJson {
-		out, _ = json.MarshalIndent(value, "", "  ")
+		out, err = json.MarshalIndent(value, "", "  ")
+		if err != nil { panic(err) }
 		out = fixJson(out)
 	} else {
-		out, _ = json.MarshalIndent(value, "", "  ")
-		out = fixJson(out)
-		//out, _ = hjson.MarshalIndent(value, "", "	")
+		out, err = hjson.Marshal(value)
 	}
 
 	fmt.Println(string(out))

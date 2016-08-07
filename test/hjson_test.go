@@ -30,17 +30,18 @@ func getTestContent(name string) ([]byte) {
 }
 
 func getResultContent(name string) ([]byte,[]byte) {
-	p1 := fmt.Sprintf("./assets/%s_result.json", name)
-	p2 := fmt.Sprintf("./assets/%s_result.hjson", name)
+	p1 := fmt.Sprintf("./assets/sorted/%s_result.json", name)
+	p2 := fmt.Sprintf("./assets/sorted/%s_result.hjson", name)
 	return getContent(p1), getContent(p2)
 }
 
-func fixJson(text []byte) ([]byte) {
-	// golang maps are unordered so we need to reparse the tests
-	var data interface{}
-	if err := json.Unmarshal(text, &data); err != nil { panic(err) }
-	text, _ = json.MarshalIndent(data, "", "  ")
-	return text
+func fixJson(data []byte) ([]byte) {
+	data = bytes.Replace(data, []byte("\\u003c"), []byte("<"), -1)
+	data = bytes.Replace(data, []byte("\\u003e"), []byte(">"), -1)
+	data = bytes.Replace(data, []byte("\\u0026"), []byte("&"), -1)
+	data = bytes.Replace(data, []byte("\\u0008"), []byte("\\b"), -1)
+	data = bytes.Replace(data, []byte("\\u000c"), []byte("\\f"), -1)
+	return data
 }
 
 func run(t *testing.T, file string) {
@@ -55,17 +56,17 @@ func run(t *testing.T, file string) {
 	} else if shouldFail { panic(errors.New(name + " should_fail!")) }
 
 	rjson, rhjson := getResultContent(name)
-	rjson = fixJson(rjson)
 
-	//actualHjson, _ = hjson.Marshal(data)
-	actualHjson := rhjson // todo
+	actualHjson, _ := hjson.Marshal(data)
 	actualJson, _ := json.MarshalIndent(data, "", "  ")
+	actualJson = fixJson(actualJson)
 
 	// add fixes where go's json differs from javascript
 	switch name {
 	case "kan":
 		actualJson = []byte(strings.Replace(string(actualJson), "    -0,", "    0,", -1))
-		break
+	case "pass1":
+		actualJson = []byte(strings.Replace(string(actualJson), "1.23456789e+09", "1234567890", -1))
 	}
 
 	hjsonOK := bytes.Equal(rhjson, actualHjson)

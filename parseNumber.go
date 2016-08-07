@@ -29,6 +29,14 @@ func (p *parseNumber) next() (bool) {
 	}
 }
 
+func startsWithNumber(text []byte) (bool) {
+	if _, err := tryParseNumber(text, true); err == nil {
+		return true
+	} else {
+		return false
+	}
+}
+
 func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
 	// Parse a number value.
 
@@ -74,7 +82,7 @@ func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
 			p.ch == '#' || p.ch == '/' && (p.data[p.at] == '/' || p.data[p.at] == '*') { p.ch = 0 }
 	}
 
-	if p.ch > 0 || leadingZeros > 0 {
+	if p.ch > 0 || leadingZeros != 0 {
 		return 0, errors.New("Invalid number")
 	}
 	if number, err := strconv.ParseFloat(string(p.data[0:end-1]), 64); err != nil {

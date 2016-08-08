@@ -269,7 +269,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 
 			showBraces := !isRootObject || e.EmitRootBraces
 			indent1 := e.indent
-			e.indent++
+			if showBraces { e.indent++ }
 
 			if (showBraces) {
 				if !noIndent && !e.BracesSameLine {
@@ -285,7 +285,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 
 			// Join all of the member texts together, separated with newlines
 			for i := 0; i < len; i++ {
-				e.writeIndent(e.indent)
+				if i > 0 || showBraces { e.writeIndent(e.indent) }
 				e.WriteString(e.quoteName(keys[i].String()))
 				e.WriteString(":")
 				if err := e.str(value.MapIndex(keys[i]), false, " ", false); err != nil { return err }

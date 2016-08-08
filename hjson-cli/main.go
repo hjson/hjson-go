@@ -24,7 +24,7 @@ func fixJson(data []byte) ([]byte) {
 func main() {
 
 	flag.Usage = func() {
-		fmt.Println("usage: hjson [OPTIONS] [INPUT]")
+		fmt.Println("usage: hjson-cli [OPTIONS] [INPUT]")
 		fmt.Println("hjson can be used to convert JSON from/to Hjson.")
 		fmt.Println("")
 		fmt.Println("hjson will read the given JSON/Hjson input file or read from stdin.")
@@ -36,11 +36,17 @@ func main() {
 	var help = flag.Bool("h", false, "Show this screen.")
 	var showJson = flag.Bool("j", false, "Output as formatted JSON.")
 	var showCompact = flag.Bool("c", false, "Output as JSON.")
+
+	var indentBy = flag.String("indentBy", "  ", "The indent string.")
+	var bracesSameLine = flag.Bool("bracesSameLine", false, "Print braces on the same line.")
+	var omitRootBraces = flag.Bool("omitRootBraces", false, "Omit braces at the root.")
+	var quoteAlways = flag.Bool("quoteAlways", false, "Always quote string values.")
+	var allowMinusZero = flag.Bool("allowMinusZero", false, "Allow -0.")
+
 	// var showVersion = flag.Bool("V", false, "Show version.")
 
 	flag.Parse()
 	if *help || flag.NArg() > 1 {
-		fmt.Println("{}", flag.NArg())
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -66,11 +72,17 @@ func main() {
 		if err != nil { panic(err) }
 		out = fixJson(out)
 	} else if *showJson {
-		out, err = json.MarshalIndent(value, "", "  ")
+		out, err = json.MarshalIndent(value, "", *indentBy)
 		if err != nil { panic(err) }
 		out = fixJson(out)
 	} else {
-		out, err = hjson.Marshal(value)
+		opt := hjson.DefaultOptions()
+		opt.IndentBy = *indentBy
+		opt.BracesSameLine = *bracesSameLine
+		opt.EmitRootBraces = !*omitRootBraces
+		opt.QuoteAlways = *quoteAlways
+		opt.AllowMinusZero = *allowMinusZero
+		out, err = hjson.MarshalWithOptions(value, opt)
 	}
 
 	fmt.Println(string(out))

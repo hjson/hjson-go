@@ -14,10 +14,11 @@ import (
 )
 
 func getContent(file string) []byte {
-	if data, err := ioutil.ReadFile(file); err == nil {
+	if data, err := ioutil.ReadFile(file); err != nil {
+		panic(err)
+	} else {
 		return data
 	}
-	panic(err)
 }
 
 func getTestContent(name string) []byte {

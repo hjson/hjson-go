@@ -39,7 +39,7 @@ func (p *hjsonParser) errAt(message string) error {
 	if samEnd > len(p.data) {
 		samEnd = len(p.data)
 	}
-	return errors.New(fmt.Sprintf("%s at line %d,%d >>> %s ...", message, line, col, string(p.data[p.at-col:samEnd])))
+	return fmt.Errorf("%s at line %d,%d >>> %s", message, line, col, string(p.data[p.at-col:samEnd]))
 }
 
 func (p *hjsonParser) next() bool {
@@ -48,22 +48,20 @@ func (p *hjsonParser) next() bool {
 		p.ch = p.data[p.at]
 		p.at++
 		return true
-	} else {
-		p.ch = 0
-		return false
 	}
+	p.ch = 0
+	return false
 }
 
 func (p *hjsonParser) peek(offs int) byte {
 	pos := p.at + offs
 	if pos >= 0 && pos < len(p.data) {
 		return p.data[p.at+offs]
-	} else {
-		return 0
 	}
+	return 0
 }
 
-var escapee map[byte]byte = map[byte]byte{
+var escapee = map[byte]byte{
 	'"':  '"',
 	'\\': '\\',
 	'/':  '/',
@@ -164,12 +162,10 @@ func (p *hjsonParser) readMLString() (value string, err error) {
 				sres := res.Bytes()
 				if lastLf {
 					return string(sres[0 : len(sres)-1]), nil // remove last EOL
-				} else {
-					return string(sres), nil
 				}
-			} else {
-				continue
+				return string(sres), nil
 			}
+			continue
 		} else {
 			for triple > 0 {
 				res.WriteByte('\'')
@@ -220,9 +216,10 @@ func (p *hjsonParser) readKeyname() (string, error) {
 			if space < 0 {
 				space = name.Len()
 			}
-		} else if isPunctuatorChar(p.ch) {
-			return "", p.errAt("Found '" + string(p.ch) + "' where a key name was expected (check your syntax or use quotes if the key name includes {}[],: or whitespace)")
 		} else {
+			if isPunctuatorChar(p.ch) {
+				return "", p.errAt("Found '" + string(p.ch) + "' where a key name was expected (check your syntax or use quotes if the key name includes {}[],: or whitespace)")
+			}
 			name.WriteByte(p.ch)
 		}
 		p.next()
@@ -394,9 +391,8 @@ func (p *hjsonParser) readObject(withoutBraces bool) (value interface{}, err err
 
 	if withoutBraces {
 		return object, nil
-	} else {
-		return nil, p.errAt("End of input while parsing an object (did you forget a closing '}'?)")
 	}
+	return nil, p.errAt("End of input while parsing an object (did you forget a closing '}'?)")
 }
 
 func (p *hjsonParser) readValue() (interface{}, error) {
@@ -430,13 +426,18 @@ func (p *hjsonParser) rootValue() (interface{}, error) {
 	// assume we have a root object without braces
 	if res, err := p.readObject(true); err == nil {
 		return res, nil
-	} else {
-		// test if we are dealing with a single JSON value instead (true/false/null/num/"")
-		p.resetAt()
-		return p.readValue()
 	}
+	// test if we are dealing with a single JSON value instead (true/false/null/num/"")
+	p.resetAt()
+	return p.readValue()
 }
 
+// Unmarshal parses the Hjson-encoded data and stores the result
+// in the value pointed to by v.
+//
+// Unmarshal uses the inverse of the encodings that
+// Marshal uses, allocating maps, slices, and pointers as necessary.
+//
 func Unmarshal(data []byte, v interface{}) error {
 
 	parser := &hjsonParser{data, 0, ' '}

@@ -12,16 +12,25 @@ import (
 	"strings"
 )
 
+// EncoderOptions defines options for encoding to Hjson.
 type EncoderOptions struct {
+	// End of line, should be either \n or \r\n
 	Eol            string
+	// Place braces on the same line
 	BracesSameLine bool
+	// Emit braces at the root level
 	EmitRootBraces bool
+	// Always place string in quotes
 	QuoteAlways    bool
+	// Indent string
 	IndentBy       string
+	// Allow the -0 value (unlike ES6)
 	AllowMinusZero bool
+	// Encode unknown values as 'null'
 	UnknownAsNull  bool
 }
 
+// DefaultOptions returns the default encoding options.
 func DefaultOptions() EncoderOptions {
 	opt := EncoderOptions{}
 	opt.Eol = "\n"
@@ -74,7 +83,7 @@ func init() {
 	}
 }
 
-var meta map[byte][]byte = map[byte][]byte{
+var meta = map[byte][]byte{
 	// table of character substitutions
 	'\b': []byte("\\b"),
 	'\t': []byte("\\t"),
@@ -90,9 +99,8 @@ func (e *hjsonEncoder) quoteReplace(text string) string {
 		c := meta[a[0]]
 		if c != nil {
 			return c
-		} else {
-			return []byte(fmt.Sprintf("\\u%04x", c))
 		}
+		return []byte(fmt.Sprintf("\\u%04x", c))
 	}))
 }
 
@@ -166,21 +174,20 @@ func (e *hjsonEncoder) quoteName(name string) string {
 			name = e.quoteReplace(name)
 		}
 		return `"` + name + `"`
-	} else {
-		// without quotes
-		return name
 	}
+	// without quotes
+	return name
 }
 
-type SortAlpha []reflect.Value
+type sortAlpha []reflect.Value
 
-func (s SortAlpha) Len() int {
+func (s sortAlpha) Len() int {
 	return len(s)
 }
-func (s SortAlpha) Swap(i, j int) {
+func (s sortAlpha) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
-func (s SortAlpha) Less(i, j int) bool {
+func (s sortAlpha) Less(i, j int) bool {
 	return s[i].String() < s[j].String()
 }
 
@@ -202,10 +209,9 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			e.WriteString(separator)
 			e.WriteString("null")
 			return nil
-		} else {
-			value = value.Elem()
-			kind = value.Kind()
 		}
+		value = value.Elem()
+		kind = value.Kind()
 	}
 
 	switch kind {
@@ -301,7 +307,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		}
 
 		keys := value.MapKeys()
-		sort.Sort(SortAlpha(keys))
+		sort.Sort(sortAlpha(keys))
 
 		// Join all of the member texts together, separated with newlines
 		for i := 0; i < len; i++ {
@@ -333,10 +339,41 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 	return nil
 }
 
+// Marshal returns the Hjson encoding of v using
+// default options.
+//
+// See MarshalWithOptions.
+//
 func Marshal(v interface{}) ([]byte, error) {
 	return MarshalWithOptions(v, DefaultOptions())
 }
 
+// MarshalWithOptions returns the Hjson encoding of v.
+//
+// Marshal traverses the value v recursively.
+//
+// Boolean values encode as JSON booleans.
+//
+// Floating point, integer, and Number values encode as JSON numbers.
+//
+// String values encode as Hjson strings (quoteless, multiline or
+// JSON).
+//
+// Array and slice values encode as JSON arrays.
+//
+// Map values encode as JSON objects. The map's key type must be a
+// string. The map keys are sorted and used as JSON object keys.
+//
+// Pointer values encode as the value pointed to.
+// A nil pointer encodes as the null JSON value.
+//
+// Interface values encode as the value contained in the interface.
+// A nil interface value encodes as the null JSON value.
+//
+// JSON cannot represent cyclic data structures and Marshal does not
+// handle them. Passing cyclic structures to Marshal will result in
+// an infinite recursion.
+//
 func MarshalWithOptions(v interface{}, options EncoderOptions) ([]byte, error) {
 	e := &hjsonEncoder{}
 	e.indent = 0

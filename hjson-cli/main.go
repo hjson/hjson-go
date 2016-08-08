@@ -87,6 +87,9 @@ func main() {
 		opt.QuoteAlways = *quoteAlways
 		opt.AllowMinusZero = *allowMinusZero
 		out, err = hjson.MarshalWithOptions(value, opt)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	fmt.Println(string(out))

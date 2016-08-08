@@ -19,21 +19,19 @@ func (p *parseNumber) next() bool {
 		p.ch = p.data[p.at]
 		p.at++
 		return true
-	} else {
-		if p.at == len {
-			p.at++
-			p.ch = 0
-		}
-		return false
 	}
+	if p.at == len {
+		p.at++
+		p.ch = 0
+	}
+	return false
 }
 
 func startsWithNumber(text []byte) bool {
 	if _, err := tryParseNumber(text, true); err == nil {
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
 func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
@@ -91,13 +89,12 @@ func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
 	if p.ch > 0 || leadingZeros != 0 {
 		return 0, errors.New("Invalid number")
 	}
-	if number, err := strconv.ParseFloat(string(p.data[0:end-1]), 64); err != nil {
+	number, err := strconv.ParseFloat(string(p.data[0:end-1]), 64);
+	if err != nil {
 		return 0, err
-	} else {
-		if math.IsInf(number, 0) || math.IsNaN(number) {
-			return 0, errors.New("Invalid number")
-		} else {
-			return number, nil
-		}
 	}
+	if math.IsInf(number, 0) || math.IsNaN(number) {
+		return 0, errors.New("Invalid number")
+	}
+	return number, nil
 }

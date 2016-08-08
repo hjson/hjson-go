@@ -89,7 +89,7 @@ func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
 	if p.ch > 0 || leadingZeros != 0 {
 		return 0, errors.New("Invalid number")
 	}
-	number, err := strconv.ParseFloat(string(p.data[0:end-1]), 64);
+	number, err := strconv.ParseFloat(string(p.data[0:end-1]), 64)
 	if err != nil {
 		return 0, err
 	}

@@ -2,6 +2,7 @@
 
 [![Build Status](https://img.shields.io/travis/laktak/hjson-go.svg?style=flat-square)](http://travis-ci.org/laktak/hjson-go)
 [![Releases](https://img.shields.io/github/release/laktak/hjson-go.svg?style=flat-square)](https://github.com/laktak/hjson-go/releases)
+[![godoc](https://godoc.org/github.com/laktak/hjson-go?status.svg)](http://godoc.org/github.com/laktak/hjson-go)
 
 ![Hjson Intro](http://hjson.org/hjson1.gif)
 
@@ -112,3 +113,7 @@ func main() {
 }
 
 ```
+
+# API
+
+[![godoc](https://godoc.org/github.com/laktak/hjson-go?status.svg)](http://godoc.org/github.com/laktak/hjson-go)

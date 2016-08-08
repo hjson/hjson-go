@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-func fixJson(data []byte) []byte {
+func fixJSON(data []byte) []byte {
 	data = bytes.Replace(data, []byte("\\u003c"), []byte("<"), -1)
 	data = bytes.Replace(data, []byte("\\u003e"), []byte(">"), -1)
 	data = bytes.Replace(data, []byte("\\u0026"), []byte("&"), -1)
@@ -32,7 +32,7 @@ func main() {
 	}
 
 	var help = flag.Bool("h", false, "Show this screen.")
-	var showJson = flag.Bool("j", false, "Output as formatted JSON.")
+	var showJSON = flag.Bool("j", false, "Output as formatted JSON.")
 	var showCompact = flag.Bool("c", false, "Output as JSON.")
 
 	var indentBy = flag.String("indentBy", "  ", "The indent string.")
@@ -72,13 +72,13 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		out = fixJson(out)
-	} else if *showJson {
+		out = fixJSON(out)
+	} else if *showJSON {
 		out, err = json.MarshalIndent(value, "", *indentBy)
 		if err != nil {
 			panic(err)
 		}
-		out = fixJson(out)
+		out = fixJSON(out)
 	} else {
 		opt := hjson.DefaultOptions()
 		opt.IndentBy = *indentBy

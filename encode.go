@@ -15,19 +15,19 @@ import (
 // EncoderOptions defines options for encoding to Hjson.
 type EncoderOptions struct {
 	// End of line, should be either \n or \r\n
-	Eol            string
+	Eol string
 	// Place braces on the same line
 	BracesSameLine bool
 	// Emit braces at the root level
 	EmitRootBraces bool
 	// Always place string in quotes
-	QuoteAlways    bool
+	QuoteAlways bool
 	// Indent string
-	IndentBy       string
+	IndentBy string
 	// Allow the -0 value (unlike ES6)
 	AllowMinusZero bool
 	// Encode unknown values as 'null'
-	UnknownAsNull  bool
+	UnknownAsNull bool
 }
 
 // DefaultOptions returns the default encoding options.

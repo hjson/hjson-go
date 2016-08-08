@@ -16,9 +16,8 @@ import (
 func getContent(file string) []byte {
 	if data, err := ioutil.ReadFile(file); err == nil {
 		return data
-	} else {
-		panic(err)
 	}
+	panic(err)
 }
 
 func getTestContent(name string) []byte {
@@ -35,7 +34,7 @@ func getResultContent(name string) ([]byte, []byte) {
 	return getContent(p1), getContent(p2)
 }
 
-func fixJson(data []byte) []byte {
+func fixJSON(data []byte) []byte {
 	data = bytes.Replace(data, []byte("\\u003c"), []byte("<"), -1)
 	data = bytes.Replace(data, []byte("\\u003e"), []byte(">"), -1)
 	data = bytes.Replace(data, []byte("\\u0026"), []byte("&"), -1)
@@ -64,24 +63,24 @@ func run(t *testing.T, file string) {
 	rjson, rhjson := getResultContent(name)
 
 	actualHjson, _ := hjson.Marshal(data)
-	actualJson, _ := json.MarshalIndent(data, "", "  ")
-	actualJson = fixJson(actualJson)
+	actualJSON, _ := json.MarshalIndent(data, "", "  ")
+	actualJSON = fixJSON(actualJSON)
 
 	// add fixes where go's json differs from javascript
 	switch name {
 	case "kan":
-		actualJson = []byte(strings.Replace(string(actualJson), "    -0,", "    0,", -1))
+		actualJSON = []byte(strings.Replace(string(actualJSON), "    -0,", "    0,", -1))
 	case "pass1":
-		actualJson = []byte(strings.Replace(string(actualJson), "1.23456789e+09", "1234567890", -1))
+		actualJSON = []byte(strings.Replace(string(actualJSON), "1.23456789e+09", "1234567890", -1))
 	}
 
 	hjsonOK := bytes.Equal(rhjson, actualHjson)
-	jsonOK := bytes.Equal(rjson, actualJson)
+	jsonOK := bytes.Equal(rjson, actualJSON)
 	if !hjsonOK {
 		t.Logf("%s\n---hjson expected\n%s\n---hjson actual\n%s\n---\n", name, rhjson, actualHjson)
 	}
 	if !jsonOK {
-		t.Logf("%s\n---json expected\n%s\n---json actual\n%s\n---\n", name, rjson, actualJson)
+		t.Logf("%s\n---json expected\n%s\n---json actual\n%s\n---\n", name, rjson, actualJSON)
 	}
 	if !hjsonOK || !jsonOK {
 		panic("fail!")

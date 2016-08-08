@@ -1,0 +1,10 @@
+language: go
+
+go:
+  - 1.6
+  - tip
+
+script:
+  - go install github.com/laktak/hjson-go
+  - go install github.com/laktak/hjson-go/hjson-cli
+  - go test -v github.com/laktak/hjson-go/test

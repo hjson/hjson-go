@@ -4,6 +4,8 @@ go:
   - 1.6
   - tip
 
+install: true
+
 script:
   - go install github.com/laktak/hjson-go
   - go install github.com/laktak/hjson-go/hjson-cli

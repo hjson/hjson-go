@@ -1,5 +1,3 @@
-
-
 package main
 
 import (
@@ -15,13 +13,15 @@ import (
 	"testing"
 )
 
-func getContent(file string) ([]byte) {
+func getContent(file string) []byte {
 	if data, err := ioutil.ReadFile(file); err == nil {
 		return data
-	} else { panic(err) }
+	} else {
+		panic(err)
+	}
 }
 
-func getTestContent(name string) ([]byte) {
+func getTestContent(name string) []byte {
 	p := fmt.Sprintf("./assets/%s_test.hjson", name)
 	if _, err := os.Stat(p); os.IsNotExist(err) {
 		p = fmt.Sprintf("./assets/%s_test.json", name)
@@ -29,13 +29,13 @@ func getTestContent(name string) ([]byte) {
 	return getContent(p)
 }
 
-func getResultContent(name string) ([]byte,[]byte) {
+func getResultContent(name string) ([]byte, []byte) {
 	p1 := fmt.Sprintf("./assets/sorted/%s_result.json", name)
 	p2 := fmt.Sprintf("./assets/sorted/%s_result.hjson", name)
 	return getContent(p1), getContent(p2)
 }
 
-func fixJson(data []byte) ([]byte) {
+func fixJson(data []byte) []byte {
 	data = bytes.Replace(data, []byte("\\u003c"), []byte("<"), -1)
 	data = bytes.Replace(data, []byte("\\u003e"), []byte(">"), -1)
 	data = bytes.Replace(data, []byte("\\u0026"), []byte("&"), -1)
@@ -45,15 +45,21 @@ func fixJson(data []byte) ([]byte) {
 }
 
 func run(t *testing.T, file string) {
-	name := strings.TrimSuffix(file, "_test" + filepath.Ext(file))
-	t.Logf("running %s", name);
+	name := strings.TrimSuffix(file, "_test"+filepath.Ext(file))
+	t.Logf("running %s", name)
 	shouldFail := strings.HasPrefix(file, "fail")
 
 	testContent := getTestContent(name)
 	var data interface{}
 	if err := hjson.Unmarshal(testContent, &data); err != nil {
-		if !shouldFail { panic(err) } else { return }
-	} else if shouldFail { panic(errors.New(name + " should_fail!")) }
+		if !shouldFail {
+			panic(err)
+		} else {
+			return
+		}
+	} else if shouldFail {
+		panic(errors.New(name + " should_fail!"))
+	}
 
 	rjson, rhjson := getResultContent(name)
 
@@ -77,7 +83,9 @@ func run(t *testing.T, file string) {
 	if !jsonOK {
 		t.Logf("%s\n---json expected\n%s\n---json actual\n%s\n---\n", name, rjson, actualJson)
 	}
-	if !hjsonOK || !jsonOK { panic("fail!") }
+	if !hjsonOK || !jsonOK {
+		panic("fail!")
+	}
 }
 
 func TestHjson(t *testing.T) {

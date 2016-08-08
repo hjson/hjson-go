@@ -1,4 +1,3 @@
-
 package hjson
 
 import (
@@ -11,31 +10,39 @@ import (
 
 type hjsonParser struct {
 	data []byte
-	at int      // The index of the current character
-	ch byte     // The current character
+	at   int  // The index of the current character
+	ch   byte // The current character
 }
 
 func (p *hjsonParser) resetAt() {
-	p.at = 0;
-	p.ch = ' ';
+	p.at = 0
+	p.ch = ' '
 }
 
-func isPunctuatorChar(c byte) (bool) {
+func isPunctuatorChar(c byte) bool {
 	return c == '{' || c == '}' || c == '[' || c == ']' || c == ',' || c == ':'
 }
 
-func (p *hjsonParser) errAt(message string) (error) {
+func (p *hjsonParser) errAt(message string) error {
 	var i int
 	col := 0
 	line := 1
-	for i = p.at - 1; i > 0 && p.data[i] != '\n'; i-- { col++ }
-	for ; i > 0; i-- { if p.data[i] == '\n' { line++ } }
+	for i = p.at - 1; i > 0 && p.data[i] != '\n'; i-- {
+		col++
+	}
+	for ; i > 0; i-- {
+		if p.data[i] == '\n' {
+			line++
+		}
+	}
 	samEnd := p.at - col + 20
-	if samEnd > len(p.data) { samEnd = len(p.data) }
+	if samEnd > len(p.data) {
+		samEnd = len(p.data)
+	}
 	return errors.New(fmt.Sprintf("%s at line %d,%d >>> %s ...", message, line, col, string(p.data[p.at-col:samEnd])))
 }
 
-func (p *hjsonParser) next() (bool) {
+func (p *hjsonParser) next() bool {
 	// get the next character.
 	if p.at < len(p.data) {
 		p.ch = p.data[p.at]
@@ -47,22 +54,24 @@ func (p *hjsonParser) next() (bool) {
 	}
 }
 
-func (p *hjsonParser) peek(offs int) (byte) {
-	pos := p.at+offs
+func (p *hjsonParser) peek(offs int) byte {
+	pos := p.at + offs
 	if pos >= 0 && pos < len(p.data) {
 		return p.data[p.at+offs]
-	} else { return 0 }
+	} else {
+		return 0
+	}
 }
 
-var escapee map[byte]byte = map[byte]byte {
-	'"': '"',
+var escapee map[byte]byte = map[byte]byte{
+	'"':  '"',
 	'\\': '\\',
-	'/': '/',
-	'b': '\b',
-	'f': '\f',
-	'n': '\n',
-	'r': '\r',
-	't': '\t',
+	'/':  '/',
+	'b':  '\b',
+	'f':  '\f',
+	'n':  '\n',
+	'r':  '\r',
+	't':  '\t',
 }
 
 func (p *hjsonParser) readString() (string, error) {
@@ -71,7 +80,9 @@ func (p *hjsonParser) readString() (string, error) {
 	res := new(bytes.Buffer)
 
 	// When parsing for string values, we must look for " and \ characters.
-	if p.ch != '"' { return "", p.errAt("Bad string") }
+	if p.ch != '"' {
+		return "", p.errAt("Bad string")
+	}
 	for p.next() {
 		if p.ch == '"' {
 			p.next()
@@ -93,7 +104,7 @@ func (p *hjsonParser) readString() (string, error) {
 					} else {
 						return "", p.errAt("Bad \\u char " + string(p.ch))
 					}
-					uffff = uffff * 16 + hex
+					uffff = uffff*16 + hex
 				}
 				res.WriteRune(rune(uffff))
 			} else if ech, ok := escapee[p.ch]; ok {
@@ -117,8 +128,10 @@ func (p *hjsonParser) readMLString() (value string, err error) {
 	// we are at ''' +1 - get indent
 	indent := 0
 	for {
-		c := p.peek(-indent-5)
-		if c == 0 || c == '\n' { break }
+		c := p.peek(-indent - 5)
+		if c == 0 || c == '\n' {
+			break
+		}
 		indent++
 	}
 
@@ -131,8 +144,13 @@ func (p *hjsonParser) readMLString() (value string, err error) {
 	}
 
 	// skip white/to (newline)
-	for p.ch > 0 && p.ch <= ' ' && p.ch != '\n' { p.next() }
-	if p.ch == '\n' { p.next(); skipIndent() }
+	for p.ch > 0 && p.ch <= ' ' && p.ch != '\n' {
+		p.next()
+	}
+	if p.ch == '\n' {
+		p.next()
+		skipIndent()
+	}
 
 	// When parsing multiline string values, we must look for ' characters.
 	lastLf := false
@@ -145,11 +163,13 @@ func (p *hjsonParser) readMLString() (value string, err error) {
 			if triple == 3 {
 				sres := res.Bytes()
 				if lastLf {
-					return string(sres[0:len(sres)-1]), nil // remove last EOL
+					return string(sres[0 : len(sres)-1]), nil // remove last EOL
 				} else {
 					return string(sres), nil
 				}
-			} else { continue }
+			} else {
+				continue
+			}
 		} else {
 			for triple > 0 {
 				res.WriteByte('\'')
@@ -157,13 +177,13 @@ func (p *hjsonParser) readMLString() (value string, err error) {
 				lastLf = false
 			}
 		}
-		if (p.ch == '\n') {
+		if p.ch == '\n' {
 			res.WriteByte('\n')
 			lastLf = true
 			p.next()
 			skipIndent()
 		} else {
-			if (p.ch != '\r') {
+			if p.ch != '\r' {
 				res.WriteByte(p.ch)
 				lastLf = false
 			}
@@ -177,7 +197,9 @@ func (p *hjsonParser) readKeyname() (string, error) {
 	// quotes for keys are optional in Hjson
 	// unless they include {}[],: or whitespace.
 
-	if p.ch == '"' { return p.readString() }
+	if p.ch == '"' {
+		return p.readString()
+	}
 
 	name := new(bytes.Buffer)
 	start := p.at
@@ -186,14 +208,18 @@ func (p *hjsonParser) readKeyname() (string, error) {
 		if p.ch == ':' {
 			if name.Len() == 0 {
 				return "", p.errAt("Found ':' but no key name (for an empty key name use quotes)")
-			} else if space >=0 && space != name.Len() {
+			} else if space >= 0 && space != name.Len() {
 				p.at = start + space
 				return "", p.errAt("Found whitespace in your key name (use quotes to include)")
 			}
 			return name.String(), nil
 		} else if p.ch <= ' ' {
-			if p.ch == 0 { return "", p.errAt("Found EOF while looking for a key name (check your syntax)") }
-			if space < 0 { space = name.Len() }
+			if p.ch == 0 {
+				return "", p.errAt("Found EOF while looking for a key name (check your syntax)")
+			}
+			if space < 0 {
+				space = name.Len()
+			}
 		} else if isPunctuatorChar(p.ch) {
 			return "", p.errAt("Found '" + string(p.ch) + "' where a key name was expected (check your syntax or use quotes if the key name includes {}[],: or whitespace)")
 		} else {
@@ -206,16 +232,27 @@ func (p *hjsonParser) readKeyname() (string, error) {
 func (p *hjsonParser) white() {
 	for p.ch > 0 {
 		// Skip whitespace.
-		for p.ch > 0 && p.ch <= ' ' { p.next() }
+		for p.ch > 0 && p.ch <= ' ' {
+			p.next()
+		}
 		// Hjson allows comments
 		if p.ch == '#' || p.ch == '/' && p.peek(0) == '/' {
-			for p.ch > 0 && p.ch != '\n' { p.next() }
+			for p.ch > 0 && p.ch != '\n' {
+				p.next()
+			}
 		} else if p.ch == '/' && p.peek(0) == '*' {
 			p.next()
 			p.next()
-			for p.ch > 0 && !(p.ch == '*' && p.peek(0) == '/') { p.next() }
-			if p.ch > 0 { p.next(); p.next() }
-		} else { break }
+			for p.ch > 0 && !(p.ch == '*' && p.peek(0) == '/') {
+				p.next()
+			}
+			if p.ch > 0 {
+				p.next()
+				p.next()
+			}
+		} else {
+			break
+		}
 	}
 }
 
@@ -229,7 +266,9 @@ func (p *hjsonParser) readTfnns() (interface{}, error) {
 	}
 	chf := p.ch
 	if chf == '\'' && p.peek(0) == '\'' && p.peek(1) == '\'' {
-		p.next(); p.next(); p.next()
+		p.next()
+		p.next()
+		p.next()
 		return p.readMLString()
 	}
 
@@ -244,15 +283,24 @@ func (p *hjsonParser) readTfnns() (interface{}, error) {
 			p.ch == '#' ||
 			p.ch == '/' && (p.peek(0) == '/' || p.peek(0) == '*') {
 			switch chf {
-				case 'f': if strings.TrimSpace(value.String()) == "false" { return false, nil }
-				case 'n': if strings.TrimSpace(value.String()) == "null" { return nil, nil }
-				case 't': if strings.TrimSpace(value.String()) == "true" { return true, nil }
-				default:
-					if chf == '-' || chf >= '0' && chf <= '9' {
-						if n, err := tryParseNumber(value.Bytes(), false); err == nil {
-							return n, nil
-						}
+			case 'f':
+				if strings.TrimSpace(value.String()) == "false" {
+					return false, nil
+				}
+			case 'n':
+				if strings.TrimSpace(value.String()) == "null" {
+					return nil, nil
+				}
+			case 't':
+				if strings.TrimSpace(value.String()) == "true" {
+					return true, nil
+				}
+			default:
+				if chf == '-' || chf >= '0' && chf <= '9' {
+					if n, err := tryParseNumber(value.Bytes(), false); err == nil {
+						return n, nil
 					}
+				}
 			}
 			if isEol {
 				// remove any whitespace at the end (ignored in quoteless strings)
@@ -280,7 +328,9 @@ func (p *hjsonParser) readArray() (value interface{}, err error) {
 
 	for p.ch > 0 {
 		var val interface{}
-		if val, err = p.readValue(); err != nil { return nil, err }
+		if val, err = p.readValue(); err != nil {
+			return nil, err
+		}
 		array = append(array, val)
 		p.white()
 		// in Hjson the comma is optional and trailing commas are allowed
@@ -315,28 +365,34 @@ func (p *hjsonParser) readObject(withoutBraces bool) (value interface{}, err err
 	}
 	for p.ch > 0 {
 		var key string
-		if key, err = p.readKeyname(); err != nil { return nil, err }
+		if key, err = p.readKeyname(); err != nil {
+			return nil, err
+		}
 		p.white()
-        if p.ch != ':' { return nil, p.errAt("Expected ':' instead of '" + string(p.ch) + "'") }
+		if p.ch != ':' {
+			return nil, p.errAt("Expected ':' instead of '" + string(p.ch) + "'")
+		}
 		p.next()
 		// duplicate keys overwrite the previous value
 		var val interface{}
-		if val, err = p.readValue(); err != nil { return nil, err }
+		if val, err = p.readValue(); err != nil {
+			return nil, err
+		}
 		object[key] = val
 		p.white()
 		// in Hjson the comma is optional and trailing commas are allowed
 		if p.ch == ',' {
 			p.next()
-		 	p.white()
-		 }
-		if (p.ch == '}' && !withoutBraces) {
+			p.white()
+		}
+		if p.ch == '}' && !withoutBraces {
 			p.next()
 			return object, nil
 		}
 		p.white()
 	}
 
-	if (withoutBraces) {
+	if withoutBraces {
 		return object, nil
 	} else {
 		return nil, p.errAt("End of input while parsing an object (did you forget a closing '}'?)")
@@ -348,11 +404,15 @@ func (p *hjsonParser) readValue() (interface{}, error) {
 	// Parse a Hjson value. It could be an object, an array, a string, a number or a word.
 
 	p.white()
-	switch (p.ch) {
-		case '{': return p.readObject(false)
-		case '[': return p.readArray()
-		case '"': return p.readString()
-		default: return p.readTfnns()
+	switch p.ch {
+	case '{':
+		return p.readObject(false)
+	case '[':
+		return p.readArray()
+	case '"':
+		return p.readString()
+	default:
+		return p.readTfnns()
 	}
 }
 
@@ -360,9 +420,11 @@ func (p *hjsonParser) rootValue() (interface{}, error) {
 	// Braces for the root object are optional
 
 	p.white()
-	switch (p.ch) {
-		case '{': return p.readObject(false)
-		case '[': return p.readArray()
+	switch p.ch {
+	case '{':
+		return p.readObject(false)
+	case '[':
+		return p.readArray()
 	}
 
 	// assume we have a root object without braces

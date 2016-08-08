@@ -1,5 +1,3 @@
-
-
 package main
 
 import (
@@ -12,7 +10,7 @@ import (
 	"os"
 )
 
-func fixJson(data []byte) ([]byte) {
+func fixJson(data []byte) []byte {
 	data = bytes.Replace(data, []byte("\\u003c"), []byte("<"), -1)
 	data = bytes.Replace(data, []byte("\\u003e"), []byte(">"), -1)
 	data = bytes.Replace(data, []byte("\\u0026"), []byte("&"), -1)
@@ -58,7 +56,9 @@ func main() {
 	} else {
 		data, err = ioutil.ReadAll(os.Stdin)
 	}
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 
 	var value interface{}
 
@@ -69,11 +69,15 @@ func main() {
 	var out []byte
 	if *showCompact {
 		out, err = json.Marshal(value)
-		if err != nil { panic(err) }
+		if err != nil {
+			panic(err)
+		}
 		out = fixJson(out)
 	} else if *showJson {
 		out, err = json.MarshalIndent(value, "", *indentBy)
-		if err != nil { panic(err) }
+		if err != nil {
+			panic(err)
+		}
 		out = fixJson(out)
 	} else {
 		opt := hjson.DefaultOptions()

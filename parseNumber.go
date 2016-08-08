@@ -1,4 +1,3 @@
-
 package hjson
 
 import (
@@ -9,11 +8,11 @@ import (
 
 type parseNumber struct {
 	data []byte
-	at int  // The index of the current character
-	ch byte // The current character
+	at   int  // The index of the current character
+	ch   byte // The current character
 }
 
-func (p *parseNumber) next() (bool) {
+func (p *parseNumber) next() bool {
 	// get the next character.
 	len := len(p.data)
 	if p.at < len {
@@ -29,7 +28,7 @@ func (p *parseNumber) next() (bool) {
 	}
 }
 
-func startsWithNumber(text []byte) (bool) {
+func startsWithNumber(text []byte) bool {
 	if _, err := tryParseNumber(text, true); err == nil {
 		return true
 	} else {
@@ -48,7 +47,7 @@ func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
 		p.next()
 	}
 	for p.ch >= '0' && p.ch <= '9' {
-		if (testLeading) {
+		if testLeading {
 			if p.ch == '0' {
 				leadingZeros++
 			} else {
@@ -57,9 +56,12 @@ func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
 		}
 		p.next()
 	}
-	if testLeading { leadingZeros-- } // single 0 is allowed
+	if testLeading {
+		leadingZeros--
+	} // single 0 is allowed
 	if p.ch == '.' {
-		for p.next() && p.ch >= '0' && p.ch <= '9' {}
+		for p.next() && p.ch >= '0' && p.ch <= '9' {
+		}
 	}
 	if p.ch == 'e' || p.ch == 'E' {
 		p.next()
@@ -74,12 +76,16 @@ func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
 	end := p.at
 
 	// skip white/to (newline)
-	for p.ch > 0 && p.ch <= ' ' { p.next() }
+	for p.ch > 0 && p.ch <= ' ' {
+		p.next()
+	}
 
 	if stopAtNext {
 		// end scan if we find a punctuator character like ,}] or a comment
 		if p.ch == ',' || p.ch == '}' || p.ch == ']' ||
-			p.ch == '#' || p.ch == '/' && (p.data[p.at] == '/' || p.data[p.at] == '*') { p.ch = 0 }
+			p.ch == '#' || p.ch == '/' && (p.data[p.at] == '/' || p.data[p.at] == '*') {
+			p.ch = 0
+		}
 	}
 
 	if p.ch > 0 || leadingZeros != 0 {
@@ -91,7 +97,7 @@ func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
 		if math.IsInf(number, 0) || math.IsNaN(number) {
 			return 0, errors.New("Invalid number")
 		} else {
-		  return number, nil
+			return number, nil
 		}
 	}
 }

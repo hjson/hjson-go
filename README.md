@@ -1,9 +1,9 @@
 # hjson-go
 
 [![Build Status](https://img.shields.io/travis/laktak/hjson-go.svg?style=flat-square)](http://travis-ci.org/laktak/hjson-go)
-[![Releases](https://img.shields.io/github/release/laktak/hjson-go.svg?style=flat-square)](https://github.com/laktak/hjson-go/releases)
-[![godoc](https://godoc.org/github.com/laktak/hjson-go?status.svg)](http://godoc.org/github.com/laktak/hjson-go)
-[![Go Report Card](https://goreportcard.com/badge/github.com/laktak/hjson-go)](https://goreportcard.com/report/github.com/laktak/hjson-go)
+[![Go Pkg](https://img.shields.io/github/release/laktak/hjson-go.svg?style=flat-square&label=go-pkg)](https://github.com/laktak/hjson-go/releases)
+[![Go Report Card](https://goreportcard.com/badge/github.com/laktak/hjson-go?style=flat-square)](https://goreportcard.com/report/github.com/laktak/hjson-go)
+[![godoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/laktak/hjson-go)
 
 ![Hjson Intro](http://hjson.org/hjson1.gif)
 

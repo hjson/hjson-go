@@ -1,11 +1,10 @@
-package main
+package hjson
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/laktak/hjson-go"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -51,7 +50,7 @@ func run(t *testing.T, file string) {
 
 	testContent := getTestContent(name)
 	var data interface{}
-	if err := hjson.Unmarshal(testContent, &data); err != nil {
+	if err := Unmarshal(testContent, &data); err != nil {
 		if !shouldFail {
 			panic(err)
 		} else {
@@ -63,7 +62,7 @@ func run(t *testing.T, file string) {
 
 	rjson, rhjson := getResultContent(name)
 
-	actualHjson, _ := hjson.Marshal(data)
+	actualHjson, _ := Marshal(data)
 	actualJSON, _ := json.MarshalIndent(data, "", "  ")
 	actualJSON = fixJSON(actualJSON)
 

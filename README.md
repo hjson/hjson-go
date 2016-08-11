@@ -80,16 +80,25 @@ import (
 
 func main() {
 
-    // Now let's look at decoding JSON data into Go
+    // Now let's look at decoding Hjson data into Go
     // values.
-    sample := []byte(`{"num":6.13,"strs":["a","b"]}`)
+    sampleText := []byte(`
+    {
+        # specify rate in requests/second
+        rate: 1000
+        array:
+        [
+            foo
+            bar
+        ]
+    }`)
 
     // We need to provide a variable where Hjson
     // can put the decoded data.
     var dat map[string]interface{}
 
     // Decode and a check for errors.
-    if err := hjson.Unmarshal(sample, &dat); err != nil {
+    if err := hjson.Unmarshal(sampleText, &dat); err != nil {
         panic(err)
     }
     fmt.Println(dat)
@@ -97,11 +106,11 @@ func main() {
     // In order to use the values in the decoded map,
     // we'll need to cast them to their appropriate type.
 
-    num := dat["num"].(float64)
-    fmt.Println(num)
+    rate := dat["rate"].(float64)
+    fmt.Println(rate)
 
-    strs := dat["strs"].([]interface{})
-    str1 := strs[0].(string)
+    array := dat["array"].([]interface{})
+    str1 := array[0].(string)
     fmt.Println(str1)
 
 
@@ -113,7 +122,6 @@ func main() {
     // hjson, _ := hjson.MarshalWithOptions(sampleMap, options)
     fmt.Println(string(hjson))
 }
-
 ```
 
 # API

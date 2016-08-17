@@ -1,10 +1,10 @@
 # hjson-go
 
-[![Build Status](https://img.shields.io/travis/laktak/hjson-go.svg?style=flat-square)](http://travis-ci.org/laktak/hjson-go)
-[![Go Pkg](https://img.shields.io/github/release/laktak/hjson-go.svg?style=flat-square&label=go-pkg)](https://github.com/laktak/hjson-go/releases)
-[![Go Report Card](https://goreportcard.com/badge/github.com/laktak/hjson-go?style=flat-square)](https://goreportcard.com/report/github.com/laktak/hjson-go)
-[![coverage](https://img.shields.io/badge/coverage-ok-brightgreen.svg?style=flat-square)](http://gocover.io/github.com/laktak/hjson-go/)
-[![godoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/laktak/hjson-go)
+[![Build Status](https://img.shields.io/travis/hjson/hjson-go.svg?style=flat-square)](http://travis-ci.org/hjson/hjson-go)
+[![Go Pkg](https://img.shields.io/github/release/hjson/hjson-go.svg?style=flat-square&label=go-pkg)](https://github.com/hjson/hjson-go/releases)
+[![Go Report Card](https://goreportcard.com/badge/github.com/hjson/hjson-go?style=flat-square)](https://goreportcard.com/report/github.com/hjson/hjson-go)
+[![coverage](https://img.shields.io/badge/coverage-ok-brightgreen.svg?style=flat-square)](http://gocover.io/github.com/hjson/hjson-go/)
+[![godoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/hjson/hjson-go)
 
 ![Hjson Intro](http://hjson.org/hjson1.gif)
 
@@ -27,7 +27,7 @@
 }
 ```
 
-The Go implementation of Hjson is based on [hjson-js](https://github.com/laktak/hjson-js). For other platforms see [hjson.org](http://hjson.org).
+The Go implementation of Hjson is based on [hjson-js](https://github.com/hjson/hjson-js). For other platforms see [hjson.org](http://hjson.org).
 
 # Install
 
@@ -35,11 +35,11 @@ Make sure you have a working Go environment. See the [install instructions](http
 
 To install hjson, simply run:
 
-`go get -u github.com/laktak/hjson-go`
+`go get -u github.com/hjson/hjson-go`
 
 ## From the Commandline
 
-Install with `go get -u github.com/laktak/hjson-go/hjson-cli`
+Install with `go get -u github.com/hjson/hjson-go/hjson-cli`
 
 ```
 usage: hjson-cli [OPTIONS] [INPUT]
@@ -74,7 +74,7 @@ Sample:
 package main
 
 import (
-  "github.com/laktak/hjson-go"
+  "github.com/hjson/hjson-go"
   "fmt"
 )
 
@@ -126,4 +126,4 @@ func main() {
 
 # API
 
-[![godoc](https://godoc.org/github.com/laktak/hjson-go?status.svg)](http://godoc.org/github.com/laktak/hjson-go)
+[![godoc](https://godoc.org/github.com/hjson/hjson-go?status.svg)](http://godoc.org/github.com/hjson/hjson-go)

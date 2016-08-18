@@ -154,7 +154,7 @@ func (p *hjsonParser) readMLString() (value string, err error) {
 	lastLf := false
 	for {
 		if p.ch == 0 {
-			p.errAt("Bad multiline string")
+			return "", p.errAt("Bad multiline string")
 		} else if p.ch == '\'' {
 			triple++
 			p.next()

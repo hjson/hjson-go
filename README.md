@@ -127,3 +127,7 @@ func main() {
 # API
 
 [![godoc](https://godoc.org/github.com/hjson/hjson-go?status.svg)](http://godoc.org/github.com/hjson/hjson-go)
+
+# History
+
+[see releases](https://github.com/hjson/hjson-go/releases)

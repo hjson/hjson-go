@@ -49,25 +49,21 @@ type hjsonEncoder struct {
 	indent int
 }
 
-var needsEscape, needsQuotes, needsQuotes2, needsEscapeML, startsWithKeyword, needsEscapeName *regexp.Regexp
+var needsEscape, needsQuotes, needsEscapeML, startsWithKeyword, needsEscapeName *regexp.Regexp
 
 func init() {
 	var err error
-	// needsEscape is used to detect and replace characters
+	// needsEscape tests if the string can be written without escapes
 	needsEscape, err = regexp.Compile(`[\\\"\x00-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}]`)
 	if err != nil {
 		panic(err)
 	}
-	// like needsEscape but without \\ and \"
-	needsQuotes, err = regexp.Compile(`[\x00-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}]`)
+	// needsQuotes tests if the string can be written as a quoteless string (includes needsEscape but without \\ and \")
+	needsQuotes, err = regexp.Compile(`^\s|^"|^'''|^#|^/\*|^//|^\{|^\}|^\[|^\]|^:|^,|\s$|[\x00-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}]`)
 	if err != nil {
 		panic(err)
 	}
-	needsQuotes2, err = regexp.Compile(`^\s|^"|^'''|^#|^/\*|^//|^\{|^\[|\s$`)
-	if err != nil {
-		panic(err)
-	}
-	// ''' || (needsQuotes but without \n and \r)
+	// needsEscapeML tests if the string can be written as a multiline string (includes needsEscape but without \n, \r, \\ and \")
 	needsEscapeML, err = regexp.Compile(`'''|[\x00-\x09\x0b\x0c\x0e-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}]`)
 	if err != nil {
 		panic(err)
@@ -112,7 +108,7 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool) 
 	if len(value) == 0 {
 		e.WriteString(separator + `""`)
 	} else if e.QuoteAlways ||
-		needsQuotes.MatchString(value) || needsQuotes2.MatchString(value) ||
+		needsQuotes.MatchString(value) ||
 		startsWithNumber([]byte(value)) ||
 		startsWithKeyword.MatchString(value) {
 

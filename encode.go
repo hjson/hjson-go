@@ -52,31 +52,15 @@ type hjsonEncoder struct {
 var needsEscape, needsQuotes, needsEscapeML, startsWithKeyword, needsEscapeName *regexp.Regexp
 
 func init() {
-	var err error
 	// needsEscape tests if the string can be written without escapes
-	needsEscape, err = regexp.Compile(`[\\\"\x00-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}]`)
-	if err != nil {
-		panic(err)
-	}
+	needsEscape = regexp.MustCompile(`[\\\"\x00-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}]`)
 	// needsQuotes tests if the string can be written as a quoteless string (includes needsEscape but without \\ and \")
-	needsQuotes, err = regexp.Compile(`^\s|^"|^'''|^#|^/\*|^//|^\{|^\}|^\[|^\]|^:|^,|\s$|[\x00-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}]`)
-	if err != nil {
-		panic(err)
-	}
+	needsQuotes = regexp.MustCompile(`^\s|^"|^'''|^#|^/\*|^//|^\{|^\}|^\[|^\]|^:|^,|\s$|[\x00-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}]`)
 	// needsEscapeML tests if the string can be written as a multiline string (includes needsEscape but without \n, \r, \\ and \")
-	needsEscapeML, err = regexp.Compile(`'''|[\x00-\x09\x0b\x0c\x0e-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}]`)
-	if err != nil {
-		panic(err)
-	}
+	needsEscapeML = regexp.MustCompile(`'''|[\x00-\x09\x0b\x0c\x0e-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}]`)
 	// starts with a keyword and optionally is followed by a comment
-	startsWithKeyword, err = regexp.Compile(`^(true|false|null)\s*((,|\]|\}|#|//|/\*).*)?$`)
-	if err != nil {
-		panic(err)
-	}
-	needsEscapeName, err = regexp.Compile(`[,\{\[\}\]\s:#"]|//|/\*|'''`)
-	if err != nil {
-		panic(err)
-	}
+	startsWithKeyword = regexp.MustCompile(`^(true|false|null)\s*((,|\]|\}|#|//|/\*).*)?$`)
+	needsEscapeName = regexp.MustCompile(`[,\{\[\}\]\s:#"]|//|/\*|'''`)
 }
 
 var meta = map[byte][]byte{

@@ -259,7 +259,7 @@ func (p *hjsonParser) readTfnns() (interface{}, error) {
 	// returns string, true, false, or null.
 
 	if isPunctuatorChar(p.ch) {
-		return nil, p.errAt("Found a punctuator character '" + string(p.ch) + "' when excpecting a quoteless string (check your syntax)")
+		return nil, p.errAt("Found a punctuator character '" + string(p.ch) + "' when expecting a quoteless string (check your syntax)")
 	}
 	chf := p.ch
 	if chf == '\'' && p.peek(0) == '\'' && p.peek(1) == '\'' {
@@ -418,18 +418,34 @@ func (p *hjsonParser) rootValue() (interface{}, error) {
 	p.white()
 	switch p.ch {
 	case '{':
-		return p.readObject(false)
+		return p.checkTrailing(p.readObject(false))
 	case '[':
-		return p.readArray()
+		return p.checkTrailing(p.readArray())
 	}
 
 	// assume we have a root object without braces
-	if res, err := p.readObject(true); err == nil {
+	res, err := p.checkTrailing(p.readObject(true));
+	if err == nil {
 		return res, nil
 	}
+
 	// test if we are dealing with a single JSON value instead (true/false/null/num/"")
 	p.resetAt()
-	return p.readValue()
+	if res2, err2 := p.checkTrailing(p.readValue()); err2 == nil {
+		return res2, nil
+	}
+	return res, err
+}
+
+func (p *hjsonParser) checkTrailing(v interface{}, err error) (interface{}, error) {
+	if err != nil {
+		return nil, err
+	}
+	p.white()
+	if p.ch > 0 {
+		return nil, p.errAt("Syntax error, found trailing characters")
+	}
+	return v, nil
 }
 
 // Unmarshal parses the Hjson-encoded data and stores the result
@@ -445,10 +461,6 @@ func Unmarshal(data []byte, v interface{}) error {
 	value, err := parser.rootValue()
 	if err != nil {
 		return err
-	}
-	parser.white()
-	if parser.ch > 0 {
-		return parser.errAt("Syntax error, found trailing characters")
 	}
 
 	rv := reflect.ValueOf(v)

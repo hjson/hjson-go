@@ -16,7 +16,12 @@ function build() {
   mkdir $OUT
   cd $OUT
   go build github.com/hjson/hjson-go/hjson-cli
-  zip -j ${OUT}.zip $OUT/*
+  if [[ $3 == "zip" ]]; then
+    zip -j ${OUT}.zip $OUT/*
+  else
+    tar -czf ${OUT}.tar.gz -C $OUT .
+  fi
+
 }
 
 # not all targets can be built on travis
@@ -47,5 +52,5 @@ build openbsd arm
 build plan9 386
 build plan9 amd64
 build solaris amd64
-build windows 386
-build windows amd64
+build windows 386 zip
+build windows amd64 zip

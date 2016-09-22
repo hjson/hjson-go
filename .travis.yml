@@ -13,29 +13,29 @@ before_deploy:
 deploy:
   provider: releases
   file:
-  - _dist/darwin_386.zip
-  - _dist/darwin_amd64.zip
-  - _dist/dragonfly_amd64.zip
-  - _dist/freebsd_386.zip
-  - _dist/freebsd_amd64.zip
-  - _dist/freebsd_arm.zip
-  - _dist/linux_386.zip
-  - _dist/linux_amd64.zip
-  - _dist/linux_arm.zip
-  - _dist/linux_arm64.zip
-  - _dist/linux_mips64.zip
-  - _dist/linux_mips64le.zip
-  - _dist/linux_ppc64.zip
-  - _dist/linux_ppc64le.zip
-  - _dist/netbsd_386.zip
-  - _dist/netbsd_amd64.zip
-  - _dist/netbsd_arm.zip
-  - _dist/openbsd_386.zip
-  - _dist/openbsd_amd64.zip
-  - _dist/openbsd_arm.zip
-  - _dist/plan9_386.zip
-  - _dist/plan9_amd64.zip
-  - _dist/solaris_amd64.zip
+  - _dist/darwin_386.tar.gz
+  - _dist/darwin_amd64.tar.gz
+  - _dist/dragonfly_amd64.tar.gz
+  - _dist/freebsd_386.tar.gz
+  - _dist/freebsd_amd64.tar.gz
+  - _dist/freebsd_arm.tar.gz
+  - _dist/linux_386.tar.gz
+  - _dist/linux_amd64.tar.gz
+  - _dist/linux_arm.tar.gz
+  - _dist/linux_arm64.tar.gz
+  - _dist/linux_mips64.tar.gz
+  - _dist/linux_mips64le.tar.gz
+  - _dist/linux_ppc64.tar.gz
+  - _dist/linux_ppc64le.tar.gz
+  - _dist/netbsd_386.tar.gz
+  - _dist/netbsd_amd64.tar.gz
+  - _dist/netbsd_arm.tar.gz
+  - _dist/openbsd_386.tar.gz
+  - _dist/openbsd_amd64.tar.gz
+  - _dist/openbsd_arm.tar.gz
+  - _dist/plan9_386.tar.gz
+  - _dist/plan9_amd64.tar.gz
+  - _dist/solaris_amd64.tar.gz
   - _dist/windows_386.zip
   - _dist/windows_amd64.zip
   overwrite: true

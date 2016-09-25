@@ -17,8 +17,10 @@ function build() {
   cd $OUT
   go build github.com/hjson/hjson-go/hjson-cli
   if [[ $3 == "zip" ]]; then
+    mv $OUT/hjson-cli.exe $OUT/hjson.exe
     zip -j ${OUT}.zip $OUT/*
   else
+    mv $OUT/hjson-cli $OUT/hjson
     tar -czf ${OUT}.tar.gz -C $OUT .
   fi
 

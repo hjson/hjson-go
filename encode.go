@@ -18,7 +18,7 @@ type EncoderOptions struct {
 	Eol string
 	// Place braces on the same line
 	BracesSameLine bool
-	// Emit braces at the root level
+	// Deprecated: Hjson always emits braces
 	EmitRootBraces bool
 	// Always place string in quotes
 	QuoteAlways bool
@@ -271,29 +271,21 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			break
 		}
 
-		showBraces := !isRootObject || e.EmitRootBraces
 		indent1 := e.indent
-		if showBraces {
-			e.indent++
+		e.indent++
+		if !noIndent && !e.BracesSameLine {
+			e.writeIndent(indent1)
+		} else {
+			e.WriteString(separator)
 		}
-
-		if showBraces {
-			if !noIndent && !e.BracesSameLine {
-				e.writeIndent(indent1)
-			} else {
-				e.WriteString(separator)
-			}
-			e.WriteString("{")
-		}
+		e.WriteString("{")
 
 		keys := value.MapKeys()
 		sort.Sort(sortAlpha(keys))
 
 		// Join all of the member texts together, separated with newlines
 		for i := 0; i < len; i++ {
-			if i > 0 || showBraces {
-				e.writeIndent(e.indent)
-			}
+			e.writeIndent(e.indent)
 			e.WriteString(e.quoteName(keys[i].String()))
 			e.WriteString(":")
 			if err := e.str(value.MapIndex(keys[i]), false, " ", false); err != nil {
@@ -301,11 +293,8 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			}
 		}
 
-		if showBraces {
-			e.writeIndent(indent1)
-			e.WriteString("}")
-		}
-
+		e.writeIndent(indent1)
+		e.WriteString("}")
 		e.indent = indent1
 
 	default:
@@ -359,7 +348,6 @@ func MarshalWithOptions(v interface{}, options EncoderOptions) ([]byte, error) {
 	e.indent = 0
 	e.Eol = options.Eol
 	e.BracesSameLine = options.BracesSameLine
-	e.EmitRootBraces = options.EmitRootBraces
 	e.QuoteAlways = options.QuoteAlways
 	e.IndentBy = options.IndentBy
 

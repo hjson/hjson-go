@@ -57,6 +57,10 @@
     number: 5
     yes: true
   }
+  notml1: "\n"
+  notml2: "  \n"
+  notml3: "\n  \n  \n  \n"
+  notml4: "\t\n"
   special:
   {
     false: "false"

@@ -110,6 +110,8 @@ func (p *hjsonParser) readString() (string, error) {
 			} else {
 				return "", p.errAt("Bad escape \\" + string(p.ch))
 			}
+		} else if p.ch == '\n' || p.ch == '\r' {
+			return "", p.errAt("Bad string containing newline");
 		} else {
 			res.WriteByte(p.ch)
 		}

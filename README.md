@@ -33,14 +33,16 @@ The Go implementation of Hjson is based on [hjson-js](https://github.com/hjson/h
 
 Make sure you have a working Go environment. See the [install instructions](http://golang.org/doc/install.html).
 
-To install hjson, simply run:
-
-`go get -u github.com/hjson/hjson-go`
-
-## From the Commandline
-
-Install with `go get -u github.com/hjson/hjson-go/hjson-cli`
-
+1. Get the sources
+```bash
+$ go get -u github.com/hjson/hjson-go
+```
+2. Build the **hjson-cli** commandl ine tool (optional)
+```bash
+$ cd $(go env GOPATH)/src/github.com/hjson/hjson-go/hjson-cli && go install
+$ hjson-cli --version
+```
+# Usage as command line tool
 ```
 usage: hjson-cli [OPTIONS] [INPUT]
 hjson can be used to convert JSON from/to Hjson.
@@ -67,7 +69,7 @@ Sample:
 - run `hjson-cli test.json > test.hjson` to convert to Hjson
 - run `hjson-cli -j test.hjson > test.json` to convert to JSON
 
-# Usage
+# Usage as a GO library
 
 ```go
 

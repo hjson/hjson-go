@@ -63,6 +63,7 @@ func (p *hjsonParser) peek(offs int) byte {
 
 var escapee = map[byte]byte{
 	'"':  '"',
+	'\'': '\'',
 	'\\': '\\',
 	'/':  '/',
 	'b':  '\b',
@@ -72,19 +73,24 @@ var escapee = map[byte]byte{
 	't':  '\t',
 }
 
-func (p *hjsonParser) readString() (string, error) {
+func (p *hjsonParser) readString(allowML bool) (string, error) {
 
 	// Parse a string value.
 	res := new(bytes.Buffer)
 
+	// callers make sure that (ch === '"' || ch === "'")
 	// When parsing for string values, we must look for " and \ characters.
-	if p.ch != '"' {
-		return "", p.errAt("Bad string")
-	}
+	exitCh := p.ch
 	for p.next() {
-		if p.ch == '"' {
+		if p.ch == exitCh {
 			p.next()
-			return res.String(), nil
+			if allowML && p.ch == '\'' && res.Len() == 0 {
+				// ''' indicates a multiline string
+				p.next()
+				return p.readMLString()
+			} else {
+				return res.String(), nil
+			}
 		}
 		if p.ch == '\\' {
 			p.next()
@@ -195,8 +201,8 @@ func (p *hjsonParser) readKeyname() (string, error) {
 	// quotes for keys are optional in Hjson
 	// unless they include {}[],: or whitespace.
 
-	if p.ch == '"' {
-		return p.readString()
+	if p.ch == '"' || p.ch == '\'' {
+		return p.readString(false)
 	}
 
 	name := new(bytes.Buffer)
@@ -264,13 +270,6 @@ func (p *hjsonParser) readTfnns() (interface{}, error) {
 		return nil, p.errAt("Found a punctuator character '" + string(p.ch) + "' when expecting a quoteless string (check your syntax)")
 	}
 	chf := p.ch
-	if chf == '\'' && p.peek(0) == '\'' && p.peek(1) == '\'' {
-		p.next()
-		p.next()
-		p.next()
-		return p.readMLString()
-	}
-
 	value := new(bytes.Buffer)
 	value.WriteByte(p.ch)
 
@@ -407,8 +406,8 @@ func (p *hjsonParser) readValue() (interface{}, error) {
 		return p.readObject(false)
 	case '[':
 		return p.readArray()
-	case '"':
-		return p.readString()
+	case '"', '\'':
+		return p.readString(true)
 	default:
 		return p.readTfnns()
 	}

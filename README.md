@@ -126,6 +126,51 @@ func main() {
 }
 ```
 
+If you prefer, you can also unmarshal to Go objects by converting to JSON:
+
+```go
+
+package main
+
+import (
+  "github.com/hjson/hjson-go"
+  "encoding/json"
+  "fmt"
+)
+
+type Sample struct {
+    Rate  int
+    Array []string
+}
+
+func main() {
+
+    sampleText := []byte(`
+    {
+        # specify rate in requests/second
+        rate: 1000
+        array:
+        [
+            foo
+            bar
+        ]
+    }`)
+
+    // read Hjson
+    var dat map[string]interface{}
+    hjson.Unmarshal(sampleText, &dat)
+
+    // convert to JSON
+    b, _ := json.Marshal(dat)
+
+    // unmarshal
+    var sample Sample
+    json.Unmarshal(b, &sample)
+
+    fmt.Println(sample.Rate)
+    fmt.Println(sample.Array)
+}
+
 # API
 
 [![godoc](https://godoc.org/github.com/hjson/hjson-go?status.svg)](http://godoc.org/github.com/hjson/hjson-go)

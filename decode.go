@@ -84,7 +84,7 @@ func (p *hjsonParser) readString(allowML bool) (string, error) {
 	for p.next() {
 		if p.ch == exitCh {
 			p.next()
-			if allowML && p.ch == '\'' && res.Len() == 0 {
+			if allowML && exitCh == '\'' && p.ch == '\'' && res.Len() == 0 {
 				// ''' indicates a multiline string
 				p.next()
 				return p.readMLString()

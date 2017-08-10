@@ -97,3 +97,11 @@ func TestHjson(t *testing.T) {
 		}
 	}
 }
+
+func TestInvalidDestinationType(t *testing.T) {
+	var dat map[string]interface{}
+	err := Unmarshal([]byte(`[1,2,3,4]`), &dat)
+	if err == nil {
+		panic("An error should occur")
+	}
+}

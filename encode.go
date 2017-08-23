@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // EncoderOptions defines options for encoding to Hjson.
@@ -82,7 +83,8 @@ func (e *hjsonEncoder) quoteReplace(text string) string {
 		if c != nil {
 			return c
 		}
-		return []byte(fmt.Sprintf("\\u%04x", c))
+		r, _ := utf8.DecodeRune(a)
+		return []byte(fmt.Sprintf("\\u%04x", r))
 	}))
 }
 

@@ -193,12 +193,11 @@ func (e *hjsonEncoder) useMarshaler(value reflect.Value, separator string) error
 	return nil
 }
 
+var marshaler = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+
 func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string, isRootObject bool) error {
 
 	// Produce a string from value.
-
-	//first check if value implements Marshaler, and use it
-	m := reflect.TypeOf((*json.Marshaler)(nil)).Elem()
 
 	kind := value.Kind()
 
@@ -208,14 +207,11 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			e.WriteString("null")
 			return nil
 		}
-		if value.Type().Implements(m) {
-			return e.useMarshaler(value, separator)
-		}
 		value = value.Elem()
 		kind = value.Kind()
 	}
 
-	if value.Type().Implements(m) {
+	if value.Type().Implements(marshaler) {
 		return e.useMarshaler(value, separator)
 	}
 

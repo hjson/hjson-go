@@ -345,21 +345,19 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			curField := value.Field(i)
 
 			name := curStructField.Name
-			jsonTag, ok := curStructField.Tag.Lookup("json")
+			jsonTag := curStructField.Tag.Get("json")
 			omitEmpty := false
-			if ok {
-				if jsonTag == "-" {
-					continue
-				}
-				splits := strings.Split(jsonTag, ",")
-				if splits[0] != "" {
-					name = splits[0]
-				}
-				if len(splits) > 1 {
-					for _, opt := range splits[1:] {
-						if opt == "omitempty" {
-							omitEmpty = true
-						}
+			if jsonTag == "-" {
+				continue
+			}
+			splits := strings.Split(jsonTag, ",")
+			if splits[0] != "" {
+				name = splits[0]
+			}
+			if len(splits) > 1 {
+				for _, opt := range splits[1:] {
+					if opt == "omitempty" {
+						omitEmpty = true
 					}
 				}
 			}

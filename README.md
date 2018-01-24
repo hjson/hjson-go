@@ -170,6 +170,7 @@ func main() {
     fmt.Println(sample.Rate)
     fmt.Println(sample.Array)
 }
+```
 
 # API
 

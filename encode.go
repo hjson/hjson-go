@@ -2,6 +2,7 @@ package hjson
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -182,6 +183,18 @@ func (e *hjsonEncoder) writeIndent(indent int) {
 	}
 }
 
+func (e *hjsonEncoder) useMarshaler(value reflect.Value, separator string) error {
+	b, err := value.Interface().(json.Marshaler).MarshalJSON()
+	if err != nil {
+		return err
+	}
+	e.WriteString(separator)
+	e.WriteString(string(b))
+	return nil
+}
+
+var marshaler = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+
 func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string, isRootObject bool) error {
 
 	// Produce a string from value.
@@ -198,15 +211,22 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		kind = value.Kind()
 	}
 
+	if value.Type().Implements(marshaler) {
+		return e.useMarshaler(value, separator)
+	}
+
 	switch kind {
 	case reflect.String:
 		e.quote(value.String(), separator, isRootObject)
 
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-		reflect.Uintptr:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		e.WriteString(separator)
 		e.WriteString(strconv.FormatInt(value.Int(), 10))
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Uintptr:
+		e.WriteString(separator)
+		e.WriteString(strconv.FormatUint(value.Uint(), 10))
 
 	case reflect.Float32, reflect.Float64:
 		// JSON numbers must be finite. Encode non-finite numbers as null.
@@ -301,6 +321,62 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		e.WriteString("}")
 		e.indent = indent1
 
+	case reflect.Struct:
+
+		l := value.NumField()
+		if l == 0 {
+			e.WriteString(separator)
+			e.WriteString("{}")
+			break
+		}
+
+		indent1 := e.indent
+		e.indent++
+		if !noIndent && !e.BracesSameLine {
+			e.writeIndent(indent1)
+		} else {
+			e.WriteString(separator)
+		}
+		e.WriteString("{")
+
+		// Join all of the member texts together, separated with newlines
+		for i := 0; i < l; i++ {
+			curStructField := value.Type().Field(i)
+			curField := value.Field(i)
+
+			name := curStructField.Name
+			jsonTag := curStructField.Tag.Get("json")
+			omitEmpty := false
+			if jsonTag == "-" {
+				continue
+			}
+			splits := strings.Split(jsonTag, ",")
+			if splits[0] != "" {
+				name = splits[0]
+			}
+			if len(splits) > 1 {
+				for _, opt := range splits[1:] {
+					if opt == "omitempty" {
+						omitEmpty = true
+					}
+				}
+			}
+			if omitEmpty && isEmptyValue(curField) {
+				continue
+			}
+			e.writeIndent(e.indent)
+			e.WriteString(e.quoteName(name))
+			e.WriteString(":")
+			if err := e.str(curField, false, " ", false); err != nil {
+				return err
+			}
+		}
+
+		e.writeIndent(indent1)
+		e.WriteString("}")
+
+		e.indent = indent1
+
 	default:
 		if e.UnknownAsNull {
 			// Use null as a placeholder for non-JSON values.
@@ -310,6 +386,25 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		}
 	}
 	return nil
+}
+
+func isEmptyValue(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
+		return v.Len() == 0
+	case reflect.Bool:
+		return !v.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return v.Uint() == 0
+	case reflect.Float32, reflect.Float64:
+		return v.Float() == 0
+	case reflect.Interface, reflect.Ptr:
+		return v.IsNil()
+	default:
+		return false
+	}
 }
 
 // Marshal returns the Hjson encoding of v using

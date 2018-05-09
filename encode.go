@@ -346,6 +346,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 
 			name := curStructField.Name
 			jsonTag := curStructField.Tag.Get("json")
+			jsonComment := curStructField.Tag.Get("comment")
 			omitEmpty := false
 			if jsonTag == "-" {
 				continue
@@ -364,11 +365,22 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			if omitEmpty && isEmptyValue(curField) {
 				continue
 			}
+			if len(jsonComment) > 0 {
+				for _, line := range strings.Split(jsonComment, e.Eol) {
+					e.WriteString(separator)
+					e.writeIndent(e.indent)
+					e.WriteString(fmt.Sprintf("# %s", line))
+					e.WriteString(separator)
+				}
+			}
 			e.writeIndent(e.indent)
 			e.WriteString(e.quoteName(name))
 			e.WriteString(":")
 			if err := e.str(curField, false, " ", false); err != nil {
 				return err
+			}
+			if len(jsonComment) > 0 && i < l-1 {
+				e.WriteString(e.Eol)
 			}
 		}
 

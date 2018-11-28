@@ -282,15 +282,15 @@ func (p *hjsonParser) readTfnns() (interface{}, error) {
 			p.ch == '/' && (p.peek(0) == '/' || p.peek(0) == '*') {
 			switch chf {
 			case 'f':
-				if strings.TrimSpace(value.String()) == "false" {
+				if strings.EqualFold(strings.TrimSpace(value.String()), "false") {
 					return false, nil
 				}
 			case 'n':
-				if strings.TrimSpace(value.String()) == "null" {
+				if strings.EqualFold(strings.TrimSpace(value.String()), "null") {
 					return nil, nil
 				}
 			case 't':
-				if strings.TrimSpace(value.String()) == "true" {
+				if strings.EqualFold(strings.TrimSpace(value.String()), "true") {
 					return true, nil
 				}
 			default:

@@ -37,7 +37,7 @@ Make sure you have a working Go environment. See the [install instructions](http
 ```bash
 $ go get -u github.com/hjson/hjson-go
 ```
-2. Build the **hjson-cli** commandl ine tool (optional)
+2. Build the **hjson-cli** commandline tool (optional)
 ```bash
 $ cd $(go env GOPATH)/src/github.com/hjson/hjson-go/hjson-cli && go install
 $ hjson-cli --version

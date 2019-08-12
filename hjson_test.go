@@ -105,3 +105,34 @@ func TestInvalidDestinationType(t *testing.T) {
 		panic("An error should occur")
 	}
 }
+
+func TestUnmarshalPartially(t *testing.T) {
+	var src = `
+	{
+		database:
+		{
+		  host: 127.0.0.1
+		  port: 555
+		}
+	  }
+	@@there is sth cannot be parsed as hijson.
+	`
+	v, next, err := UnmarshalPartially([]byte(src))
+	if err != nil {
+		panic(err)
+	}
+	if next != strings.Index(src, "@") {
+		panic("wrong next value")
+	}
+	if v == nil {
+		panic("v is nil")
+	}
+	val, ok := v.(map[string]interface{})
+	if !ok {
+		panic("v has wrong type")
+	}
+	_, ok = val["database"]
+	if !ok {
+		panic("v has wrong value")
+	}
+}

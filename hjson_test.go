@@ -105,3 +105,11 @@ func TestInvalidDestinationType(t *testing.T) {
 		panic("An error should occur")
 	}
 }
+
+func TestNilPointer(t *testing.T) {
+	var dat interface{}
+	err := Unmarshal([]byte(`[1,2,3,4]`), dat)
+	if err == nil {
+		panic("Passing v = <nil> to Unmarshal should return an error")
+	}
+}

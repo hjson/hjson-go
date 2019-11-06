@@ -27,6 +27,14 @@ func (p *parseNumber) next() bool {
 	return false
 }
 
+func (p *parseNumber) peek(offs int) byte {
+	pos := p.at + offs
+	if pos >= 0 && pos < len(p.data) {
+		return p.data[pos]
+	}
+	return 0
+}
+
 func startsWithNumber(text []byte) bool {
 	if _, err := tryParseNumber(text, true); err == nil {
 		return true
@@ -81,7 +89,7 @@ func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
 	if stopAtNext {
 		// end scan if we find a punctuator character like ,}] or a comment
 		if p.ch == ',' || p.ch == '}' || p.ch == ']' ||
-			p.ch == '#' || p.ch == '/' && (p.data[p.at] == '/' || p.data[p.at] == '*') {
+			p.ch == '#' || p.ch == '/' && (p.peek(0) == '/' || p.peek(0) == '*') {
 			p.ch = 0
 		}
 	}

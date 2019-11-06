@@ -106,7 +106,7 @@ func TestInvalidDestinationType(t *testing.T) {
 	}
 }
 
-func TestNilPointer(t *testing.T) {
+func TestNilValue(t *testing.T) {
 	var dat interface{}
 	err := Unmarshal([]byte(`[1,2,3,4]`), dat)
 	if err == nil {

@@ -367,10 +367,8 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			}
 			if len(jsonComment) > 0 {
 				for _, line := range strings.Split(jsonComment, e.Eol) {
-					e.WriteString(separator)
 					e.writeIndent(e.indent)
 					e.WriteString(fmt.Sprintf("# %s", line))
-					e.WriteString(separator)
 				}
 			}
 			e.writeIndent(e.indent)

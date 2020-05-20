@@ -35,7 +35,7 @@ type EncoderOptions struct {
 // DefaultOptions returns the default encoding options.
 func DefaultOptions() EncoderOptions {
 	opt := EncoderOptions{}
-	opt.Eol = "\n"
+	opt.Eol = defaultEOL
 	opt.BracesSameLine = false
 	opt.EmitRootBraces = true
 	opt.QuoteAlways = false

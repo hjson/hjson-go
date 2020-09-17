@@ -1,12 +1,12 @@
 # hjson-go
 
-[![Build Status](https://img.shields.io/travis/hjson/hjson-go.svg?style=flat-square)](http://travis-ci.org/hjson/hjson-go)
+[![Build Status](https://img.shields.io/travis/hjson/hjson-go.svg?style=flat-square)](https://travis-ci.org/hjson/hjson-go)
 [![Go Pkg](https://img.shields.io/github/release/hjson/hjson-go.svg?style=flat-square&label=go-pkg)](https://github.com/hjson/hjson-go/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hjson/hjson-go?style=flat-square)](https://goreportcard.com/report/github.com/hjson/hjson-go)
 [![coverage](https://img.shields.io/badge/coverage-ok-brightgreen.svg?style=flat-square)](http://gocover.io/github.com/hjson/hjson-go/)
-[![godoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/hjson/hjson-go)
+[![godoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](https://godoc.org/github.com/hjson/hjson-go)
 
-![Hjson Intro](http://hjson.org/hjson1.gif)
+![Hjson Intro](https://hjson.github.io/hjson1.gif)
 
 ```
 {
@@ -27,7 +27,7 @@
 }
 ```
 
-The Go implementation of Hjson is based on [hjson-js](https://github.com/hjson/hjson-js). For other platforms see [hjson.org](http://hjson.org).
+The Go implementation of Hjson is based on [hjson-js](https://github.com/hjson/hjson-js). For other platforms see [hjson.github.io](https://hjson.github.io).
 
 # Install
 

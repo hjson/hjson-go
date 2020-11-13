@@ -16,7 +16,9 @@ func getContent(file string) []byte {
 	if data, err := ioutil.ReadFile(file); err != nil {
 		panic(err)
 	} else {
-		return data
+		// The output from Marshal() always uses Unix EOL, but git might have
+		// converted files to Windows EOL on Windows, therefore we remove all "\r".
+		return bytes.Replace(data, []byte("\r"), []byte(""), -1)
 	}
 }
 

@@ -112,7 +112,7 @@ func (p *hjsonParser) readString(allowML bool) (string, error) {
 				res.WriteRune(rune(uffff))
       } else if p.ch == '\n' {
         // Escaped line feed is ignored (line continuation is allowed).
-      } else if p->ch == '\r' && p.peek(0) == '\n' {
+      } else if p.ch == '\r' && p.peek(0) == '\n' {
         // Escaped line feed is ignored (line continuation is allowed).
         p.next();
 			} else if ech, ok := escapee[p.ch]; ok {

@@ -1,0 +1,4 @@
+{
+  # escaped \r
+  key: "Look, Mom! \No \\n's!"
+}

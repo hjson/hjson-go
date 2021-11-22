@@ -1,0 +1,71 @@
+name: Build hjson-cli Releases
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+**'
+
+jobs:
+  
+  build_hjson-cli_releases:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+          
+      - name: Build the ${{ runner.os }} hjson-cli binary
+        run: |
+          mkdir binaries
+          cd hjson-cli
+          go build
+          
+      - name: Rename hjson-cli binary to reflect ${{ runner.os }}
+        run: |
+          mv hjson-cli/hjson-cli.exe binaries/hjson-cli_${{ github.ref_name }}_${{ runner.os }}.exe
+        if: ${{ contains(matrix.os, 'windows') }}
+        
+      - name: Rename hjson-cli binary to reflect ${{ runner.os }}
+        run: |
+          mv hjson-cli/hjson-cli binaries/hjson-cli_${{ github.ref_name }}_${{ runner.os }}
+        if: runner.os != 'Windows'
+        
+      - name: Upload hjson-cli artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: output
+          path: binaries/*
+          if-no-files-found: error
+  
+  
+  release_artifacts:
+    needs: [build_hjson-cli_releases]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download actifacts
+      uses: actions/download-artifact@v2
+      with:
+        path: artifacts
+        
+    - name: Show the downloaded artifacts
+      run: |
+        pwd
+        ls -laR *
+        
+    - name: Release binaries
+      uses: ncipollo/release-action@v1
+      with:
+        # ncipollo/release-action needs a tag! Either a usual "GIT TAG" or an dedicated TAG, see below!
+        # set a TAG if you want to build a release, i.e. via "workflow_dispatch" on GitHub _AND_ do not push a regular GIT TAG
+        # and the other way around, if you want to build releases based on pushed GIT TAGs, make sure you un-comment the "tag:" line below!
+        tag: ${{ github.ref_name }} 
+        allowUpdates: true
+        artifactErrorsFailBuild: true
+        artifacts: "artifacts/output/*"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        

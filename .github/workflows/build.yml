@@ -64,7 +64,7 @@ jobs:
         # set a TAG if you want to build a release, i.e. via "workflow_dispatch" on GitHub _AND_ do not push a regular GIT TAG
         # and the other way around, if you want to build releases based on pushed GIT TAGs, make sure you un-comment the "tag:" line below!
         tag: ${{ github.ref_name }} 
-        allowUpdates: true
+        draft: true
         artifactErrorsFailBuild: true
         artifacts: "artifacts/output/*"
         token: ${{ secrets.GITHUB_TOKEN }}

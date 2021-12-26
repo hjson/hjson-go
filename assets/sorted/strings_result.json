@@ -17,6 +17,7 @@
   "multiline1": "first line\n  indented line\nlast line",
   "multiline2": "first line\n  indented line\nlast line",
   "multiline3": "first line\n  indented line\nlast line\n",
+  "multiline4": "←→±≠Я",
   "not": {
     "array": [
       1,
@@ -48,7 +49,8 @@
     "null": "null",
     "one": "1",
     "true": "true",
-    "two": "2"
+    "two": "2",
+    "zero": "0"
   },
   "text1": "This is a valid string value.",
   "text2": "a \\ is just a \\",

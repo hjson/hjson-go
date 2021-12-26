@@ -28,6 +28,7 @@
     last line
 
     '''
+  multiline4: ←→±≠Я
   foo1a: asdf\"'a\s\w
   foo1b: asdf\"'a\s\w
   foo1c: asdf\"'a\s\w
@@ -75,5 +76,6 @@
     one: "1"
     two: "2"
     minus: "-3"
+    zero: "0"
   }
 }

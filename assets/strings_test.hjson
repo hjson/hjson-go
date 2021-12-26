@@ -37,6 +37,11 @@
 
     ''' # trailing lf
 
+  multiline4:
+    '''
+    ←→±≠Я
+    '''
+
   # escapes/no escape
 
   foo1a: asdf\"'a\s\w
@@ -81,5 +86,6 @@
     one: "1"
     two: "2"
     minus: "-3"
+    zero: "0"
   }
 }

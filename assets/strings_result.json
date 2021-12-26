@@ -12,6 +12,8 @@
   "multiline1": "first line\n  indented line\nlast line",
   "multiline2": "first line\n  indented line\nlast line",
   "multiline3": "first line\n  indented line\nlast line\n",
+  "multiline4": "←→±≠Я",
+
   "foo1a": "asdf\\\"'a\\s\\w",
   "foo1b": "asdf\\\"'a\\s\\w",
   "foo1c": "asdf\\\"'a\\s\\w",
@@ -54,6 +56,7 @@
     "null": "null",
     "one": "1",
     "two": "2",
-    "minus": "-3"
+    "minus": "-3",
+    "zero": "0"
   }
 }

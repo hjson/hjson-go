@@ -34,6 +34,7 @@
     last line
 
     '''
+  multiline4: ←→±≠Я
   not:
   {
     array:
@@ -69,6 +70,7 @@
     one: "1"
     true: "true"
     two: "2"
+    zero: "0"
   }
   text1: This is a valid string value.
   text2: a \ is just a \

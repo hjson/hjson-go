@@ -342,6 +342,9 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		// Join all of the member texts together, separated with newlines
 		for i := 0; i < l; i++ {
 			curStructField := value.Type().Field(i)
+			if curStructField.PkgPath!=""{
+				continue
+			}
 			curField := value.Field(i)
 
 			name := curStructField.Name

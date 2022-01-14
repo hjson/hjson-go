@@ -3,6 +3,7 @@ package hjson
 import (
 	"reflect"
 	"testing"
+	"net"
 )
 
 type TestStruct struct {
@@ -132,20 +133,38 @@ func (s TestMarshalStruct) MarshalJSON() ([]byte, error) {
 	return []byte(`"foobar"`), nil
 }
 
-func TestEncodeMarshal(t *testing.T) {
+func TestEncodeMarshalJSON(t *testing.T) {
 	input := TestMarshalStruct{}
 	buf, err := Marshal(input)
 	if err != nil {
 		t.Error(err)
 	}
 	if !reflect.DeepEqual(buf, []byte(`"foobar"`)) {
-		t.Error("Marshaler interface error")
+		t.Error("MarshalJSON interface error")
 	}
 	buf, err = Marshal(&input)
 	if err != nil {
 		t.Error(err)
 	}
 	if !reflect.DeepEqual(buf, []byte(`"foobar"`)) {
-		t.Error("Marshaler interface error")
+		t.Error("MarshalJSON interface error")
+	}
+}
+
+func TestEncodeMarshalText(t *testing.T) {
+	input := net.ParseIP("127.0.0.1")
+	buf, err := Marshal(input)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(buf, []byte(`127.0.0.1`)) {
+		t.Error("MarshalText interface error")
+	}
+	buf, err = Marshal(&input)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(buf, []byte(`127.0.0.1`)) {
+		t.Error("MarshalText interface error")
 	}
 }

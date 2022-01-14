@@ -2,6 +2,7 @@ package hjson
 
 import (
 	"bytes"
+	"encoding"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -183,7 +184,7 @@ func (e *hjsonEncoder) writeIndent(indent int) {
 	}
 }
 
-func (e *hjsonEncoder) useMarshaler(value reflect.Value, separator string) error {
+func (e *hjsonEncoder) useMarshalerJSON(value reflect.Value, separator string) error {
 	b, err := value.Interface().(json.Marshaler).MarshalJSON()
 	if err != nil {
 		return err
@@ -193,7 +194,18 @@ func (e *hjsonEncoder) useMarshaler(value reflect.Value, separator string) error
 	return nil
 }
 
-var marshaler = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+func (e *hjsonEncoder) useMarshalerText(value reflect.Value, separator string) error {
+	b, err := value.Interface().(encoding.TextMarshaler).MarshalText()
+	if err != nil {
+		return err
+	}
+	e.WriteString(separator)
+	e.WriteString(string(b))
+	return nil
+}
+
+var marshalerJSON = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+var marshalerText = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 
 func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string, isRootObject bool) error {
 
@@ -211,8 +223,12 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		kind = value.Kind()
 	}
 
-	if value.Type().Implements(marshaler) {
-		return e.useMarshaler(value, separator)
+	if value.Type().Implements(marshalerJSON) {
+		return e.useMarshalerJSON(value, separator)
+	}
+
+	if value.Type().Implements(marshalerText) {
+		return e.useMarshalerText(value, separator)
 	}
 
 	switch kind {

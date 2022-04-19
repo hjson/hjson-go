@@ -149,3 +149,19 @@ func TestEncodeMarshal(t *testing.T) {
 		t.Error("Marshaler interface error")
 	}
 }
+
+func TestEncodeSliceOfPtrOfPtrOfString(t *testing.T) {
+	s:="1"
+	s1:=&s
+	input:=[]**string{&s1}
+	buf, err := Marshal(input)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !reflect.DeepEqual(buf, []byte(`[
+  "1"
+]`)) {
+		t.Error("Marshaler interface error")
+	}
+}

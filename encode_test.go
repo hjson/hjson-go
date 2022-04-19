@@ -165,3 +165,74 @@ func TestEncodeSliceOfPtrOfPtrOfString(t *testing.T) {
 		t.Error("Marshaler interface error")
 	}
 }
+
+func TestNoRootBraces(t *testing.T) {
+	input := struct {
+		Foo string
+	}{
+		Foo: "Bar",
+	}
+	opt := DefaultOptions()
+	opt.EmitRootBraces = false
+	buf, err := MarshalWithOptions(input, opt)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(buf, []byte(`Foo: Bar`)) {
+		t.Error("Encode struct with EmitRootBraces false")
+	}
+
+	theMap := map[string]interface{}{
+		"Foo": "Bar",
+	}
+	buf, err = MarshalWithOptions(theMap, opt)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(buf, []byte(`Foo: Bar`)) {
+		t.Error("Encode map with EmitRootBraces false")
+	}
+}
+
+func TestBaseIndentation(t *testing.T) {
+	input := struct {
+		Foo string
+	}{
+		Foo: "Bar",
+	}
+	facit := []byte(`   {
+     Foo: Bar
+   }`)
+	opt := DefaultOptions()
+	opt.BaseIndentation = "   "
+	buf, err := MarshalWithOptions(input, opt)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(buf, facit) {
+		t.Error("Encode with BaseIndentation, comparison:\n", string(buf), "\n", string(facit))
+	}
+}
+
+func TestQuoteAmbiguousStrings(t *testing.T) {
+	theMap := map[string]interface{}{
+		"One":   "1",
+		"Null":  "null",
+		"False": "false",
+	}
+	facit := []byte(`{
+  False: false
+  Null: null
+  One: 1
+}`)
+	opt := DefaultOptions()
+	opt.QuoteAlways = false
+	opt.QuoteAmbiguousStrings = false
+	buf, err := MarshalWithOptions(theMap, opt)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(buf, facit) {
+		t.Error("Encode with QuoteAmbiguousStrings false, comparison:\n", string(buf), "\n", string(facit))
+	}
+}

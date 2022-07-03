@@ -14,10 +14,11 @@ jobs:
       - run: |
           cd ..
           mkdir -p ~/go/src/github.com/hjson
-          mv hjson-go ~/go/src/github.com/hjson/
-          cd ~/go/src/github.com/hjson
+          cp -r hjson-go ~/go/src/github.com/hjson/
       - run: go version
-      - run: go test -v
       - run: |
-          cd hjson-cli
+          cd ~/go/src/github.com/hjson/hjson-go
+          go test -v
+      - run: |
+          cd ~/go/src/github.com/hjson/hjson-go/hjson-cli
           go install -i

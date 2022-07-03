@@ -1,5 +1,7 @@
 name: test
 on: [push, pull_request]
+env:
+  GO111MODULE: auto
 jobs:
   test:
     runs-on: ${{ matrix.os }}

@@ -12,13 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: |
-          cd ..
           mkdir -p ~/go/src/github.com/hjson
-          cp -r hjson-go ~/go/src/github.com/hjson/
+          ln -s $(pwd) ~/go/src/github.com/hjson/hjson-go
       - run: go version
+      - run: go test -v
       - run: |
-          cd ~/go/src/github.com/hjson/hjson-go
-          go test -v
-      - run: |
-          cd ~/go/src/github.com/hjson/hjson-go/hjson-cli
+          cd hjson-cli
           go install -i

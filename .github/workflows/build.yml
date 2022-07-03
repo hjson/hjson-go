@@ -5,6 +5,9 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+**'
 
+env:
+  GO111MODULE: auto
+
 jobs:
   
   build_hjson-cli_releases:
@@ -18,6 +21,9 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
+        run: |
+          mkdir -p ~/go/src/github.com/hjson
+          ln -s $(pwd) ~/go/src/github.com/hjson/hjson-go
           
       - name: Build the ${{ runner.os }} hjson-cli binary
         run: |

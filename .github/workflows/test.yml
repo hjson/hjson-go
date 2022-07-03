@@ -11,6 +11,11 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v2
+      - run: |
+          cd ..
+          mkdir -p ~/go/src/github.com/hjson
+          mv hjson-go ~/go/src/github.com/hjson/
+          cd ~/go/src/github.com/hjson
       - run: go version
       - run: go test -v
       - run: |

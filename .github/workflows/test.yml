@@ -17,5 +17,5 @@ jobs:
       - run: go version
       - run: go test -v
       - run: |
-          cd hjson-cli
+          cd ~/go/src/github.com/hjson/hjson-go/hjson-cli
           go install -i

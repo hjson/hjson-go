@@ -25,7 +25,9 @@ jobs:
       - name: Build the ${{ runner.os }} hjson-cli binary
         run: |
           mkdir -p ~/go/src/github.com/hjson
-          ln -s $(pwd) ~/go/src/github.com/hjson/hjson-go
+          cd ..
+          cp -r hjson-go ~/go/src/github.com/hjson/
+          cd hjson-go
           mkdir binaries
           cd hjson-cli
           go build

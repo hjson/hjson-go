@@ -13,7 +13,8 @@ jobs:
       - uses: actions/checkout@v2
       - run: |
           mkdir -p ~/go/src/github.com/hjson
-          ln -s $(pwd) ~/go/src/github.com/hjson/hjson-go
+          cd ..
+          cp -r hjson-go ~/go/src/github.com/hjson/
       - run: go version
       - run: go test -v
       - run: |

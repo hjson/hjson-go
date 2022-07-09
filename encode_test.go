@@ -313,3 +313,45 @@ func TestQuoteAmbiguousStrings(t *testing.T) {
 		t.Error("Encode with QuoteAmbiguousStrings false, comparison:\n", string(buf), "\n", string(facit))
 	}
 }
+
+func marshalUnmarshal(t *testing.T, input, expectedMultiline string) {
+	buf, err := Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var resultPlain string
+	err = Unmarshal(buf, &resultPlain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resultPlain != input {
+		t.Fatalf("Expected: '%v'  Got: '%v'\n", []byte(input), []byte(resultPlain))
+	}
+
+	type t_obj struct {
+		F string
+	}
+	obj := t_obj{
+		F: input,
+	}
+	buf, err = Marshal(obj)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]interface{}
+	err = Unmarshal(buf, &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out["F"] != expectedMultiline {
+		t.Fatalf("Expected: '%v'  Got: '%v'\n", []byte(expectedMultiline), []byte(out["F"].(string)))
+	}
+	//t.Logf("%v\n", string(buf))
+}
+
+func TestMarshalUnmarshal(t *testing.T) {
+	marshalUnmarshal(t, "0\r'", "0\r'")
+	marshalUnmarshal(t, "0\r", "0\r")
+	marshalUnmarshal(t, "0\r\n'", "0\n'")
+	marshalUnmarshal(t, "0\r\n", "0\n")
+}

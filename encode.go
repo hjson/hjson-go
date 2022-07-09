@@ -125,10 +125,7 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool) 
 }
 
 func (e *hjsonEncoder) mlString(value string, separator string) {
-	// Wrap the string into the ''' (multiline) format.
-	// Change `\r\n` into `\n`, because we only use `\n` as line feed in
-	// multiline strings.
-	a := strings.Split(strings.Replace(value, "\r\n", "\n", -1), "\n")
+	a := strings.Split(value, "\n")
 
 	if len(a) == 1 {
 		// The string contains only a single line. We still use the multiline

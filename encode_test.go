@@ -352,6 +352,8 @@ func marshalUnmarshal(t *testing.T, input, expectedMultiline string) {
 func TestMarshalUnmarshal(t *testing.T) {
 	marshalUnmarshal(t, "0\r'", "0\r'")
 	marshalUnmarshal(t, "0\r", "0\r")
-	marshalUnmarshal(t, "0\r\n'", "0\n'")
-	marshalUnmarshal(t, "0\r\n", "0\n")
+	marshalUnmarshal(t, "0\n'", "0\n'")
+	marshalUnmarshal(t, "0\n", "0\n")
+	marshalUnmarshal(t, "0\r\n'", "0\r\n'")
+	marshalUnmarshal(t, "0\r\n", "0\r\n")
 }

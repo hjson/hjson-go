@@ -2,6 +2,7 @@ package hjson
 
 import (
 	"bytes"
+	"encoding"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -206,7 +207,8 @@ func (e *hjsonEncoder) jsonMarshal(
 	return e.str(reflect.ValueOf(jsonRoot), noIndent, separator, isRootObject)
 }
 
-var marshaler = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+var marshalerJSON = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+var marshalerText = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 
 func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string, isRootObject bool) error {
 
@@ -223,7 +225,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		return e.str(value.Elem(), noIndent, separator, isRootObject)
 	}
 
-	if value.Type().Implements(marshaler) {
+	if value.Type().Implements(marshalerJSON) || value.Type().Implements(marshalerText) {
 		return e.jsonMarshal(value, noIndent, separator, isRootObject)
 	}
 

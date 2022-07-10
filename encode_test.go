@@ -1,6 +1,7 @@
 package hjson
 
 import (
+	"net"
 	"reflect"
 	"testing"
 	"time"
@@ -210,7 +211,7 @@ func (s TestMarshalStruct) MarshalJSON() ([]byte, error) {
 	return []byte(`"foobar"`), nil
 }
 
-func TestEncodeMarshal(t *testing.T) {
+func TestEncodeMarshalJSON(t *testing.T) {
 	input := TestMarshalStruct{}
 	buf, err := Marshal(input)
 	if err != nil {
@@ -225,6 +226,24 @@ func TestEncodeMarshal(t *testing.T) {
 	}
 	if !reflect.DeepEqual(buf, []byte(`foobar`)) {
 		t.Errorf("Expected '\"foobar\"', got '%s'", string(buf))
+	}
+}
+
+func TestEncodeMarshalText(t *testing.T) {
+	input := net.ParseIP("127.0.0.1")
+	buf, err := Marshal(input)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(buf, []byte(`127.0.0.1`)) {
+		t.Errorf("Expected '127.0.0.1', got '%s'", string(buf))
+	}
+	buf, err = Marshal(&input)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(buf, []byte(`127.0.0.1`)) {
+		t.Errorf("Expected '127.0.0.1', got '%s'", string(buf))
 	}
 }
 

@@ -455,6 +455,11 @@ func (p *hjsonParser) checkTrailing(v interface{}, err error) (interface{}, erro
 // Unmarshal uses the inverse of the encodings that
 // Marshal uses, allocating maps, slices, and pointers as necessary.
 //
+// For unmarshalling into a struct (including a struct implementing the
+// json.Unmarshaler interface or the encoding.TextUnmarshaler interface)
+// hjson-go calls json.Unmarshal() via an intermediate value tree and
+// json.Marshal(). For more details about this type of unmarshalling,
+// see the documentation for json.Unmarshal().
 func Unmarshal(data []byte, v interface{}) (err error) {
 	var value interface{}
 	parser := &hjsonParser{data, 0, ' '}

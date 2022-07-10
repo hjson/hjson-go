@@ -393,6 +393,14 @@ func Marshal(v interface{}) ([]byte, error) {
 // Interface values encode as the value contained in the interface.
 // A nil interface value encodes as the null JSON value.
 //
+// In order to marshal structs, hjson-go calls json.Marshal() to get an
+// intermediate byte array which is then converted to Hjson. For more details
+// about marshalling structs, see the documentation for json.Marshal().
+//
+// If an encountered value implements the json.Marshaler interface, or the
+// encoding.TextMarshaler interface, then hjson-go calls json.Marshal() to get
+// an intermediate byte array which is then encoded to Hjson.
+//
 // JSON cannot represent cyclic data structures and Marshal does not
 // handle them. Passing cyclic structures to Marshal will result in
 // an error.

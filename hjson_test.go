@@ -171,3 +171,37 @@ func TestReadmeUnmarshalToStruct(t *testing.T) {
 		}
 	}
 }
+
+type MyUnmarshaller struct {
+	A string
+	x string
+}
+
+func (c *MyUnmarshaller) UnmarshalJSON(in []byte) error {
+	var out map[string]interface{}
+	err := Unmarshal(in, &out)
+	if err != nil {
+		return err
+	}
+	a, ok := out["A"]
+	if !ok {
+		return errors.New("Missing key")
+	}
+	b, ok := a.(string)
+	if !ok {
+		return errors.New("Not a string")
+	}
+	c.x = b
+	return nil
+}
+
+func TestUnmarshalInterface(t *testing.T) {
+	var obj MyUnmarshaller
+	err := Unmarshal([]byte("A: test"), &obj)
+	if err != nil {
+		t.Error(err)
+	}
+	if obj.A != "" || obj.x != "test" {
+		t.Errorf("Unexpected obj values: %+v", obj)
+	}
+}

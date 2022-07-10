@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/hjson/hjson-go/workflows/test/badge.svg)](https://github.com/hjson/hjson-go/actions)
 [![Go Pkg](https://img.shields.io/github/release/hjson/hjson-go.svg?style=flat-square&label=go-pkg)](https://github.com/hjson/hjson-go/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hjson/hjson-go?style=flat-square)](https://goreportcard.com/report/github.com/hjson/hjson-go)
-[![coverage](https://img.shields.io/badge/coverage-ok-brightgreen.svg?style=flat-square)](http://gocover.io/github.com/hjson/hjson-go/)
+[![coverage](https://img.shields.io/badge/coverage-ok-brightgreen.svg?style=flat-square)](https://gocover.io/github.com/hjson/hjson-go/)
 [![godoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](https://godoc.org/github.com/hjson/hjson-go/v4)
 
 ![Hjson Intro](https://hjson.github.io/hjson1.gif)
@@ -31,7 +31,7 @@ The Go implementation of Hjson is based on [hjson-js](https://github.com/hjson/h
 
 # Install
 
-Make sure you have a working Go environment. See the [install instructions](http://golang.org/doc/install.html).
+Make sure you have a working Go environment. See the [install instructions](https://golang.org/doc/install.html).
 
 - In order to use Hjson from your own Go source code, just add an import line like the one here below. Before building your project, run `go mod tidy` in order to download the Hjson source files. The suffix `/v4` is required in the import path, unless you specifically want to use an older major version.
 ```go
@@ -123,7 +123,9 @@ func main() {
 }
 ```
 
-If you prefer, you can also unmarshal to Go structs (or marshal from Go structs). The Go JSON package is used for this, so the same rules apply. Specifically for the "json" key in struct field tags.
+If you prefer, you can also unmarshal to Go structs (including structs implementing the json.Unmarshaler interface or the encoding.TextUnmarshaler interface). The Go JSON package is used for this, so the same rules apply. Specifically for the "json" key in struct field tags. For more details about this type of unmarshalling, see the [documentation for json.Unmarshal()](https://godoc.org/golang/json).
+
+
 
 ```go
 
@@ -173,9 +175,11 @@ func main() {
 }
 ```
 
+For marshalling from a struct (including a struct implementing the json.Marshaler interface or the encoding.TextMarshaler interface) hjson-go calls json.Marshal() and then converts the output to Hjson. For more details about this type of marshalling, see the [documentation for json.Marshal()](https://godoc.org/golang/json).
+
 # API
 
-[![godoc](https://godoc.org/github.com/hjson/hjson-go/v4?status.svg)](http://godoc.org/github.com/hjson/hjson-go/v4)
+[![godoc](https://godoc.org/github.com/hjson/hjson-go/v4?status.svg)](https://godoc.org/github.com/hjson/hjson-go/v4)
 
 # History
 

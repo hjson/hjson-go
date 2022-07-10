@@ -445,30 +445,3 @@ func TestPrivateStructFields(t *testing.T) {
 		t.Errorf("Expected '{}', got '%s'", string(b))
 	}
 }
-
-func TestUnknownAsNull(t *testing.T) {
-	opt := DefaultOptions()
-	opt.UnknownAsNull = true
-	buf, err := MarshalWithOptions(make(chan int), opt)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if string(buf) != "null" {
-		t.Errorf("Expected 'null', got '%s'", string(buf))
-	}
-
-	obj := struct {
-		F interface{}
-	}{
-		F: make(chan int),
-	}
-	buf, err = MarshalWithOptions(&obj, opt)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if string(buf) != "null" {
-		t.Errorf("Expected 'null', got '%s'", string(buf))
-	}
-}

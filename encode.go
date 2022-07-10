@@ -33,8 +33,6 @@ type EncoderOptions struct {
 	BaseIndentation string
 	// Allow the -0 value (unlike ES6)
 	AllowMinusZero bool
-	// Encode unknown values as 'null'
-	UnknownAsNull bool
 }
 
 // DefaultOptions returns the default encoding options.
@@ -48,7 +46,6 @@ func DefaultOptions() EncoderOptions {
 	opt.IndentBy = "  "
 	opt.BaseIndentation = ""
 	opt.AllowMinusZero = false
-	opt.UnknownAsNull = false
 	return opt
 }
 
@@ -192,23 +189,19 @@ func (e *hjsonEncoder) jsonMarshal(
 	noIndent bool,
 	separator string,
 	isRootObject bool,
-) (
-	isUnknownType bool,
-	err error,
-) {
+) error {
 	buf, err := json.Marshal(value.Interface())
 	if err != nil {
-		_, isUnknownType = err.(*json.UnsupportedTypeError)
 		// Assuming that the error message starts with "json".
-		return isUnknownType, errors.New("h" + err.Error())
+		return errors.New("h" + err.Error())
 	}
 	var jsonRoot interface{}
 	err = Unmarshal(buf, &jsonRoot)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return false, e.str(reflect.ValueOf(jsonRoot), noIndent, separator, isRootObject)
+	return e.str(reflect.ValueOf(jsonRoot), noIndent, separator, isRootObject)
 }
 
 var marshalerJSON = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
@@ -230,8 +223,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 	}
 
 	if value.Type().Implements(marshalerJSON) || value.Type().Implements(marshalerText) {
-		_, err := e.jsonMarshal(value, noIndent, separator, isRootObject)
-		return err
+		return e.jsonMarshal(value, noIndent, separator, isRootObject)
 	}
 
 	switch kind {
@@ -348,13 +340,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		e.indent = indent1
 
 	default:
-		isUnknownType, err := e.jsonMarshal(value, noIndent, separator, isRootObject)
-		if isUnknownType && e.UnknownAsNull {
-			// Use null as a placeholder for non-JSON values.
-			e.WriteString("null")
-		} else {
-			return err
-		}
+		return e.jsonMarshal(value, noIndent, separator, isRootObject)
 	}
 
 	return nil

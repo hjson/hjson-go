@@ -230,19 +230,22 @@ func TestEncodeMarshalJSON(t *testing.T) {
 	}
 
 	myMap := map[string]interface{}{
-		"A": "FirstField",
-		"B": TestMarshalStruct{},
+		"Zero": -0,
+		"A":    "FirstField",
+		"B":    TestMarshalStruct{},
 		"C": struct {
-			D string
+			D    string
+			Zero int
 		}{
-			D: "struct field",
+			D:    "struct field",
+			Zero: -0,
 		},
 	}
 	buf, err = Marshal(&myMap)
 	if err != nil {
 		t.Error(err)
 	}
-	expected := "{\n  A: FirstField\n  B: foobar\n  C:\n  {\n    D: struct field\n  }\n}"
+	expected := "{\n  A: FirstField\n  B: foobar\n  C:\n  {\n    D: struct field\n    Zero: 0\n  }\n  Zero: 0\n}"
 	if string(buf) != expected {
 		t.Errorf("Expected '%s', got '%s'", expected, string(buf))
 	}

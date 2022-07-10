@@ -228,6 +228,30 @@ func TestEncodeMarshal(t *testing.T) {
 	}
 }
 
+type TestMarshalInt int
+
+func (s TestMarshalInt) MarshalJSON() ([]byte, error) {
+	return []byte(`"foobar"`), nil
+}
+
+func TestEncodeMarshalInt(t *testing.T) {
+	var input TestMarshalInt
+	buf, err := Marshal(input)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(buf, []byte(`"foobar"`)) {
+		t.Error("Marshaler int type interface error")
+	}
+	buf, err = Marshal(&input)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(buf, []byte(`"foobar"`)) {
+		t.Error("Marshaler int type interface error")
+	}
+}
+
 func TestEncodeSliceOfPtrOfPtrOfString(t *testing.T) {
 	s := "1"
 	s1 := &s

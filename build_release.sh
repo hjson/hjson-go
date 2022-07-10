@@ -28,7 +28,6 @@ function build() {
 
 }
 
-build android arm
 build android arm64
 build darwin amd64
 build darwin arm64

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cd `dirname $0`
-ROOT=$PWD/_dist
+ROOT=$PWD/binaries
 
 if [ -d "$ROOT" ]; then rm -rf $ROOT; fi
 
@@ -15,7 +15,7 @@ function build() {
   OUT=$ROOT/${GOOS}_${GOARCH}
   mkdir $OUT
   cd $OUT
-  go build github.com/hjson/hjson-go/hjson-cli
+  go build github.com/hjson/hjson-go/v4/hjson-cli
   if [[ $3 == "zip" ]]; then
     mv $OUT/hjson-cli.exe $OUT/hjson.exe
     zip -j ${OUT}.zip $OUT/*
@@ -23,16 +23,14 @@ function build() {
     mv $OUT/hjson-cli $OUT/hjson
     tar -czf ${OUT}.tar.gz -C $OUT .
   fi
+  rm -r $OUT
 
 }
 
-# not all targets can be built on travis
-
-# build android arm
-build darwin 386
+build android arm
+build android arm64
 build darwin amd64
-# build darwin arm
-# build darwin arm64
+build darwin arm64
 build dragonfly amd64
 build freebsd 386
 build freebsd amd64
@@ -56,3 +54,5 @@ build plan9 amd64
 build solaris amd64
 build windows 386 zip
 build windows amd64 zip
+build windows arm zip
+build windows arm64 zip

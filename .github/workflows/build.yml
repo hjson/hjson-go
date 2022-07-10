@@ -8,33 +8,18 @@ on:
 jobs:
   
   build_hjson-cli_releases:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
         
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
           
-      - name: Build the ${{ runner.os }} hjson-cli binary
-        run: |
-          mkdir binaries
-          cd hjson-cli
-          go build
+      - name: Build the hjson-cli binaries
+        run: ./build_release.sh
           
-      - name: Rename hjson-cli binary to reflect ${{ runner.os }}
-        run: |
-          mv hjson-cli/hjson-cli.exe binaries/hjson-cli_${{ github.ref_name }}_${{ runner.os }}.exe
-        if: ${{ contains(matrix.os, 'windows') }}
-        
-      - name: Rename hjson-cli binary to reflect ${{ runner.os }}
-        run: |
-          mv hjson-cli/hjson-cli binaries/hjson-cli_${{ github.ref_name }}_${{ runner.os }}
-        if: runner.os != 'Windows'
-        
       - name: Upload hjson-cli artifacts
         uses: actions/upload-artifact@v2
         with:

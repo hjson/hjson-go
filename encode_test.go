@@ -220,12 +220,31 @@ func TestEncodeMarshalJSON(t *testing.T) {
 	if !reflect.DeepEqual(buf, []byte(`foobar`)) {
 		t.Errorf("Expected '\"foobar\"', got '%s'", string(buf))
 	}
+
 	buf, err = Marshal(&input)
 	if err != nil {
 		t.Error(err)
 	}
 	if !reflect.DeepEqual(buf, []byte(`foobar`)) {
 		t.Errorf("Expected '\"foobar\"', got '%s'", string(buf))
+	}
+
+	myMap := map[string]interface{}{
+		"A": "FirstField",
+		"B": TestMarshalStruct{},
+		"C": struct {
+			D string
+		}{
+			D: "struct field",
+		},
+	}
+	buf, err = Marshal(&myMap)
+	if err != nil {
+		t.Error(err)
+	}
+	expected := "{\n  A: FirstField\n  B: foobar\n  C:\n  {\n    D: struct field\n  }\n}"
+	if string(buf) != expected {
+		t.Errorf("Expected '%s', got '%s'", expected, string(buf))
 	}
 }
 

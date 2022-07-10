@@ -3,6 +3,7 @@ package hjson
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func marshalUnmarshalExpected(
@@ -357,4 +358,42 @@ func TestMarshalUnmarshal(t *testing.T) {
 	marshalUnmarshal(t, "\t0\n\tab")
 	marshalUnmarshal(t, "0\r\n'")
 	marshalUnmarshal(t, "0\r\n")
+}
+
+func TestCircularReference(t *testing.T) {
+	timeout := time.After(3 * time.Second)
+	done := make(chan bool)
+	go func() {
+		type Node struct {
+			Self *Node
+		}
+		var obj Node
+		obj.Self = &obj
+		_, err := Marshal(obj)
+		if err == nil {
+			t.Error("No error returned for circular reference")
+		}
+		done <- true
+	}()
+
+	select {
+	case <-timeout:
+		t.Fatal("The circular reference test is taking too long, is probably stuck in an infinite loop.")
+	case <-done:
+	}
+}
+
+func TestPrivateStructFields(t *testing.T) {
+	obj := struct {
+		somePrivateField string
+	}{
+		"TEST",
+	}
+	b, err := Marshal(obj)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != "{}" {
+		t.Fatalf("Expected '{}', got '%s'", string(b))
+	}
 }

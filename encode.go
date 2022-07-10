@@ -332,78 +332,18 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 
 	case reflect.Struct:
 
-		l := value.NumField()
-		if l == 0 {
-			e.WriteString(separator)
-			e.WriteString("{}")
-			break
+		buf, err := json.Marshal(value.Interface())
+		if err != nil {
+			// Assuming that the error message starts with "json".
+			return errors.New("h" + err.Error())
+		}
+		var tmpMap map[string]interface{}
+		err = Unmarshal(buf, &tmpMap)
+		if err != nil {
+			return err
 		}
 
-		indent1 := e.indent
-		if !isRootObject || e.EmitRootBraces {
-			if !noIndent && !e.BracesSameLine {
-				e.writeIndent(e.indent)
-			} else {
-				e.WriteString(separator)
-			}
-
-			e.indent++
-			e.WriteString("{")
-		}
-
-		// Join all of the member texts together, separated with newlines
-		for i := 0; i < l; i++ {
-			curStructField := value.Type().Field(i)
-			curField := value.Field(i)
-
-			name := curStructField.Name
-			jsonTag := curStructField.Tag.Get("json")
-			jsonComment := curStructField.Tag.Get("comment")
-			omitEmpty := false
-			if jsonTag == "-" {
-				continue
-			}
-			splits := strings.Split(jsonTag, ",")
-			if splits[0] != "" {
-				name = splits[0]
-			}
-			if len(splits) > 1 {
-				for _, opt := range splits[1:] {
-					if opt == "omitempty" {
-						omitEmpty = true
-					}
-				}
-			}
-			if omitEmpty && isEmptyValue(curField) {
-				continue
-			}
-			if len(jsonComment) > 0 {
-				for _, line := range strings.Split(jsonComment, e.Eol) {
-					if i > 0 || !isRootObject || e.EmitRootBraces {
-						e.writeIndent(e.indent)
-					}
-					e.WriteString(fmt.Sprintf("# %s", line))
-				}
-			}
-			if i > 0 || !isRootObject || e.EmitRootBraces {
-				e.writeIndent(e.indent)
-			}
-			e.WriteString(e.quoteName(name))
-			e.WriteString(":")
-			if err := e.str(curField, false, " ", false); err != nil {
-				return err
-			}
-			if len(jsonComment) > 0 && i < l-1 {
-				e.WriteString(e.Eol)
-			}
-		}
-
-		if !isRootObject || e.EmitRootBraces {
-			e.writeIndent(indent1)
-			e.WriteString("}")
-		}
-
-		e.indent = indent1
+		return e.str(reflect.ValueOf(tmpMap), noIndent, separator, isRootObject)
 
 	default:
 		if e.UnknownAsNull {
@@ -468,7 +408,7 @@ func Marshal(v interface{}) ([]byte, error) {
 //
 // JSON cannot represent cyclic data structures and Marshal does not
 // handle them. Passing cyclic structures to Marshal will result in
-// an infinite recursion.
+// an error.
 //
 func MarshalWithOptions(v interface{}, options EncoderOptions) ([]byte, error) {
 	e := &hjsonEncoder{}

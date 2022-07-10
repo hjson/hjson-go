@@ -105,7 +105,23 @@ func TestInvalidDestinationType(t *testing.T) {
 	var dat map[string]interface{}
 	err := Unmarshal([]byte(`[1,2,3,4]`), &dat)
 	if err == nil {
-		panic("An error should occur")
+		t.Errorf("Should have failed when trying to unmarshal an array to a map.")
+	}
+}
+
+func TestStructDestinationType(t *testing.T) {
+	var obj struct {
+		A int
+		B int
+		C string
+		D string
+	}
+	err := Unmarshal([]byte("A: 1\nB:2\nC: \u003c\nD: <"), &obj)
+	if err != nil {
+		t.Error(err)
+	}
+	if obj.A != 1 || obj.B != 2 || obj.C != "<" || obj.D != "<" {
+		t.Errorf("Unexpected obj values: %+v", obj)
 	}
 }
 

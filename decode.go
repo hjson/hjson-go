@@ -2,6 +2,7 @@ package hjson
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -473,6 +474,19 @@ func Unmarshal(data []byte, v interface{}) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("%v", e)
+			// Lets try taking a detour via JSON. Will be able to output to a struct.
+			buf, err2 := json.Marshal(value)
+			if err2 != nil {
+				// Return the original error.
+				return
+			}
+			err2 = json.Unmarshal(buf, v)
+			if err2 != nil {
+				// Return the original error.
+				return
+			}
+			// The JSON detour was successful, ignore the original error.
+			err = nil
 		}
 	}()
 	rv.Set(reflect.ValueOf(value))

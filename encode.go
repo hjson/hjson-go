@@ -192,19 +192,23 @@ func (e *hjsonEncoder) jsonMarshal(
 	noIndent bool,
 	separator string,
 	isRootObject bool,
-) error {
+) (
+	isUnknownType bool,
+	err error,
+) {
 	buf, err := json.Marshal(value.Interface())
 	if err != nil {
+		_, isUnknownType = err.(*json.UnsupportedTypeError)
 		// Assuming that the error message starts with "json".
-		return errors.New("h" + err.Error())
+		return isUnknownType, errors.New("h" + err.Error())
 	}
 	var jsonRoot interface{}
 	err = Unmarshal(buf, &jsonRoot)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	return e.str(reflect.ValueOf(jsonRoot), noIndent, separator, isRootObject)
+	return false, e.str(reflect.ValueOf(jsonRoot), noIndent, separator, isRootObject)
 }
 
 var marshalerJSON = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
@@ -226,7 +230,8 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 	}
 
 	if value.Type().Implements(marshalerJSON) || value.Type().Implements(marshalerText) {
-		return e.jsonMarshal(value, noIndent, separator, isRootObject)
+		_, err := e.jsonMarshal(value, noIndent, separator, isRootObject)
+		return err
 	}
 
 	switch kind {
@@ -342,17 +347,16 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		}
 		e.indent = indent1
 
-	case reflect.Struct:
-		return e.jsonMarshal(value, noIndent, separator, isRootObject)
-
 	default:
-		if e.UnknownAsNull {
+		isUnknownType, err := e.jsonMarshal(value, noIndent, separator, isRootObject)
+		if isUnknownType && e.UnknownAsNull {
 			// Use null as a placeholder for non-JSON values.
 			e.WriteString("null")
 		} else {
-			return errors.New("Unsupported type " + value.Type().String())
+			return err
 		}
 	}
+
 	return nil
 }
 
@@ -413,13 +417,7 @@ func Marshal(v interface{}) ([]byte, error) {
 func MarshalWithOptions(v interface{}, options EncoderOptions) ([]byte, error) {
 	e := &hjsonEncoder{}
 	e.indent = 0
-	e.Eol = options.Eol
-	e.BracesSameLine = options.BracesSameLine
-	e.EmitRootBraces = options.EmitRootBraces
-	e.QuoteAlways = options.QuoteAlways
-	e.QuoteAmbiguousStrings = options.QuoteAmbiguousStrings
-	e.IndentBy = options.IndentBy
-	e.BaseIndentation = options.BaseIndentation
+	e.EncoderOptions = options
 
 	err := e.str(reflect.ValueOf(v), true, e.BaseIndentation, true)
 	if err != nil {

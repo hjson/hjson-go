@@ -38,15 +38,13 @@
   foo3b: "'''asdf"
   foo4a: "asdf'''\nasdf"
   foo4b: "asdf\n'''asdf"
-  arr:
-  [
+  arr: [
     one
     two
     three
     four
   ]
-  not:
-  {
+  not: {
     number: 5
     negative: -4.2
     yes: true
@@ -68,8 +66,7 @@
       0.5
     ]
   }
-  special:
-  {
+  special: {
     true: "true"
     false: "false"
     null: "null"

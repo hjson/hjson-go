@@ -1,6 +1,5 @@
 {
-  "JSON Test Pattern pass3":
-  {
+  "JSON Test Pattern pass3": {
     "In this test": It is an object.
     "The outermost value": must be an object or array.
   }

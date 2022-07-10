@@ -1,6 +1,5 @@
 {
-  quotes:
-  {
+  quotes: {
     num1: "1,2"
     num2: "-1.1 ,"
     num3: "1e10 ,2"
@@ -30,8 +29,7 @@
     punc6: ":"
     punc6b: ":foo"
   }
-  noquotes:
-  {
+  noquotes: {
     num0: .1,2
     num1: 1.1.1,2
     num2: -.1,

@@ -1,6 +1,5 @@
 {
-  noquotes:
-  {
+  noquotes: {
     close1: a}
     close2: a]
     comment1: a#str
@@ -15,8 +14,7 @@
     num3: 1e10e,2
     num4: -1e--10,
   }
-  quotes:
-  {
+  quotes: {
     close1: "1}"
     close1b: "1 }"
     close2: "1]"

@@ -1,6 +1,5 @@
 {
-  arr:
-  [
+  arr: [
     one
     two
     three
@@ -35,10 +34,8 @@
 
     '''
   multiline4: ←→±≠Я
-  not:
-  {
-    array:
-    [
+  not: {
+    array: [
       1
       2
       3
@@ -62,8 +59,7 @@
   notml2: "  \n"
   notml3: "\n  \n  \n  \n"
   notml4: "\t\n"
-  special:
-  {
+  special: {
     false: "false"
     minus: "-3"
     null: "null"

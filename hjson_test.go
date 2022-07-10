@@ -67,6 +67,7 @@ func run(t *testing.T, file string) {
 	rjson, rhjson := getResultContent(name)
 
 	actualHjson, _ := Marshal(data)
+	actualHjson = append(actualHjson, '\n')
 	actualJSON, _ := json.MarshalIndent(data, "", "  ")
 	actualJSON = fixJSON(actualJSON)
 

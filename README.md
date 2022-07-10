@@ -123,9 +123,7 @@ func main() {
 }
 ```
 
-If you prefer, you can also unmarshal to Go objects. The Go JSON package is
-used for this, so the same rules apply. Specifically for the "json" key in
-struct field tags.
+If you prefer, you can also unmarshal to Go structs (or marshal from Go structs). The Go JSON package is used for this, so the same rules apply. Specifically for the "json" key in struct field tags.
 
 ```go
 

@@ -31,8 +31,6 @@ type EncoderOptions struct {
 	IndentBy string
 	// Base indentation string
 	BaseIndentation string
-	// Allow the -0 value (unlike ES6)
-	AllowMinusZero bool
 }
 
 // DefaultOptions returns the default encoding options.
@@ -45,7 +43,6 @@ func DefaultOptions() EncoderOptions {
 	opt.QuoteAmbiguousStrings = true
 	opt.IndentBy = "  "
 	opt.BaseIndentation = ""
-	opt.AllowMinusZero = false
 	return opt
 }
 
@@ -245,7 +242,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		number := value.Float()
 		if math.IsInf(number, 0) || math.IsNaN(number) {
 			e.WriteString("null")
-		} else if !e.AllowMinusZero && number == -0 {
+		} else if number == -0 {
 			e.WriteString("0")
 		} else {
 			// find shortest representation ('G' does not work)

@@ -123,9 +123,7 @@ func main() {
 }
 ```
 
-If you prefer, you can also unmarshal to Go structs (including structs implementing the json.Unmarshaler interface or the encoding.TextUnmarshaler interface). The Go JSON package is used for this, so the same rules apply. Specifically for the "json" key in struct field tags. For more details about this type of unmarshalling, see the [documentation for json.Unmarshal()](https://godoc.org/golang/json).
-
-
+If you prefer, you can also unmarshal to Go structs (including structs implementing the json.Unmarshaler interface or the encoding.TextUnmarshaler interface). The Go JSON package is used for this, so the same rules apply. Specifically for the "json" key in struct field tags. For more details about this type of unmarshalling, see the [documentation for json.Unmarshal()](https://pkg.go.dev/encoding/json#Unmarshal).
 
 ```go
 
@@ -175,7 +173,7 @@ func main() {
 }
 ```
 
-For marshalling from a struct (including a struct implementing the json.Marshaler interface or the encoding.TextMarshaler interface) hjson-go calls json.Marshal() and then converts the output to Hjson. For more details about this type of marshalling, see the [documentation for json.Marshal()](https://godoc.org/golang/json).
+For marshalling from a struct (including a struct implementing the json.Marshaler interface or the encoding.TextMarshaler interface) hjson-go calls json.Marshal() and then converts the output to Hjson. For more details about this type of marshalling, see the [documentation for json.Marshal()](https://pkg.go.dev/encoding/json#Marshal).
 
 # API
 

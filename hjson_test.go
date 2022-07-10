@@ -132,3 +132,42 @@ func TestNilValue(t *testing.T) {
 		panic("Passing v = <nil> to Unmarshal should return an error")
 	}
 }
+
+func TestReadmeUnmarshalToStruct(t *testing.T) {
+	type Sample struct {
+		Rate  int
+		Array []string
+	}
+
+	type SampleAlias struct {
+		Rett    int      `json:"rate"`
+		Ashtray []string `json:"array"`
+	}
+
+	sampleText := []byte(`
+{
+	# specify rate in requests/second
+	rate: 1000
+	array:
+	[
+		foo
+		bar
+	]
+}`)
+
+	{
+		var sample Sample
+		Unmarshal(sampleText, &sample)
+		if sample.Rate != 1000 || sample.Array[0] != "foo" {
+			t.Errorf("Unexpected sample values: %+v", sample)
+		}
+	}
+
+	{
+		var sampleAlias SampleAlias
+		Unmarshal(sampleText, &sampleAlias)
+		if sampleAlias.Rett != 1000 || sampleAlias.Ashtray[0] != "foo" {
+			t.Errorf("Unexpected sampleAlias values: %+v", sampleAlias)
+		}
+	}
+}

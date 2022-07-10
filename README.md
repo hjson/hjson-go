@@ -49,8 +49,6 @@ hjson can be used to convert JSON from/to Hjson.
 hjson will read the given JSON/Hjson input file or read from stdin.
 
 Options:
-  -allowMinusZero
-      Allow -0.
   -bracesSameLine
       Print braces on the same line.
   -c  Output as JSON.
@@ -125,7 +123,9 @@ func main() {
 }
 ```
 
-If you prefer, you can also unmarshal to Go objects by converting to JSON:
+If you prefer, you can also unmarshal to Go objects. The Go JSON package is
+used for this, so the same rules apply. Specifically for the "json" key in
+struct field tags.
 
 ```go
 
@@ -133,13 +133,17 @@ package main
 
 import (
   "github.com/hjson/hjson-go/v4"
-  "encoding/json"
   "fmt"
 )
 
 type Sample struct {
     Rate  int
     Array []string
+}
+
+type SampleAlias struct {
+    Rett    int      `json:"rate"`
+    Ashtray []string `json:"array"`
 }
 
 func main() {
@@ -155,19 +159,19 @@ func main() {
         ]
     }`)
 
-    // read Hjson
-    var dat map[string]interface{}
-    hjson.Unmarshal(sampleText, &dat)
-
-    // convert to JSON
-    b, _ := json.Marshal(dat)
-
     // unmarshal
     var sample Sample
-    json.Unmarshal(b, &sample)
+    hjson.Unmarshal(sampleText, &sample)
 
     fmt.Println(sample.Rate)
     fmt.Println(sample.Array)
+
+    // unmarshal using json tags on struct fields
+    var sample2 Sample2
+    hjson.Unmarshal(sampleText, &sample2)
+
+    fmt.Println(sample2.Rett)
+    fmt.Println(sample2.Ashtray)
 }
 ```
 

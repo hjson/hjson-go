@@ -216,15 +216,15 @@ func TestEncodeMarshal(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if !reflect.DeepEqual(buf, []byte(`"foobar"`)) {
-		t.Error("Marshaler interface error")
+	if !reflect.DeepEqual(buf, []byte(`foobar`)) {
+		t.Errorf("Expected '\"foobar\"', got '%s'", string(buf))
 	}
 	buf, err = Marshal(&input)
 	if err != nil {
 		t.Error(err)
 	}
-	if !reflect.DeepEqual(buf, []byte(`"foobar"`)) {
-		t.Error("Marshaler interface error")
+	if !reflect.DeepEqual(buf, []byte(`foobar`)) {
+		t.Errorf("Expected '\"foobar\"', got '%s'", string(buf))
 	}
 }
 
@@ -240,15 +240,15 @@ func TestEncodeMarshalInt(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if !reflect.DeepEqual(buf, []byte(`"foobar"`)) {
-		t.Error("Marshaler int type interface error")
+	if !reflect.DeepEqual(buf, []byte(`foobar`)) {
+		t.Errorf("Expected '\"foobar\"', got '%s'", string(buf))
 	}
 	buf, err = Marshal(&input)
 	if err != nil {
 		t.Error(err)
 	}
-	if !reflect.DeepEqual(buf, []byte(`"foobar"`)) {
-		t.Error("Marshaler int type interface error")
+	if !reflect.DeepEqual(buf, []byte(`foobar`)) {
+		t.Errorf("Expected '\"foobar\"', got '%s'", string(buf))
 	}
 }
 

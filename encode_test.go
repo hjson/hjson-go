@@ -353,6 +353,8 @@ func TestMarshalUnmarshal(t *testing.T) {
 	marshalUnmarshal(t, "0\r")
 	marshalUnmarshal(t, "0\n'")
 	marshalUnmarshal(t, "0\n")
+	marshalUnmarshal(t, "\t0\na\tb\t")
+	marshalUnmarshal(t, "\t0\n\tab")
 	marshalUnmarshal(t, "0\r\n'")
 	marshalUnmarshal(t, "0\r\n")
 }

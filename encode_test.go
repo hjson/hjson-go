@@ -318,15 +318,17 @@ func TestQuoteAmbiguousStrings(t *testing.T) {
 func marshalUnmarshal(t *testing.T, input string) {
 	buf, err := Marshal(input)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
+		return
 	}
 	var resultPlain string
 	err = Unmarshal(buf, &resultPlain)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
+		return
 	}
 	if resultPlain != input {
-		t.Fatalf("Expected: '%v'  Got: '%v'\n", []byte(input), []byte(resultPlain))
+		t.Errorf("Expected: '%v'  Got: '%v'\n", []byte(input), []byte(resultPlain))
 	}
 
 	type t_obj struct {
@@ -337,15 +339,17 @@ func marshalUnmarshal(t *testing.T, input string) {
 	}
 	buf, err = Marshal(obj)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
+		return
 	}
 	var out map[string]interface{}
 	err = Unmarshal(buf, &out)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
+		return
 	}
 	if out["F"] != input {
-		t.Fatalf("Expected: '%v'  Got: '%v'\n", []byte(input), []byte(out["F"].(string)))
+		t.Errorf("Expected: '%v'  Got: '%v'\n", []byte(input), []byte(out["F"].(string)))
 	}
 }
 
@@ -378,7 +382,7 @@ func TestCircularReference(t *testing.T) {
 
 	select {
 	case <-timeout:
-		t.Fatal("The circular reference test is taking too long, is probably stuck in an infinite loop.")
+		t.Error("The circular reference test is taking too long, is probably stuck in an infinite loop.")
 	case <-done:
 	}
 }
@@ -391,9 +395,10 @@ func TestPrivateStructFields(t *testing.T) {
 	}
 	b, err := Marshal(obj)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
+		return
 	}
 	if string(b) != "{}" {
-		t.Fatalf("Expected '{}', got '%s'", string(b))
+		t.Errorf("Expected '{}', got '%s'", string(b))
 	}
 }

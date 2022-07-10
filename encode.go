@@ -186,14 +186,24 @@ func (e *hjsonEncoder) writeIndent(indent int) {
 	}
 }
 
-func (e *hjsonEncoder) useMarshaler(value reflect.Value, separator string) error {
-	b, err := value.Interface().(json.Marshaler).MarshalJSON()
+func (e *hjsonEncoder) jsonMarshal(
+	value reflect.Value,
+	noIndent bool,
+	separator string,
+	isRootObject bool,
+) error {
+	buf, err := json.Marshal(value.Interface())
+	if err != nil {
+		// Assuming that the error message starts with "json".
+		return errors.New("h" + err.Error())
+	}
+	var jsonRoot interface{}
+	err = Unmarshal(buf, &jsonRoot)
 	if err != nil {
 		return err
 	}
-	e.WriteString(separator)
-	e.WriteString(string(b))
-	return nil
+
+	return e.str(reflect.ValueOf(jsonRoot), noIndent, separator, isRootObject)
 }
 
 var marshaler = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
@@ -214,7 +224,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 	}
 
 	if value.Type().Implements(marshaler) {
-		return e.useMarshaler(value, separator)
+		return e.jsonMarshal(value, noIndent, separator, isRootObject)
 	}
 
 	switch kind {
@@ -331,19 +341,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		e.indent = indent1
 
 	case reflect.Struct:
-
-		buf, err := json.Marshal(value.Interface())
-		if err != nil {
-			// Assuming that the error message starts with "json".
-			return errors.New("h" + err.Error())
-		}
-		var tmpMap map[string]interface{}
-		err = Unmarshal(buf, &tmpMap)
-		if err != nil {
-			return err
-		}
-
-		return e.str(reflect.ValueOf(tmpMap), noIndent, separator, isRootObject)
+		return e.jsonMarshal(value, noIndent, separator, isRootObject)
 
 	default:
 		if e.UnknownAsNull {

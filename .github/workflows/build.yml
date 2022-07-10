@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
-          
+
       - name: Build the hjson-cli binaries
         run: ./build_release.sh
           

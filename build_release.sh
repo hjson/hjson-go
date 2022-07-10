@@ -1,18 +1,19 @@
 #!/bin/bash
 
 cd `dirname $0`
-ROOT=$PWD/binaries
+ROOT=$PWD
+BINARIES=$ROOT/binaries
 
-if [ -d "$ROOT" ]; then rm -rf $ROOT; fi
+if [ -d "$BINARIES" ]; then rm -rf $BINARIES; fi
 
-mkdir $ROOT
+mkdir $BINARIES
 
 function build() {
   export GOOS=$1
   export GOARCH=$2
 
   echo build $GOOS $GOARCH
-  OUT=$ROOT/${GOOS}_${GOARCH}
+  OUT=$BINARIES/hjson_`cd $ROOT && git describe --tags`_${GOOS}_${GOARCH}
   mkdir $OUT
   cd $OUT
   go build github.com/hjson/hjson-go/v4/hjson-cli

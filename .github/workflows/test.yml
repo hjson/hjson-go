@@ -14,3 +14,14 @@ jobs:
       - run: |
           cd hjson-cli
           go install -i
+
+  build_hjson-cli_releases:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Build the hjson-cli binaries
+        run: ./build_release.sh

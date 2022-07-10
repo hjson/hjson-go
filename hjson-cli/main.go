@@ -11,6 +11,10 @@ import (
 	"github.com/hjson/hjson-go/v4"
 )
 
+// Can be set when building for example like this:
+// go build -ldflags "-X main.Version=v3.0"
+var Version string
+
 func fixJSON(data []byte) []byte {
 	data = bytes.Replace(data, []byte("\\u003c"), []byte("<"), -1)
 	data = bytes.Replace(data, []byte("\\u003e"), []byte(">"), -1)
@@ -40,13 +44,17 @@ func main() {
 	var bracesSameLine = flag.Bool("bracesSameLine", false, "Print braces on the same line.")
 	var omitRootBraces = flag.Bool("omitRootBraces", false, "Omit braces at the root.")
 	var quoteAlways = flag.Bool("quoteAlways", false, "Always quote string values.")
-
-	// var showVersion = flag.Bool("V", false, "Show version.")
+	var showVersion = flag.Bool("v", false, "Show version.")
 
 	flag.Parse()
 	if *help || flag.NArg() > 1 {
 		flag.Usage()
 		os.Exit(1)
+	}
+
+	if *showVersion {
+		fmt.Println(Version)
+		os.Exit(0)
 	}
 
 	var err error

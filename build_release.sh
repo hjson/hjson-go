@@ -13,10 +13,11 @@ function build() {
   export GOARCH=$2
 
   echo build $GOOS $GOARCH
-  OUT=$BINARIES/hjson_`cd $ROOT && git describe --tags`_${GOOS}_${GOARCH}
+  VERSION=`cd $ROOT && git describe --tags`
+  OUT=${BINARIES}/hjson_${VERSION}_${GOOS}_${GOARCH}
   mkdir $OUT
   cd $OUT
-  go build github.com/hjson/hjson-go/v4/hjson-cli
+  go build -ldflags "-w -s -X main.Version=${VERSION}" github.com/hjson/hjson-go/v4/hjson-cli
   if [[ $3 == "zip" ]]; then
     mv $OUT/hjson-cli.exe $OUT/hjson.exe
     zip -j ${OUT}.zip $OUT/*

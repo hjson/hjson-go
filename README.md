@@ -165,11 +165,11 @@ func main() {
     fmt.Println(sample.Array)
 
     // unmarshal using json tags on struct fields
-    var sample2 Sample2
-    hjson.Unmarshal(sampleText, &sample2)
+    var sampleAlias SampleAlias
+    hjson.Unmarshal(sampleText, &sampleAlias)
 
-    fmt.Println(sample2.Rett)
-    fmt.Println(sample2.Ashtray)
+    fmt.Println(sampleAlias.Rett)
+    fmt.Println(sampleAlias.Ashtray)
 }
 ```
 

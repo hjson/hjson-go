@@ -1,6 +1,7 @@
 package hjson
 
 import (
+	"bytes"
 	"net"
 	"reflect"
 	"testing"
@@ -39,6 +40,7 @@ type TestStruct struct {
 	E string      `json:"-"`
 	F string      `json:"-,"`
 	G string      `json:"H,omitempty"`
+	J string      `json:"J,omitempty"`
 	U int         `json:",omitempty"`
 	V uint        `json:",omitempty"`
 	W float32     `json:",omitempty"`
@@ -67,6 +69,7 @@ func TestEncodeStruct(t *testing.T) {
 		E: "baz",
 		F: "qux",
 		G: "thud",
+		J: "<",
 		U: 3,
 		V: 4,
 		W: 5.0,
@@ -77,6 +80,9 @@ func TestEncodeStruct(t *testing.T) {
 	buf, err := Marshal(input)
 	if err != nil {
 		t.Error(err)
+	}
+	if !bytes.Contains(buf, []byte("J: <\n")) {
+		t.Errorf("Missing 'J: <' in marshal output:\n%s", string(buf))
 	}
 	err = Unmarshal(buf, &output)
 	if err != nil {
@@ -89,6 +95,7 @@ func TestEncodeStruct(t *testing.T) {
 	checkKeyValue(t, output, "-", "qux")
 	checkKeyValue(t, output, "H", "thud")
 	checkMissing(t, output, "C")
+	checkKeyValue(t, output, "J", "<")
 	checkMissing(t, output, "E")
 	checkMissing(t, output, "F")
 	checkKeyValue(t, output, "U", 3.0)

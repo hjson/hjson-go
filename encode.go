@@ -57,6 +57,8 @@ type hjsonEncoder struct {
 	parents map[uintptr]struct{} // Starts to be filled after pDepth has reached depthLimit
 }
 
+var JSONNumberType = reflect.TypeOf(json.Number(""))
+
 var needsEscape, needsQuotes, needsEscapeML, startsWithKeyword, needsEscapeName *regexp.Regexp
 
 func init() {
@@ -256,7 +258,16 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 
 	switch kind {
 	case reflect.String:
-		e.quote(value.String(), separator, isRootObject)
+		if value.Type() == JSONNumberType {
+			n := value.String()
+			if n == "" {
+				n = "0"
+			}
+			// without quotes
+			e.WriteString(separator + n)
+		} else {
+			e.quote(value.String(), separator, isRootObject)
+		}
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		e.WriteString(separator)

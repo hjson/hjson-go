@@ -2,6 +2,7 @@ package hjson
 
 import (
 	"bytes"
+	"encoding/json"
 	"net"
 	"reflect"
 	"testing"
@@ -548,5 +549,27 @@ func TestMarshalMapIntKey(t *testing.T) {
 	}
 	if !m2[3] {
 		t.Errorf("Failed to unmarshal into map with int key")
+	}
+}
+
+func TestMarshalJsonNumber(t *testing.T) {
+	var n json.Number
+	buf, err := Marshal(n)
+	if err != nil {
+		t.Error(err)
+	}
+	expected := `0`
+	if string(buf) != expected {
+		t.Errorf("Expected:\n%s\n\nGot:\n%s\n", expected, string(buf))
+	}
+
+	n = json.Number("3e5")
+	buf, err = Marshal(n)
+	if err != nil {
+		t.Error(err)
+	}
+	expected = `3e5`
+	if string(buf) != expected {
+		t.Errorf("Expected:\n%s\n\nGot:\n%s\n", expected, string(buf))
 	}
 }

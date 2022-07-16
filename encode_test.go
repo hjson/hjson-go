@@ -525,3 +525,28 @@ func TestMarshalDuplicateFields(t *testing.T) {
 		t.Errorf("Expected 5, got %d\n", b.B)
 	}
 }
+
+func TestMarshalMapIntKey(t *testing.T) {
+	m := map[int]bool{
+		3: true,
+	}
+	buf, err := Marshal(m)
+	if err != nil {
+		t.Error(err)
+	}
+	expected := `{
+  3: true
+}`
+	if string(buf) != expected {
+		t.Errorf("Expected:\n%s\n\nGot:\n%s\n", expected, string(buf))
+	}
+
+	m2 := map[int]bool{}
+	err = Unmarshal(buf, &m2)
+	if err != nil {
+		t.Error(err)
+	}
+	if !m2[3] {
+		t.Errorf("Failed to unmarshal into map with int key")
+	}
+}

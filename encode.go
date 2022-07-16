@@ -354,7 +354,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			if i > 0 || !isRootObject || e.EmitRootBraces {
 				e.writeIndent(e.indent)
 			}
-			e.WriteString(e.quoteName(keys[i].String()))
+			e.WriteString(e.quoteName(fmt.Sprintf("%v", keys[i])))
 			e.WriteString(":")
 			if err := e.str(value.MapIndex(keys[i]), false, " ", false); err != nil {
 				return err
@@ -505,15 +505,15 @@ func Marshal(v interface{}) ([]byte, error) {
 //
 // Boolean values encode as JSON booleans.
 //
-// Floating point, integer, and Number values encode as JSON numbers.
+// Floating point, integer, and json.Number values encode as JSON numbers.
 //
 // String values encode as Hjson strings (quoteless, multiline or
 // JSON).
 //
 // Array and slice values encode as JSON arrays.
 //
-// Map values encode as JSON objects. The map's key type must be a
-// string. The map keys are sorted and used as JSON object keys.
+// Map values encode as JSON objects. The map's key type must be possible
+// to print to a string. The map keys are sorted and used as JSON object keys.
 //
 // Pointer values encode as the value pointed to.
 // A nil pointer encodes as the null JSON value.
@@ -521,13 +521,13 @@ func Marshal(v interface{}) ([]byte, error) {
 // Interface values encode as the value contained in the interface.
 // A nil interface value encodes as the null JSON value.
 //
-// In order to marshal structs, hjson-go calls json.Marshal() to get an
-// intermediate byte array which is then converted to Hjson. For more details
-// about marshalling structs, see the documentation for json.Marshal().
+// If an encountered value implements the json.Marshaler interface then the
+// function MarshalJSON() is called on it. The JSON is then converted to Hjson
+// using the options given in the call to json.Marshal().
 //
-// If an encountered value implements the json.Marshaler interface, or the
-// encoding.TextMarshaler interface, then hjson-go calls json.Marshal() to get
-// an intermediate byte array which is then encoded to Hjson.
+// If an encountered value implements the encoding.TextMarshaler interface
+// but not the json.Marshaler interface, then the function MarshalText() is
+// called on it to get a text.
 //
 // JSON cannot represent cyclic data structures and Marshal does not
 // handle them. Passing cyclic structures to Marshal will result in

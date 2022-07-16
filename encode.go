@@ -349,7 +349,53 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 	case reflect.Struct:
 
 		l := value.NumField()
-		if l == 0 {
+
+		// Collect fields first, too see if any should be shown.
+		type fieldInfo struct {
+			field   reflect.Value
+			name    string
+			comment string
+		}
+		var fis []fieldInfo
+		for i := 0; i < l; i++ {
+			curStructField := value.Type().Field(i)
+			if curStructField.PkgPath != "" {
+				// Ignore private fields
+				continue
+			}
+
+			jsonTag := curStructField.Tag.Get("json")
+			if jsonTag == "-" {
+				continue
+			}
+
+			fi := fieldInfo{
+				field: value.Field(i),
+				name:  curStructField.Name,
+			}
+
+			omitEmpty := false
+			splits := strings.Split(jsonTag, ",")
+			if splits[0] != "" {
+				fi.name = splits[0]
+			}
+			if len(splits) > 1 {
+				for _, opt := range splits[1:] {
+					if opt == "omitempty" {
+						omitEmpty = true
+					}
+				}
+			}
+			if omitEmpty && isEmptyValue(fi.field) {
+				continue
+			}
+
+			fi.comment = curStructField.Tag.Get("comment")
+
+			fis = append(fis, fi)
+		}
+
+		if len(fis) == 0 {
 			e.WriteString(separator)
 			e.WriteString("{}")
 			break
@@ -368,33 +414,9 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		}
 
 		// Join all of the member texts together, separated with newlines
-		for i := 0; i < l; i++ {
-			curStructField := value.Type().Field(i)
-			curField := value.Field(i)
-
-			name := curStructField.Name
-			jsonTag := curStructField.Tag.Get("json")
-			jsonComment := curStructField.Tag.Get("comment")
-			omitEmpty := false
-			if jsonTag == "-" {
-				continue
-			}
-			splits := strings.Split(jsonTag, ",")
-			if splits[0] != "" {
-				name = splits[0]
-			}
-			if len(splits) > 1 {
-				for _, opt := range splits[1:] {
-					if opt == "omitempty" {
-						omitEmpty = true
-					}
-				}
-			}
-			if omitEmpty && isEmptyValue(curField) {
-				continue
-			}
-			if len(jsonComment) > 0 {
-				for _, line := range strings.Split(jsonComment, e.Eol) {
+		for i, fi := range fis {
+			if len(fi.comment) > 0 {
+				for _, line := range strings.Split(fi.comment, e.Eol) {
 					if i > 0 || !isRootObject || e.EmitRootBraces {
 						e.writeIndent(e.indent)
 					}
@@ -404,12 +426,12 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			if i > 0 || !isRootObject || e.EmitRootBraces {
 				e.writeIndent(e.indent)
 			}
-			e.WriteString(e.quoteName(name))
+			e.WriteString(e.quoteName(fi.name))
 			e.WriteString(":")
-			if err := e.str(curField, false, " ", false); err != nil {
+			if err := e.str(fi.field, false, " ", false); err != nil {
 				return err
 			}
-			if len(jsonComment) > 0 && i < l-1 {
+			if len(fi.comment) > 0 && i < l-1 {
 				e.WriteString(e.Eol)
 			}
 		}

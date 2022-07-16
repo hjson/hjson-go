@@ -3,6 +3,7 @@ package hjson
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -452,48 +453,40 @@ func (p *hjsonParser) checkTrailing(v interface{}, err error) (interface{}, erro
 // Unmarshal parses the Hjson-encoded data and stores the result
 // in the value pointed to by v.
 //
-// Unmarshal uses the inverse of the encodings that
-// Marshal uses, allocating maps, slices, and pointers as necessary.
+// Internally the Hjson input is converted to JSON, which is then used as input
+// to the function json.Unmarshal().
 //
-// For unmarshalling into a struct (including a struct implementing the
-// json.Unmarshaler interface or the encoding.TextUnmarshaler interface)
-// hjson-go calls json.Unmarshal() via an intermediate value tree and
-// json.Marshal(). For more details about this type of unmarshalling,
-// see the documentation for json.Unmarshal().
+// For more details about the output from this function, see the documentation
+// for json.Unmarshal().
 func Unmarshal(data []byte, v interface{}) (err error) {
-	var value interface{}
-	parser := &hjsonParser{data, 0, ' '}
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return fmt.Errorf("Cannot unmarshal into non-pointer %v", reflect.TypeOf(v))
+	}
+
+	parser := &hjsonParser{
+		data: data,
+		at:   0,
+		ch:   ' ',
+	}
 	parser.resetAt()
-	value, err = parser.rootValue()
+	value, err := parser.rootValue()
 	if err != nil {
 		return err
 	}
 
-	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return fmt.Errorf("non-pointer %v", reflect.TypeOf(v))
+	// Convert to JSON so we can let json.Unmarshal() handle all destination
+	// types (including interfaces json.Unmarshaler and encoding.TextUnmarshaler)
+	// and merging.
+	buf, err := json.Marshal(value)
+	if err != nil {
+		return errors.New("Internal error")
 	}
-	for rv.Kind() == reflect.Ptr {
-		rv = rv.Elem()
+
+	err = json.Unmarshal(buf, v)
+	if err != nil {
+		return err
 	}
-	defer func() {
-		if e := recover(); e != nil {
-			err = fmt.Errorf("%v", e)
-			// Lets try taking a detour via JSON. Will be able to output to a struct.
-			buf, err2 := json.Marshal(value)
-			if err2 != nil {
-				// Return the original error.
-				return
-			}
-			err2 = json.Unmarshal(buf, v)
-			if err2 != nil {
-				// Return the original error.
-				return
-			}
-			// The JSON detour was successful, ignore the original error.
-			err = nil
-		}
-	}()
-	rv.Set(reflect.ValueOf(value))
+
 	return err
 }

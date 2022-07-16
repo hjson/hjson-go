@@ -121,6 +121,7 @@ func TestEncodeStruct(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	output = map[string]interface{}{}
 	err = Unmarshal(buf, &output)
 	if err != nil {
 		t.Error(err)

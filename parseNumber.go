@@ -45,7 +45,11 @@ func startsWithNumber(text []byte) bool {
 func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
 	// Parse a number value.
 
-	p := parseNumber{text, 0, ' '}
+	p := parseNumber{
+		data: text,
+		at:   0,
+		ch:   ' ',
+	}
 	leadingZeros := 0
 	testLeading := true
 	p.next()

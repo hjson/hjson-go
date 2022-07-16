@@ -102,10 +102,16 @@ func TestHjson(t *testing.T) {
 }
 
 func TestInvalidDestinationType(t *testing.T) {
+	input := []byte(`[1,2,3,4]`)
 	var dat map[string]interface{}
-	err := Unmarshal([]byte(`[1,2,3,4]`), &dat)
+	err := Unmarshal(input, &dat)
 	if err == nil {
 		t.Errorf("Should have failed when trying to unmarshal an array to a map.")
+	}
+
+	err = Unmarshal(input, 3)
+	if err == nil {
+		t.Errorf("Should have failed when trying to unmarshal into non-pointer.")
 	}
 }
 

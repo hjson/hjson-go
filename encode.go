@@ -46,10 +46,15 @@ func DefaultOptions() EncoderOptions {
 	return opt
 }
 
+// Start looking for circular references below this depth.
+const depthLimit = 1024
+
 type hjsonEncoder struct {
 	bytes.Buffer // output
 	EncoderOptions
-	indent int
+	indent  int
+	pDepth  uint
+	parents map[uintptr]struct{} // Starts to be filled after pDepth has reached depthLimit
 }
 
 var needsEscape, needsQuotes, needsEscapeML, startsWithKeyword, needsEscapeName *regexp.Regexp
@@ -210,6 +215,22 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 	// Produce a string from value.
 
 	kind := value.Kind()
+
+	switch kind {
+	case reflect.Ptr, reflect.Slice, reflect.Map:
+		if e.pDepth++; e.pDepth > depthLimit {
+			if e.parents == nil {
+				e.parents = map[uintptr]struct{}{}
+			}
+			p := value.Pointer()
+			if _, ok := e.parents[p]; ok {
+				return errors.New("Circular reference found, pointer of type " + value.Type().String())
+			}
+			e.parents[p] = struct{}{}
+			defer delete(e.parents, p)
+		}
+		defer func() { e.pDepth-- }()
+	}
 
 	if kind == reflect.Interface || kind == reflect.Ptr {
 		if value.IsNil() {
@@ -513,9 +534,10 @@ func Marshal(v interface{}) ([]byte, error) {
 // an error.
 //
 func MarshalWithOptions(v interface{}, options EncoderOptions) ([]byte, error) {
-	e := &hjsonEncoder{}
-	e.indent = 0
-	e.EncoderOptions = options
+	e := &hjsonEncoder{
+		indent:         0,
+		EncoderOptions: options,
+	}
 
 	err := e.str(reflect.ValueOf(v), true, e.BaseIndentation, true)
 	if err != nil {

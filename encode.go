@@ -181,23 +181,24 @@ func (e *hjsonEncoder) writeIndent(indent int) {
 	}
 }
 
-func (e *hjsonEncoder) jsonMarshal(
+func (e *hjsonEncoder) useMarshalerJSON(
 	value reflect.Value,
 	noIndent bool,
 	separator string,
 	isRootObject bool,
 ) error {
-	buf, err := json.Marshal(value.Interface())
-	if err != nil {
-		// Assuming that the error message starts with "json".
-		return errors.New("h" + err.Error())
-	}
-	var jsonRoot interface{}
-	err = Unmarshal(buf, &jsonRoot)
+	b, err := value.Interface().(json.Marshaler).MarshalJSON()
 	if err != nil {
 		return err
 	}
 
+	var jsonRoot interface{}
+	err = Unmarshal(b, &jsonRoot)
+	if err != nil {
+		return err
+	}
+
+	// Output Hjson with our current options, instead of JSON.
 	return e.str(reflect.ValueOf(jsonRoot), noIndent, separator, isRootObject)
 }
 
@@ -219,8 +220,17 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		return e.str(value.Elem(), noIndent, separator, isRootObject)
 	}
 
-	if value.Type().Implements(marshalerJSON) || value.Type().Implements(marshalerText) {
-		return e.jsonMarshal(value, noIndent, separator, isRootObject)
+	if value.Type().Implements(marshalerJSON) {
+		return e.useMarshalerJSON(value, noIndent, separator, isRootObject)
+	}
+
+	if value.Type().Implements(marshalerText) {
+		b, err := value.Interface().(encoding.TextMarshaler).MarshalText()
+		if err != nil {
+			return err
+		}
+
+		return e.str(reflect.ValueOf(string(b)), noIndent, separator, isRootObject)
 	}
 
 	switch kind {
@@ -336,8 +346,83 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		}
 		e.indent = indent1
 
+	case reflect.Struct:
+
+		l := value.NumField()
+		if l == 0 {
+			e.WriteString(separator)
+			e.WriteString("{}")
+			break
+		}
+
+		indent1 := e.indent
+		if !isRootObject || e.EmitRootBraces {
+			if !noIndent && !e.BracesSameLine {
+				e.writeIndent(e.indent)
+			} else {
+				e.WriteString(separator)
+			}
+
+			e.indent++
+			e.WriteString("{")
+		}
+
+		// Join all of the member texts together, separated with newlines
+		for i := 0; i < l; i++ {
+			curStructField := value.Type().Field(i)
+			curField := value.Field(i)
+
+			name := curStructField.Name
+			jsonTag := curStructField.Tag.Get("json")
+			jsonComment := curStructField.Tag.Get("comment")
+			omitEmpty := false
+			if jsonTag == "-" {
+				continue
+			}
+			splits := strings.Split(jsonTag, ",")
+			if splits[0] != "" {
+				name = splits[0]
+			}
+			if len(splits) > 1 {
+				for _, opt := range splits[1:] {
+					if opt == "omitempty" {
+						omitEmpty = true
+					}
+				}
+			}
+			if omitEmpty && isEmptyValue(curField) {
+				continue
+			}
+			if len(jsonComment) > 0 {
+				for _, line := range strings.Split(jsonComment, e.Eol) {
+					if i > 0 || !isRootObject || e.EmitRootBraces {
+						e.writeIndent(e.indent)
+					}
+					e.WriteString(fmt.Sprintf("# %s", line))
+				}
+			}
+			if i > 0 || !isRootObject || e.EmitRootBraces {
+				e.writeIndent(e.indent)
+			}
+			e.WriteString(e.quoteName(name))
+			e.WriteString(":")
+			if err := e.str(curField, false, " ", false); err != nil {
+				return err
+			}
+			if len(jsonComment) > 0 && i < l-1 {
+				e.WriteString(e.Eol)
+			}
+		}
+
+		if !isRootObject || e.EmitRootBraces {
+			e.writeIndent(indent1)
+			e.WriteString("}")
+		}
+
+		e.indent = indent1
+
 	default:
-		return e.jsonMarshal(value, noIndent, separator, isRootObject)
+		return errors.New("Unsupported type " + value.Type().String())
 	}
 
 	return nil

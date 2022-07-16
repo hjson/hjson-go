@@ -475,3 +475,53 @@ func TestPrivateStructFields(t *testing.T) {
 		t.Errorf("Expected '{}', got '%s'", string(b))
 	}
 }
+
+func TestMarshalDuplicateFields(t *testing.T) {
+	type A struct {
+		B int      `json:"rate"`
+		C []string `json:"rate"`
+	}
+
+	a := A{
+		B: 3,
+		C: []string{"D", "E"},
+	}
+
+	buf, err := Marshal(&a)
+	if err != nil {
+		t.Error(err)
+	}
+	expected := `{
+  rate: 3
+  rate:
+  [
+    D
+    E
+  ]
+}`
+	if string(buf) != expected {
+		t.Errorf("Expected:\n%s\n\nGot:\n%s\n", expected, string(buf))
+	}
+
+	var a2 A
+	err = Unmarshal([]byte("rate: 5"), &a2)
+	if err != nil {
+		t.Error(err)
+	}
+	// json.Unmarshal will not write at all to fields with duplicate names.
+	if !reflect.DeepEqual(a2, A{}) {
+		t.Errorf("Expected empty struct")
+	}
+
+	type B struct {
+		B int `json:"rate"`
+	}
+	var b B
+	err = Unmarshal([]byte("rate: 5"), &b)
+	if err != nil {
+		t.Error(err)
+	}
+	if b.B != 5 {
+		t.Errorf("Expected 5, got %d\n", b.B)
+	}
+}

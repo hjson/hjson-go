@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -178,6 +179,22 @@ func TestReadmeUnmarshalToStruct(t *testing.T) {
 	}
 }
 
+func TestUnknownFields(t *testing.T) {
+	v := struct {
+		B string
+		C int
+	}{}
+	b := []byte("B: b\nC: 3\nD: 4\n")
+	err := Unmarshal(b, &v)
+	if err != nil {
+		t.Error(err)
+	}
+	err = UnmarshalWithOptions(b, &v, DecoderOptions{DisallowUnknownFields: true})
+	if err == nil {
+		t.Errorf("Should have returned error for unknown field D")
+	}
+}
+
 type MyUnmarshaller struct {
 	A string
 	x string
@@ -209,5 +226,48 @@ func TestUnmarshalInterface(t *testing.T) {
 	}
 	if obj.A != "" || obj.x != "test" {
 		t.Errorf("Unexpected obj values: %+v", obj)
+	}
+}
+
+func TestJSONNumber(t *testing.T) {
+	var v interface{}
+	b := []byte("35e-7")
+	err := UnmarshalWithOptions(b, &v, DecoderOptions{UseJSONNumber: true})
+	if err != nil {
+		t.Error(err)
+	}
+	if v.(json.Number).String() != string(b) {
+		t.Errorf("Expected %s, got %v\n", string(b), v)
+	}
+
+	b2, err := Marshal(v)
+	if err != nil {
+		t.Error(err)
+	}
+	if string(b2) != string(b) {
+		t.Errorf("Expected %s, got %v\n", string(b), string(b2))
+	}
+
+	var n json.Number
+	err = Unmarshal(b, &n)
+	if err != nil {
+		t.Error(err)
+	}
+	if n.String() != string(b) {
+		t.Errorf("Expected %s, got %v\n", string(b), n)
+	}
+	f, err := n.Float64()
+	if err != nil {
+		t.Error(err)
+	}
+	if math.Abs(f-35e-7) > 1e-7 {
+		t.Errorf("Expected %f, got %f\n", 35e-7, f)
+	}
+	i, err := n.Int64()
+	if err != nil {
+		t.Error(err)
+	}
+	if i != 0 {
+		t.Errorf("Expected 0, got %d\n", i)
 	}
 }

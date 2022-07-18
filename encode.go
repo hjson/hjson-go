@@ -35,15 +35,15 @@ type EncoderOptions struct {
 
 // DefaultOptions returns the default encoding options.
 func DefaultOptions() EncoderOptions {
-	opt := EncoderOptions{}
-	opt.Eol = "\n"
-	opt.BracesSameLine = false
-	opt.EmitRootBraces = true
-	opt.QuoteAlways = false
-	opt.QuoteAmbiguousStrings = true
-	opt.IndentBy = "  "
-	opt.BaseIndentation = ""
-	return opt
+	return EncoderOptions{
+		Eol:                   "\n",
+		BracesSameLine:        false,
+		EmitRootBraces:        true,
+		QuoteAlways:           false,
+		QuoteAmbiguousStrings: true,
+		IndentBy:              "  ",
+		BaseIndentation:       "",
+	}
 }
 
 // Start looking for circular references below this depth.

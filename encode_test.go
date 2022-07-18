@@ -78,6 +78,7 @@ func TestEncodeStruct(t *testing.T) {
 		Y: []int{1, 2, 3},
 		Z: &TestStruct{},
 	}
+
 	buf, err := Marshal(input)
 	if err != nil {
 		t.Error(err)

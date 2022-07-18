@@ -574,3 +574,31 @@ func TestMarshalJsonNumber(t *testing.T) {
 		t.Errorf("Expected:\n%s\n\nGot:\n%s\n", expected, string(buf))
 	}
 }
+
+func TestStructComment(t *testing.T) {
+	type foo struct {
+		A string `json:"x" comment:"First comment"`
+		B int32  `comment:"Second comment\nLook ma, new lines"`
+		C string
+		D int32
+	}
+	a := foo{A: "hi!", B: 3, C: "some text", D: 5}
+	h, err := Marshal(a)
+	if err != nil {
+		t.Error(err)
+	}
+	expected := `{
+  # First comment
+  x: hi!
+
+  # Second comment
+  # Look ma, new lines
+  B: 3
+
+  C: some text
+  D: 5
+}`
+	if string(h) != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expected, string(h))
+	}
+}

@@ -218,25 +218,46 @@ type TestMarshalStruct struct {
 }
 
 func (s TestMarshalStruct) MarshalJSON() ([]byte, error) {
-	return []byte(`"foobar"`), nil
+	return []byte(`{
+  "arr": [
+    "foo",
+		"bar"
+	],
+	"map": {
+		"key1": 1,
+		"key2": "B"
+	}
+}`), nil
 }
 
 func TestEncodeMarshalJSON(t *testing.T) {
 	input := TestMarshalStruct{}
+	expected1 := `{
+  arr:
+  [
+    foo
+    bar
+  ]
+  map:
+  {
+    key1: 1
+    key2: B
+  }
+}`
 	buf, err := Marshal(input)
 	if err != nil {
 		t.Error(err)
 	}
-	if !reflect.DeepEqual(buf, []byte(`foobar`)) {
-		t.Errorf("Expected '\"foobar\"', got '%s'", string(buf))
+	if string(buf) != expected1 {
+		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expected1, string(buf))
 	}
 
 	buf, err = Marshal(&input)
 	if err != nil {
 		t.Error(err)
 	}
-	if !reflect.DeepEqual(buf, []byte(`foobar`)) {
-		t.Errorf("Expected '\"foobar\"', got '%s'", string(buf))
+	if string(buf) != expected1 {
+		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expected1, string(buf))
 	}
 
 	myMap := map[string]interface{}{
@@ -255,9 +276,30 @@ func TestEncodeMarshalJSON(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	expected := "{\n  A: FirstField\n  B: foobar\n  C:\n  {\n    D: struct field\n    Zero: 0\n  }\n  Zero: 0\n}"
-	if string(buf) != expected {
-		t.Errorf("Expected '%s', got '%s'", expected, string(buf))
+	expected2 := `{
+  A: FirstField
+  B:
+  {
+    arr:
+    [
+      foo
+      bar
+    ]
+    map:
+    {
+      key1: 1
+      key2: B
+    }
+  }
+  C:
+  {
+    D: struct field
+    Zero: 0
+  }
+  Zero: 0
+}`
+	if string(buf) != expected2 {
+		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expected2, string(buf))
 	}
 }
 

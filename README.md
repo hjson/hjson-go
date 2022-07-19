@@ -29,6 +29,8 @@
 
 The Go implementation of Hjson is based on [hjson-js](https://github.com/hjson/hjson-js). For other platforms see [hjson.github.io](https://hjson.github.io).
 
+More documentation can be found at https://pkg.go.dev/github.com/hjson/hjson-go
+
 # Install
 
 Make sure you have a working Go environment. See the [install instructions](https://golang.org/doc/install.html).
@@ -96,10 +98,13 @@ func main() {
     // can put the decoded data.
     var dat map[string]interface{}
 
-    // Decode and a check for errors.
+    // Decode with default options and check for errors.
     if err := hjson.Unmarshal(sampleText, &dat); err != nil {
         panic(err)
     }
+    // short for:
+    // options := hjson.DefaultDecoderOptions()
+    // err := hjson.UnmarshalWithOptions(sampleText, &dat, options)
     fmt.Println(dat)
 
     // In order to use the values in the decoded map,
@@ -116,12 +121,13 @@ func main() {
     // To encode to Hjson with default options:
     sampleMap := map[string]int{"apple": 5, "lettuce": 7}
     hjson, _ := hjson.Marshal(sampleMap)
-    // this is short for:
+    // short for:
     // options := hjson.DefaultOptions()
     // hjson, _ := hjson.MarshalWithOptions(sampleMap, options)
     fmt.Println(string(hjson))
 }
 ```
+
 
 If you prefer, you can also unmarshal to Go structs (including structs implementing the json.Unmarshaler interface or the encoding.TextUnmarshaler interface). The Go JSON package is used for this, so the same rules apply. Specifically for the "json" key in struct field tags. For more details about this type of unmarshalling, see the [documentation for json.Unmarshal()](https://pkg.go.dev/encoding/json#Unmarshal).
 
@@ -172,8 +178,6 @@ func main() {
     fmt.Println(sampleAlias.Ashtray)
 }
 ```
-
-For marshalling from a struct (including a struct implementing the json.Marshaler interface or the encoding.TextMarshaler interface) hjson-go calls json.Marshal() and then converts the output to Hjson. For more details about this type of marshalling, see the [documentation for json.Marshal()](https://pkg.go.dev/encoding/json#Marshal).
 
 # API
 

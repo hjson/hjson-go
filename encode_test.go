@@ -143,6 +143,37 @@ func TestEncodeStruct(t *testing.T) {
 	checkMissing(t, output, "Z")
 }
 
+func TestAnonymousStruct(t *testing.T) {
+	type TestStruct2 struct {
+		TestStruct
+		Q int
+	}
+
+	ts2 := TestStruct2{
+		Q: 4,
+	}
+	ts2.D = "ddd"
+
+	buf, err := Marshal(ts2)
+	if err != nil {
+		t.Error(err)
+	}
+	expected := `{
+  TestStruct:
+  {
+    A: 0
+    B: 0
+    S: ""
+    D: ddd
+    -: ""
+  }
+  Q: 4
+}`
+	if string(buf) != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expected, string(buf))
+	}
+}
+
 func checkKeyValue(t *testing.T, m map[string]interface{}, key string, exp interface{}) {
 	obs, ok := m[key]
 	if !ok {

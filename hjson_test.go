@@ -263,11 +263,8 @@ func TestJSONNumber(t *testing.T) {
 	if math.Abs(f-35e-7) > 1e-7 {
 		t.Errorf("Expected %f, got %f\n", 35e-7, f)
 	}
-	i, err := n.Int64()
-	if err != nil {
-		t.Error(err)
-	}
-	if i != 0 {
-		t.Errorf("Expected 0, got %d\n", i)
+	_, err = n.Int64()
+	if err == nil {
+		t.Errorf("Did not expect %v to be parsable to int64", n)
 	}
 }

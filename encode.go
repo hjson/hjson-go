@@ -177,7 +177,7 @@ func (s sortAlpha) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 func (s sortAlpha) Less(i, j int) bool {
-	return s[i].String() < s[j].String()
+	return fmt.Sprintf("%v", s[i]) < fmt.Sprintf("%v", s[j])
 }
 
 func (e *hjsonEncoder) writeIndent(indent int) {
@@ -337,57 +337,21 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		e.indent = indent1
 
 	case reflect.Map:
-
-		len := value.Len()
-		if len == 0 {
-			e.WriteString(separator)
-			e.WriteString("{}")
-			break
-		}
-
-		indent1 := e.indent
-		if !isRootObject || e.EmitRootBraces {
-			if !noIndent && !e.BracesSameLine {
-				e.writeIndent(e.indent)
-			} else {
-				e.WriteString(separator)
-			}
-
-			e.indent++
-			e.WriteString("{")
-		}
-
+		var fis []fieldInfo
 		keys := value.MapKeys()
 		sort.Sort(sortAlpha(keys))
-
-		// Join all of the member texts together, separated with newlines
-		for i := 0; i < len; i++ {
-			if i > 0 || !isRootObject || e.EmitRootBraces {
-				e.writeIndent(e.indent)
-			}
-			e.WriteString(e.quoteName(fmt.Sprintf("%v", keys[i])))
-			e.WriteString(":")
-			if err := e.str(value.MapIndex(keys[i]), false, " ", false); err != nil {
-				return err
-			}
+		for _, key := range keys {
+			fis = append(fis, fieldInfo{
+				field: value.MapIndex(key),
+				name:  fmt.Sprintf("%v", key),
+			})
 		}
-
-		if !isRootObject || e.EmitRootBraces {
-			e.writeIndent(indent1)
-			e.WriteString("}")
-		}
-		e.indent = indent1
+		return e.writeFields(fis, noIndent, separator, isRootObject)
 
 	case reflect.Struct:
-
 		l := value.NumField()
 
 		// Collect fields first, too see if any should be shown.
-		type fieldInfo struct {
-			field   reflect.Value
-			name    string
-			comment string
-		}
 		var fis []fieldInfo
 		for i := 0; i < l; i++ {
 			curStructField := value.Type().Field(i)
@@ -426,58 +390,74 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 
 			fis = append(fis, fi)
 		}
-
-		if len(fis) == 0 {
-			e.WriteString(separator)
-			e.WriteString("{}")
-			break
-		}
-
-		indent1 := e.indent
-		if !isRootObject || e.EmitRootBraces {
-			if !noIndent && !e.BracesSameLine {
-				e.writeIndent(e.indent)
-			} else {
-				e.WriteString(separator)
-			}
-
-			e.indent++
-			e.WriteString("{")
-		}
-
-		// Join all of the member texts together, separated with newlines
-		for i, fi := range fis {
-			if len(fi.comment) > 0 {
-				for _, line := range strings.Split(fi.comment, e.Eol) {
-					if i > 0 || !isRootObject || e.EmitRootBraces {
-						e.writeIndent(e.indent)
-					}
-					e.WriteString(fmt.Sprintf("# %s", line))
-				}
-			}
-			if i > 0 || !isRootObject || e.EmitRootBraces {
-				e.writeIndent(e.indent)
-			}
-			e.WriteString(e.quoteName(fi.name))
-			e.WriteString(":")
-			if err := e.str(fi.field, false, " ", false); err != nil {
-				return err
-			}
-			if len(fi.comment) > 0 && i < l-1 {
-				e.WriteString(e.Eol)
-			}
-		}
-
-		if !isRootObject || e.EmitRootBraces {
-			e.writeIndent(indent1)
-			e.WriteString("}")
-		}
-
-		e.indent = indent1
+		return e.writeFields(fis, noIndent, separator, isRootObject)
 
 	default:
 		return errors.New("Unsupported type " + value.Type().String())
 	}
+
+	return nil
+}
+
+type fieldInfo struct {
+	field   reflect.Value
+	name    string
+	comment string
+}
+
+func (e *hjsonEncoder) writeFields(
+	fis []fieldInfo,
+	noIndent bool,
+	separator string,
+	isRootObject bool,
+) error {
+	if len(fis) == 0 {
+		e.WriteString(separator)
+		e.WriteString("{}")
+		return nil
+	}
+
+	indent1 := e.indent
+	if !isRootObject || e.EmitRootBraces {
+		if !noIndent && !e.BracesSameLine {
+			e.writeIndent(e.indent)
+		} else {
+			e.WriteString(separator)
+		}
+
+		e.indent++
+		e.WriteString("{")
+	}
+
+	// Join all of the member texts together, separated with newlines
+	for i, fi := range fis {
+		if len(fi.comment) > 0 {
+			for _, line := range strings.Split(fi.comment, e.Eol) {
+				if i > 0 || !isRootObject || e.EmitRootBraces {
+					e.writeIndent(e.indent)
+				}
+				e.WriteString(fmt.Sprintf("# %s", line))
+			}
+		}
+		if i > 0 || !isRootObject || e.EmitRootBraces {
+			e.writeIndent(e.indent)
+		}
+		e.WriteString(e.quoteName(fi.name))
+		e.WriteString(":")
+		if err := e.str(fi.field, false, " ", false); err != nil {
+			return err
+		}
+		if len(fi.comment) > 0 && i < len(fis)-1 {
+			e.WriteString(e.Eol)
+		}
+	}
+
+	if !isRootObject || e.EmitRootBraces {
+		e.writeIndent(indent1)
+		e.WriteString("}")
+	}
+
+	e.indent = indent1
 
 	return nil
 }

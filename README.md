@@ -75,12 +75,11 @@ Sample:
 package main
 
 import (
-  "github.com/hjson/hjson-go/v4"
-  "fmt"
+    "github.com/hjson/hjson-go/v4"
+    "fmt"
 )
 
 func main() {
-
     // Now let's look at decoding Hjson data into Go
     // values.
     sampleText := []byte(`
@@ -128,6 +127,7 @@ func main() {
 }
 ```
 
+## Unmarshal to Go structs
 
 If you prefer, you can also unmarshal to Go structs (including structs implementing the json.Unmarshaler interface or the encoding.TextUnmarshaler interface). The Go JSON package is used for this, so the same rules apply. Specifically for the "json" key in struct field tags. For more details about this type of unmarshalling, see the [documentation for json.Unmarshal()](https://pkg.go.dev/encoding/json#Unmarshal).
 
@@ -136,8 +136,8 @@ If you prefer, you can also unmarshal to Go structs (including structs implement
 package main
 
 import (
-  "github.com/hjson/hjson-go/v4"
-  "fmt"
+    "github.com/hjson/hjson-go/v4"
+    "fmt"
 )
 
 type Sample struct {
@@ -151,7 +151,6 @@ type SampleAlias struct {
 }
 
 func main() {
-
     sampleText := []byte(`
     {
         # specify rate in requests/second
@@ -176,6 +175,53 @@ func main() {
 
     fmt.Println(sampleAlias.Rett)
     fmt.Println(sampleAlias.Ashtray)
+}
+```
+
+## Comments on struct fields
+
+By using key `comment` in struct field tags you can specify comments to be written on one or more lines preceding the struct field in the Hjson output.
+
+```go
+
+package main
+
+import (
+    "github.com/hjson/hjson-go/v4"
+    "fmt"
+)
+
+type foo struct {
+    A string `json:"x" comment:"First comment"`
+    B int32  `comment:"Second comment\nLook ma, new lines"`
+    C string
+    D int32
+}
+
+func main() {
+    a := foo{A: "hi!", B: 3, C: "some text", D: 5}
+    buf, err := hjson.Marshal(a)
+    if err != nil {
+        fmt.Error(err)
+    }
+
+    fmt.Println(string(buf))
+}
+```
+
+Output:
+
+```
+{
+  # First comment
+  x: hi!
+
+  # Second comment
+  # Look ma, new lines
+  B: 3
+
+  C: some text
+  D: 5
 }
 ```
 

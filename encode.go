@@ -514,17 +514,71 @@ func Marshal(v interface{}) ([]byte, error) {
 //
 // Marshal traverses the value v recursively.
 //
-// Boolean values encode as JSON booleans.
+// Boolean values are written as true or false.
 //
-// Floating point, integer, and json.Number values encode as JSON numbers.
+// Floating point, integer, and json.Number values are written as numbers (with
+// decimals only if needed, using . as decimals separator).
 //
 // String values encode as Hjson strings (quoteless, multiline or
 // JSON).
 //
-// Array and slice values encode as JSON arrays.
+// Array and slice values encode as arrays, surrounded by [].
 //
-// Map values encode as JSON objects. The map's key type must be possible
-// to print to a string. The map keys are sorted and used as JSON object keys.
+// Map values encode as objects, surrounded by {}. The map's key type must be
+// possible to print to a string. The map keys are sorted alphanumerically and
+// used as object keys.
+//
+// Struct values also encode as objects, surrounded by {}. Only the exported
+// fields are encoded to Hjson. Anonymous structs inside a struct are encoded
+// as child objects using the struct name as key.
+//
+// The encoding of each struct field can be customized by the format string
+// stored under the "json" key in the struct field's tag.
+// The format string gives the name of the field, possibly followed by a comma
+// and "omitempty". The name may be empty in order to specify "omitempty"
+// without overriding the default field name.
+//
+// The "omitempty" option specifies that the field should be omitted
+// from the encoding if the field has an empty value, defined as
+// false, 0, a nil pointer, a nil interface value, and any empty array,
+// slice, map, or string.
+//
+// As a special case, if the field tag is "-", the field is always omitted.
+// Note that a field with name "-" can still be generated using the tag "-,".
+//
+// Comments can be set on struct fields using the "comment" key in the struct
+// field's tag. The comment will be written on the line before the field key,
+// prefixed with #. Or possible several lines prefixed by #, if there are line
+// breaks (\n) in the comment text.
+//
+// If both the "json" and the "comment" tag keys are used on a struct field
+// they should be separated by whitespace.
+//
+// Examples of struct field tags and their meanings:
+//
+//   // Field appears in Hjson as key "myName".
+//   Field int `json:"myName"`
+//
+//   // Field appears in Hjson as key "myName" and the field is omitted from
+//   // the object if its value is empty, as defined above.
+//   Field int `json:"myName,omitempty"`
+//
+//   // Field appears in Hjson as key "Field" (the default), but the field is
+//   // skipped if empty. Note the leading comma.
+//   Field int `json:",omitempty"`
+//
+//   // Field is ignored by this package.
+//   Field int `json:"-"`
+//
+//   // Field appears in Hjson as key "-".
+//   Field int `json:"-,"`
+//
+//   // Field appears in Hjson preceded by a line just containing `# A comment.`
+//   Field int `comment:"A comment."`
+//
+//   // Field appears in Hjson as key "myName" preceded by a line just
+//   // containing `# A comment.`
+//   Field int `json:"myName" comment:"A comment."`
 //
 // Pointer values encode as the value pointed to.
 // A nil pointer encodes as the null JSON value.
@@ -534,15 +588,17 @@ func Marshal(v interface{}) ([]byte, error) {
 //
 // If an encountered value implements the json.Marshaler interface then the
 // function MarshalJSON() is called on it. The JSON is then converted to Hjson
-// using the options given in the call to json.Marshal().
+// using the current indentation and options given in the call to json.Marshal().
 //
 // If an encountered value implements the encoding.TextMarshaler interface
 // but not the json.Marshaler interface, then the function MarshalText() is
 // called on it to get a text.
 //
-// JSON cannot represent cyclic data structures and Marshal does not
-// handle them. Passing cyclic structures to Marshal will result in
-// an error.
+// Channel, complex, and function values cannot be encoded in Hjson, will
+// result in an error.
+//
+// Hjson cannot represent cyclic data structures and Marshal does not handle
+// them. Passing cyclic structures to Marshal will result in an error.
 //
 func MarshalWithOptions(v interface{}, options EncoderOptions) ([]byte, error) {
 	e := &hjsonEncoder{

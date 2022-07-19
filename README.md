@@ -29,7 +29,7 @@
 
 The Go implementation of Hjson is based on [hjson-js](https://github.com/hjson/hjson-js). For other platforms see [hjson.github.io](https://hjson.github.io).
 
-More documentation can be found at https://pkg.go.dev/github.com/hjson/hjson-go
+More documentation can be found at https://pkg.go.dev/github.com/hjson/hjson-go/v4
 
 # Install
 

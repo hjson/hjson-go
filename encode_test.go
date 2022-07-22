@@ -172,6 +172,17 @@ func TestAnonymousStruct(t *testing.T) {
 	if string(buf) != expected {
 		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expected, string(buf))
 	}
+
+	var ts3 TestStruct2
+	decOpt := DefaultDecoderOptions()
+	decOpt.DisallowUnknownFields = true
+	err = UnmarshalWithOptions(buf, &ts3, decOpt)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(ts3, ts2) {
+		t.Errorf("Expected:\n%v\nGot:\n%v\n\n", ts2, ts3)
+	}
 }
 
 func checkKeyValue(t *testing.T, m map[string]interface{}, key string, exp interface{}) {

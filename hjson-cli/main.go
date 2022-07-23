@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/hjson/hjson-go/v4"
 	"io/ioutil"
 	"os"
+
+	"github.com/hjson/hjson-go/v4"
 )
 
 func fixJSON(data []byte) []byte {
@@ -39,7 +40,6 @@ func main() {
 	var bracesSameLine = flag.Bool("bracesSameLine", false, "Print braces on the same line.")
 	var omitRootBraces = flag.Bool("omitRootBraces", false, "Omit braces at the root.")
 	var quoteAlways = flag.Bool("quoteAlways", false, "Always quote string values.")
-	var allowMinusZero = flag.Bool("allowMinusZero", false, "Allow -0.")
 
 	// var showVersion = flag.Bool("V", false, "Show version.")
 
@@ -85,7 +85,6 @@ func main() {
 		opt.BracesSameLine = *bracesSameLine
 		opt.EmitRootBraces = !*omitRootBraces
 		opt.QuoteAlways = *quoteAlways
-		opt.AllowMinusZero = *allowMinusZero
 		out, err = hjson.MarshalWithOptions(value, opt)
 		if err != nil {
 			panic(err)

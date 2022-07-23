@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/hjson/hjson-go/workflows/test/badge.svg)](https://github.com/hjson/hjson-go/actions)
 [![Go Pkg](https://img.shields.io/github/release/hjson/hjson-go.svg?style=flat-square&label=go-pkg)](https://github.com/hjson/hjson-go/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hjson/hjson-go?style=flat-square)](https://goreportcard.com/report/github.com/hjson/hjson-go)
-[![coverage](https://img.shields.io/badge/coverage-ok-brightgreen.svg?style=flat-square)](http://gocover.io/github.com/hjson/hjson-go/)
+[![coverage](https://img.shields.io/badge/coverage-ok-brightgreen.svg?style=flat-square)](https://gocover.io/github.com/hjson/hjson-go/)
 [![godoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](https://godoc.org/github.com/hjson/hjson-go/v4)
 
 ![Hjson Intro](https://hjson.github.io/hjson1.gif)
@@ -29,9 +29,11 @@
 
 The Go implementation of Hjson is based on [hjson-js](https://github.com/hjson/hjson-js). For other platforms see [hjson.github.io](https://hjson.github.io).
 
+More documentation can be found at https://pkg.go.dev/github.com/hjson/hjson-go/v4
+
 # Install
 
-Make sure you have a working Go environment. See the [install instructions](http://golang.org/doc/install.html).
+Make sure you have a working Go environment. See the [install instructions](https://golang.org/doc/install.html).
 
 - In order to use Hjson from your own Go source code, just add an import line like the one here below. Before building your project, run `go mod tidy` in order to download the Hjson source files. The suffix `/v4` is required in the import path, unless you specifically want to use an older major version.
 ```go
@@ -49,8 +51,6 @@ hjson can be used to convert JSON from/to Hjson.
 hjson will read the given JSON/Hjson input file or read from stdin.
 
 Options:
-  -allowMinusZero
-      Allow -0.
   -bracesSameLine
       Print braces on the same line.
   -c  Output as JSON.
@@ -75,12 +75,11 @@ Sample:
 package main
 
 import (
-  "github.com/hjson/hjson-go/v4"
-  "fmt"
+    "github.com/hjson/hjson-go/v4"
+    "fmt"
 )
 
 func main() {
-
     // Now let's look at decoding Hjson data into Go
     // values.
     sampleText := []byte(`
@@ -98,10 +97,13 @@ func main() {
     // can put the decoded data.
     var dat map[string]interface{}
 
-    // Decode and a check for errors.
+    // Decode with default options and check for errors.
     if err := hjson.Unmarshal(sampleText, &dat); err != nil {
         panic(err)
     }
+    // short for:
+    // options := hjson.DefaultDecoderOptions()
+    // err := hjson.UnmarshalWithOptions(sampleText, &dat, options)
     fmt.Println(dat)
 
     // In order to use the values in the decoded map,
@@ -118,23 +120,24 @@ func main() {
     // To encode to Hjson with default options:
     sampleMap := map[string]int{"apple": 5, "lettuce": 7}
     hjson, _ := hjson.Marshal(sampleMap)
-    // this is short for:
+    // short for:
     // options := hjson.DefaultOptions()
     // hjson, _ := hjson.MarshalWithOptions(sampleMap, options)
     fmt.Println(string(hjson))
 }
 ```
 
-If you prefer, you can also unmarshal to Go objects by converting to JSON:
+## Unmarshal to Go structs
+
+If you prefer, you can also unmarshal to Go structs (including structs implementing the json.Unmarshaler interface or the encoding.TextUnmarshaler interface). The Go JSON package is used for this, so the same rules apply. Specifically for the "json" key in struct field tags. For more details about this type of unmarshalling, see the [documentation for json.Unmarshal()](https://pkg.go.dev/encoding/json#Unmarshal).
 
 ```go
 
 package main
 
 import (
-  "github.com/hjson/hjson-go/v4"
-  "encoding/json"
-  "fmt"
+    "github.com/hjson/hjson-go/v4"
+    "fmt"
 )
 
 type Sample struct {
@@ -142,8 +145,12 @@ type Sample struct {
     Array []string
 }
 
-func main() {
+type SampleAlias struct {
+    Rett    int      `json:"rate"`
+    Ashtray []string `json:"array"`
+}
 
+func main() {
     sampleText := []byte(`
     {
         # specify rate in requests/second
@@ -155,25 +162,72 @@ func main() {
         ]
     }`)
 
-    // read Hjson
-    var dat map[string]interface{}
-    hjson.Unmarshal(sampleText, &dat)
-
-    // convert to JSON
-    b, _ := json.Marshal(dat)
-
     // unmarshal
     var sample Sample
-    json.Unmarshal(b, &sample)
+    hjson.Unmarshal(sampleText, &sample)
 
     fmt.Println(sample.Rate)
     fmt.Println(sample.Array)
+
+    // unmarshal using json tags on struct fields
+    var sampleAlias SampleAlias
+    hjson.Unmarshal(sampleText, &sampleAlias)
+
+    fmt.Println(sampleAlias.Rett)
+    fmt.Println(sampleAlias.Ashtray)
+}
+```
+
+## Comments on struct fields
+
+By using key `comment` in struct field tags you can specify comments to be written on one or more lines preceding the struct field in the Hjson output.
+
+```go
+
+package main
+
+import (
+    "github.com/hjson/hjson-go/v4"
+    "fmt"
+)
+
+type foo struct {
+    A string `json:"x" comment:"First comment"`
+    B int32  `comment:"Second comment\nLook ma, new lines"`
+    C string
+    D int32
+}
+
+func main() {
+    a := foo{A: "hi!", B: 3, C: "some text", D: 5}
+    buf, err := hjson.Marshal(a)
+    if err != nil {
+        fmt.Error(err)
+    }
+
+    fmt.Println(string(buf))
+}
+```
+
+Output:
+
+```
+{
+  # First comment
+  x: hi!
+
+  # Second comment
+  # Look ma, new lines
+  B: 3
+
+  C: some text
+  D: 5
 }
 ```
 
 # API
 
-[![godoc](https://godoc.org/github.com/hjson/hjson-go/v4?status.svg)](http://godoc.org/github.com/hjson/hjson-go/v4)
+[![godoc](https://godoc.org/github.com/hjson/hjson-go/v4?status.svg)](https://godoc.org/github.com/hjson/hjson-go/v4)
 
 # History
 

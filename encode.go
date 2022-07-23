@@ -2,6 +2,7 @@ package hjson
 
 import (
 	"bytes"
+	"encoding"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,32 +31,34 @@ type EncoderOptions struct {
 	IndentBy string
 	// Base indentation string
 	BaseIndentation string
-	// Allow the -0 value (unlike ES6)
-	AllowMinusZero bool
-	// Encode unknown values as 'null'
-	UnknownAsNull bool
 }
 
 // DefaultOptions returns the default encoding options.
 func DefaultOptions() EncoderOptions {
-	opt := EncoderOptions{}
-	opt.Eol = "\n"
-	opt.BracesSameLine = false
-	opt.EmitRootBraces = true
-	opt.QuoteAlways = false
-	opt.QuoteAmbiguousStrings = true
-	opt.IndentBy = "  "
-	opt.BaseIndentation = ""
-	opt.AllowMinusZero = false
-	opt.UnknownAsNull = false
-	return opt
+	return EncoderOptions{
+		Eol:                   "\n",
+		BracesSameLine:        false,
+		EmitRootBraces:        true,
+		QuoteAlways:           false,
+		QuoteAmbiguousStrings: true,
+		IndentBy:              "  ",
+		BaseIndentation:       "",
+	}
 }
+
+// Start looking for circular references below this depth.
+const depthLimit = 1024
 
 type hjsonEncoder struct {
 	bytes.Buffer // output
 	EncoderOptions
-	indent int
+	indent          int
+	pDepth          uint
+	parents         map[uintptr]struct{} // Starts to be filled after pDepth has reached depthLimit
+	structTypeCache map[reflect.Type][]structFieldInfo
 }
+
+var JSONNumberType = reflect.TypeOf(json.Number(""))
 
 var needsEscape, needsQuotes, needsEscapeML, startsWithKeyword, needsEscapeName *regexp.Regexp
 
@@ -175,7 +178,7 @@ func (s sortAlpha) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 func (s sortAlpha) Less(i, j int) bool {
-	return s[i].String() < s[j].String()
+	return fmt.Sprintf("%v", s[i]) < fmt.Sprintf("%v", s[j])
 }
 
 func (e *hjsonEncoder) writeIndent(indent int) {
@@ -186,23 +189,51 @@ func (e *hjsonEncoder) writeIndent(indent int) {
 	}
 }
 
-func (e *hjsonEncoder) useMarshaler(value reflect.Value, separator string) error {
+func (e *hjsonEncoder) useMarshalerJSON(
+	value reflect.Value,
+	noIndent bool,
+	separator string,
+	isRootObject bool,
+) error {
 	b, err := value.Interface().(json.Marshaler).MarshalJSON()
 	if err != nil {
 		return err
 	}
-	e.WriteString(separator)
-	e.WriteString(string(b))
-	return nil
+
+	var jsonRoot interface{}
+	err = Unmarshal(b, &jsonRoot)
+	if err != nil {
+		return err
+	}
+
+	// Output Hjson with our current options, instead of JSON.
+	return e.str(reflect.ValueOf(jsonRoot), noIndent, separator, isRootObject)
 }
 
-var marshaler = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+var marshalerJSON = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+var marshalerText = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 
 func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string, isRootObject bool) error {
 
 	// Produce a string from value.
 
 	kind := value.Kind()
+
+	switch kind {
+	case reflect.Ptr, reflect.Slice, reflect.Map:
+		if e.pDepth++; e.pDepth > depthLimit {
+			if e.parents == nil {
+				e.parents = map[uintptr]struct{}{}
+			}
+			p := value.Pointer()
+			if _, ok := e.parents[p]; ok {
+				return errors.New("Circular reference found, pointer of type " + value.Type().String())
+			}
+			e.parents[p] = struct{}{}
+			defer delete(e.parents, p)
+		}
+		defer func() { e.pDepth-- }()
+	}
 
 	if kind == reflect.Interface || kind == reflect.Ptr {
 		if value.IsNil() {
@@ -213,13 +244,31 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		return e.str(value.Elem(), noIndent, separator, isRootObject)
 	}
 
-	if value.Type().Implements(marshaler) {
-		return e.useMarshaler(value, separator)
+	if value.Type().Implements(marshalerJSON) {
+		return e.useMarshalerJSON(value, noIndent, separator, isRootObject)
+	}
+
+	if value.Type().Implements(marshalerText) {
+		b, err := value.Interface().(encoding.TextMarshaler).MarshalText()
+		if err != nil {
+			return err
+		}
+
+		return e.str(reflect.ValueOf(string(b)), noIndent, separator, isRootObject)
 	}
 
 	switch kind {
 	case reflect.String:
-		e.quote(value.String(), separator, isRootObject)
+		if value.Type() == JSONNumberType {
+			n := value.String()
+			if n == "" {
+				n = "0"
+			}
+			// without quotes
+			e.WriteString(separator + n)
+		} else {
+			e.quote(value.String(), separator, isRootObject)
+		}
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		e.WriteString(separator)
@@ -236,7 +285,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		number := value.Float()
 		if math.IsInf(number, 0) || math.IsNaN(number) {
 			e.WriteString("null")
-		} else if !e.AllowMinusZero && number == -0 {
+		} else if number == -0 {
 			e.WriteString("0")
 		} else {
 			// find shortest representation ('G' does not work)
@@ -289,130 +338,71 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		e.indent = indent1
 
 	case reflect.Map:
-
-		len := value.Len()
-		if len == 0 {
-			e.WriteString(separator)
-			e.WriteString("{}")
-			break
-		}
-
-		indent1 := e.indent
-		if !isRootObject || e.EmitRootBraces {
-			if !noIndent && !e.BracesSameLine {
-				e.writeIndent(e.indent)
-			} else {
-				e.WriteString(separator)
-			}
-
-			e.indent++
-			e.WriteString("{")
-		}
-
+		var fis []fieldInfo
+		useMarshalText := value.Type().Key().Implements(marshalerText)
 		keys := value.MapKeys()
 		sort.Sort(sortAlpha(keys))
-
-		// Join all of the member texts together, separated with newlines
-		for i := 0; i < len; i++ {
-			if i > 0 || !isRootObject || e.EmitRootBraces {
-				e.writeIndent(e.indent)
+		for _, key := range keys {
+			var name string
+			if useMarshalText {
+				keyBytes, err := key.Interface().(encoding.TextMarshaler).MarshalText()
+				if err != nil {
+					return err
+				}
+				name = string(keyBytes)
+			} else {
+				name = fmt.Sprintf("%v", key)
 			}
-			e.WriteString(e.quoteName(keys[i].String()))
-			e.WriteString(":")
-			if err := e.str(value.MapIndex(keys[i]), false, " ", false); err != nil {
-				return err
-			}
+			fis = append(fis, fieldInfo{
+				field: value.MapIndex(key),
+				name:  name,
+			})
 		}
-
-		if !isRootObject || e.EmitRootBraces {
-			e.writeIndent(indent1)
-			e.WriteString("}")
-		}
-		e.indent = indent1
+		return e.writeFields(fis, noIndent, separator, isRootObject)
 
 	case reflect.Struct:
-
-		l := value.NumField()
-		if l == 0 {
-			e.WriteString(separator)
-			e.WriteString("{}")
-			break
+		// Struct field info is identical for all instances of the same type.
+		// Only the values on the fields can be different.
+		t := value.Type()
+		sfis, ok := e.structTypeCache[t]
+		if !ok {
+			sfis = getStructFieldInfo(t)
+			e.structTypeCache[t] = sfis
 		}
 
-		indent1 := e.indent
-		if !isRootObject || e.EmitRootBraces {
-			if !noIndent && !e.BracesSameLine {
-				e.writeIndent(e.indent)
-			} else {
-				e.WriteString(separator)
+		// Collect fields first, too see if any should be shown (considering
+		// "omitEmpty").
+		var fis []fieldInfo
+	FieldLoop:
+		for _, sfi := range sfis {
+			// The field might be found on the root struct or in embedded structs.
+			fv := value
+			for _, i := range sfi.indexPath {
+				if fv.Kind() == reflect.Ptr {
+					if fv.IsNil() {
+						continue FieldLoop
+					}
+					fv = fv.Elem()
+				}
+				fv = fv.Field(i)
 			}
 
-			e.indent++
-			e.WriteString("{")
-		}
-
-		// Join all of the member texts together, separated with newlines
-		for i := 0; i < l; i++ {
-			curStructField := value.Type().Field(i)
-			curField := value.Field(i)
-
-			name := curStructField.Name
-			jsonTag := curStructField.Tag.Get("json")
-			jsonComment := curStructField.Tag.Get("comment")
-			omitEmpty := false
-			if jsonTag == "-" {
+			if sfi.omitEmpty && isEmptyValue(fv) {
 				continue
 			}
-			splits := strings.Split(jsonTag, ",")
-			if splits[0] != "" {
-				name = splits[0]
-			}
-			if len(splits) > 1 {
-				for _, opt := range splits[1:] {
-					if opt == "omitempty" {
-						omitEmpty = true
-					}
-				}
-			}
-			if omitEmpty && isEmptyValue(curField) {
-				continue
-			}
-			if len(jsonComment) > 0 {
-				for _, line := range strings.Split(jsonComment, e.Eol) {
-					if i > 0 || !isRootObject || e.EmitRootBraces {
-						e.writeIndent(e.indent)
-					}
-					e.WriteString(fmt.Sprintf("# %s", line))
-				}
-			}
-			if i > 0 || !isRootObject || e.EmitRootBraces {
-				e.writeIndent(e.indent)
-			}
-			e.WriteString(e.quoteName(name))
-			e.WriteString(":")
-			if err := e.str(curField, false, " ", false); err != nil {
-				return err
-			}
-			if len(jsonComment) > 0 && i < l-1 {
-				e.WriteString(e.Eol)
-			}
-		}
 
-		if !isRootObject || e.EmitRootBraces {
-			e.writeIndent(indent1)
-			e.WriteString("}")
+			fis = append(fis, fieldInfo{
+				field:   fv,
+				name:    sfi.name,
+				comment: sfi.comment,
+			})
 		}
-
-		e.indent = indent1
+		return e.writeFields(fis, noIndent, separator, isRootObject)
 
 	default:
-		if e.UnknownAsNull {
-			// Use null as a placeholder for non-JSON values.
-			e.WriteString("null")
-		} else {
-			return errors.New("Unsupported type " + value.Type().String())
-		}
+		return errors.New("Unsupported type " + value.Type().String())
 	}
+
 	return nil
 }
 
@@ -446,19 +436,97 @@ func Marshal(v interface{}) ([]byte, error) {
 
 // MarshalWithOptions returns the Hjson encoding of v.
 //
-// Marshal traverses the value v recursively.
+// The value v is traversed recursively.
 //
-// Boolean values encode as JSON booleans.
+// Boolean values are written as true or false.
 //
-// Floating point, integer, and Number values encode as JSON numbers.
+// Floating point, integer, and json.Number values are written as numbers (with
+// decimals only if needed, using . as decimals separator).
 //
 // String values encode as Hjson strings (quoteless, multiline or
 // JSON).
 //
-// Array and slice values encode as JSON arrays.
+// Array and slice values encode as arrays, surrounded by []. Unlike
+// json.Marshal, hjson.Marshal will encode a nil-slice as [] instead of null.
 //
-// Map values encode as JSON objects. The map's key type must be a
-// string. The map keys are sorted and used as JSON object keys.
+// Map values encode as objects, surrounded by {}. The map's key type must be
+// possible to print to a string using fmt.Sprintf("%v", key), or implement
+// encoding.TextMarshaler. The map keys are sorted alphabetically and
+// used as object keys. Unlike json.Marshal, hjson.Marshal will encode a
+// nil-map as {} instead of null.
+//
+// Struct values also encode as objects, surrounded by {}. Only the exported
+// fields are encoded to Hjson. The fields will appear in the same order as in
+// the struct.
+//
+// The encoding of each struct field can be customized by the format string
+// stored under the "json" key in the struct field's tag.
+// The format string gives the name of the field, possibly followed by a comma
+// and "omitempty". The name may be empty in order to specify "omitempty"
+// without overriding the default field name.
+//
+// The "omitempty" option specifies that the field should be omitted
+// from the encoding if the field has an empty value, defined as
+// false, 0, a nil pointer, a nil interface value, and any empty array,
+// slice, map, or string.
+//
+// As a special case, if the field tag is "-", the field is always omitted.
+// Note that a field with name "-" can still be generated using the tag "-,".
+//
+// Comments can be set on struct fields using the "comment" key in the struct
+// field's tag. The comment will be written on the line before the field key,
+// prefixed with #. Or possible several lines prefixed by #, if there are line
+// breaks (\n) in the comment text.
+//
+// If both the "json" and the "comment" tag keys are used on a struct field
+// they should be separated by whitespace.
+//
+// Examples of struct field tags and their meanings:
+//
+//   // Field appears in Hjson as key "myName".
+//   Field int `json:"myName"`
+//
+//   // Field appears in Hjson as key "myName" and the field is omitted from
+//   // the object if its value is empty, as defined above.
+//   Field int `json:"myName,omitempty"`
+//
+//   // Field appears in Hjson as key "Field" (the default), but the field is
+//   // skipped if empty. Note the leading comma.
+//   Field int `json:",omitempty"`
+//
+//   // Field is ignored by this package.
+//   Field int `json:"-"`
+//
+//   // Field appears in Hjson as key "-".
+//   Field int `json:"-,"`
+//
+//   // Field appears in Hjson preceded by a line just containing `# A comment.`
+//   Field int `comment:"A comment."`
+//
+//   // Field appears in Hjson as key "myName" preceded by a line just
+//   // containing `# A comment.`
+//   Field int `json:"myName" comment:"A comment."`
+//
+// Anonymous struct fields are usually marshaled as if their inner exported fields
+// were fields in the outer struct, subject to the usual Go visibility rules amended
+// as described in the next paragraph.
+// An anonymous struct field with a name given in its JSON tag is treated as
+// having that name, rather than being anonymous.
+// An anonymous struct field of interface type is treated the same as having
+// that type as its name, rather than being anonymous.
+//
+// The Go visibility rules for struct fields are amended for JSON when
+// deciding which field to marshal or unmarshal. If there are
+// multiple fields at the same level, and that level is the least
+// nested (and would therefore be the nesting level selected by the
+// usual Go rules), the following extra rules apply:
+//
+// 1) Of those fields, if any are JSON-tagged, only tagged fields are considered,
+// even if there are multiple untagged fields that would otherwise conflict.
+//
+// 2) If there is exactly one field (tagged or not according to the first rule), that is selected.
+//
+// 3) Otherwise there are multiple fields, and all are ignored; no error occurs.
 //
 // Pointer values encode as the value pointed to.
 // A nil pointer encodes as the null JSON value.
@@ -466,20 +534,26 @@ func Marshal(v interface{}) ([]byte, error) {
 // Interface values encode as the value contained in the interface.
 // A nil interface value encodes as the null JSON value.
 //
-// JSON cannot represent cyclic data structures and Marshal does not
-// handle them. Passing cyclic structures to Marshal will result in
-// an infinite recursion.
+// If an encountered value implements the json.Marshaler interface then the
+// function MarshalJSON() is called on it. The JSON is then converted to Hjson
+// using the current indentation and options given in the call to json.Marshal().
+//
+// If an encountered value implements the encoding.TextMarshaler interface
+// but not the json.Marshaler interface, then the function MarshalText() is
+// called on it to get a text.
+//
+// Channel, complex, and function values cannot be encoded in Hjson, will
+// result in an error.
+//
+// Hjson cannot represent cyclic data structures and Marshal does not handle
+// them. Passing cyclic structures to Marshal will result in an error.
 //
 func MarshalWithOptions(v interface{}, options EncoderOptions) ([]byte, error) {
-	e := &hjsonEncoder{}
-	e.indent = 0
-	e.Eol = options.Eol
-	e.BracesSameLine = options.BracesSameLine
-	e.EmitRootBraces = options.EmitRootBraces
-	e.QuoteAlways = options.QuoteAlways
-	e.QuoteAmbiguousStrings = options.QuoteAmbiguousStrings
-	e.IndentBy = options.IndentBy
-	e.BaseIndentation = options.BaseIndentation
+	e := &hjsonEncoder{
+		indent:          0,
+		EncoderOptions:  options,
+		structTypeCache: map[reflect.Type][]structFieldInfo{},
+	}
 
 	err := e.str(reflect.ValueOf(v), true, e.BaseIndentation, true)
 	if err != nil {

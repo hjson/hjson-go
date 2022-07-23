@@ -1,6 +1,7 @@
 package hjson
 
 import (
+	"encoding/json"
 	"errors"
 	"math"
 	"strconv"
@@ -36,16 +37,20 @@ func (p *parseNumber) peek(offs int) byte {
 }
 
 func startsWithNumber(text []byte) bool {
-	if _, err := tryParseNumber(text, true); err == nil {
+	if _, err := tryParseNumber(text, true, false); err == nil {
 		return true
 	}
 	return false
 }
 
-func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
+func tryParseNumber(text []byte, stopAtNext, useJSONNumber bool) (interface{}, error) {
 	// Parse a number value.
 
-	p := parseNumber{text, 0, ' '}
+	p := parseNumber{
+		data: text,
+		at:   0,
+		ch:   ' ',
+	}
 	leadingZeros := 0
 	testLeading := true
 	p.next()
@@ -96,6 +101,9 @@ func tryParseNumber(text []byte, stopAtNext bool) (float64, error) {
 
 	if p.ch > 0 || leadingZeros != 0 {
 		return 0, errors.New("Invalid number")
+	}
+	if useJSONNumber {
+		return json.Number(string(p.data[0 : end-1])), nil
 	}
 	number, err := strconv.ParseFloat(string(p.data[0:end-1]), 64)
 	if err != nil {

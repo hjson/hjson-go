@@ -436,7 +436,7 @@ func Marshal(v interface{}) ([]byte, error) {
 
 // MarshalWithOptions returns the Hjson encoding of v.
 //
-// Marshal traverses the value v recursively.
+// The value v is traversed recursively.
 //
 // Boolean values are written as true or false.
 //
@@ -450,7 +450,8 @@ func Marshal(v interface{}) ([]byte, error) {
 // json.Marshal, hjson.Marshal will encode a nil-slice as [] instead of null.
 //
 // Map values encode as objects, surrounded by {}. The map's key type must be
-// possible to print to a string. The map keys are sorted alphanumerically and
+// possible to print to a string using fmt.Sprintf("%v", key), or implement
+// encoding.TextMarshaler. The map keys are sorted alphabetically and
 // used as object keys. Unlike json.Marshal, hjson.Marshal will encode a
 // nil-map as {} instead of null.
 //

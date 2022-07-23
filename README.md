@@ -62,6 +62,8 @@ Options:
       Omit braces at the root.
   -quoteAlways
       Always quote string values.
+  -v
+      Show version.
 ```
 
 Sample:

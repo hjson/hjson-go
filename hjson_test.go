@@ -17,8 +17,9 @@ func getContent(file string) []byte {
 		panic(err)
 	} else {
 		// The output from Marshal() always uses Unix EOL, but git might have
-		// converted files to Windows EOL on Windows, therefore we remove all "\r".
-		return bytes.Replace(data, []byte("\r"), []byte(""), -1)
+		// converted files to Windows EOL on Windows, therefore we convert all
+		// "\r\n" to "\n".
+		return bytes.Replace(data, []byte("\r\n"), []byte("\n"), -1)
 	}
 }
 

@@ -65,9 +65,8 @@ func init() {
 	needsEscape = regexp.MustCompile(`[\\\"\x00-\x1f` + commonRange + `]`)
 	// needsQuotes tests if the string can be written as a quoteless string (includes needsEscape but without \\ and \")
 	needsQuotes = regexp.MustCompile(`^\s|^"|^'|^#|^/\*|^//|^\{|^\}|^\[|^\]|^:|^,|\s$|[\x00-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}]`)
-	// needsEscapeML tests if the string can be written as a multiline string (like needsEscape but without \n, \r, \\, \", \t)
-	var x08Or9 = `\x08` // `\x09` for the old behavior
-	needsEscapeML = regexp.MustCompile(`'''|^[\s]+$|[\x00-` + x08Or9 + `\x0b\x0c\x0e-\x1f` + commonRange + `]`)
+	// needsEscapeML tests if the string can be written as a multiline string (like needsEscape but without \n, \\, \", \t)
+	needsEscapeML = regexp.MustCompile(`'''|^[\s]+$|[\x00-\x08\x0b-\x1f` + commonRange + `]`)
 	// starts with a keyword and optionally is followed by a comment
 	startsWithKeyword = regexp.MustCompile(`^(true|false|null)\s*((,|\]|\}|#|//|/\*).*)?$`)
 	needsEscapeName = regexp.MustCompile(`[,\{\[\}\]\s:#"']|//|/\*`)
@@ -126,9 +125,7 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool) 
 }
 
 func (e *hjsonEncoder) mlString(value string, separator string) {
-	// wrap the string into the ''' (multiline) format
-
-	a := strings.Split(strings.Replace(value, "\r", "", -1), "\n")
+	a := strings.Split(value, "\n")
 
 	if len(a) == 1 {
 		// The string contains only a single line. We still use the multiline
@@ -213,7 +210,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			e.WriteString("null")
 			return nil
 		}
-		return e.str(value.Elem(),noIndent,separator,isRootObject)
+		return e.str(value.Elem(), noIndent, separator, isRootObject)
 	}
 
 	if value.Type().Implements(marshaler) {

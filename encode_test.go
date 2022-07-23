@@ -313,3 +313,48 @@ func TestQuoteAmbiguousStrings(t *testing.T) {
 		t.Error("Encode with QuoteAmbiguousStrings false, comparison:\n", string(buf), "\n", string(facit))
 	}
 }
+
+func marshalUnmarshal(t *testing.T, input string) {
+	buf, err := Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var resultPlain string
+	err = Unmarshal(buf, &resultPlain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resultPlain != input {
+		t.Fatalf("Expected: '%v'  Got: '%v'\n", []byte(input), []byte(resultPlain))
+	}
+
+	type t_obj struct {
+		F string
+	}
+	obj := t_obj{
+		F: input,
+	}
+	buf, err = Marshal(obj)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]interface{}
+	err = Unmarshal(buf, &out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out["F"] != input {
+		t.Fatalf("Expected: '%v'  Got: '%v'\n", []byte(input), []byte(out["F"].(string)))
+	}
+}
+
+func TestMarshalUnmarshal(t *testing.T) {
+	marshalUnmarshal(t, "0\r'")
+	marshalUnmarshal(t, "0\r")
+	marshalUnmarshal(t, "0\n'")
+	marshalUnmarshal(t, "0\n")
+	marshalUnmarshal(t, "\t0\na\tb\t")
+	marshalUnmarshal(t, "\t0\n\tab")
+	marshalUnmarshal(t, "0\r\n'")
+	marshalUnmarshal(t, "0\r\n")
+}

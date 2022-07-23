@@ -5,6 +5,30 @@ import (
 	"testing"
 )
 
+func marshalUnmarshalExpected(
+	t *testing.T,
+	expectedHjson string,
+	expectedDst,
+	src,
+	dst interface{},
+) {
+	buf, err := Marshal(src)
+	if err != nil {
+		t.Error(err)
+	}
+	if string(buf) != expectedHjson {
+		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expectedHjson, string(buf))
+	}
+
+	err = Unmarshal(buf, dst)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(expectedDst, dst) {
+		t.Errorf("Expected:\n%#v\nGot:\n%#v\n\n", expectedDst, dst)
+	}
+}
+
 type TestStruct struct {
 	A int
 	B uint
@@ -124,6 +148,59 @@ func checkMissing(t *testing.T, m map[string]interface{}, key string) {
 	}
 }
 
+func TestEmptyMapsAndSlices(t *testing.T) {
+	type S2 struct {
+		S2Field int
+	}
+
+	type S1 struct {
+		MapNil        map[string]interface{}
+		MapEmpty      map[string]interface{}
+		IntSliceNil   []int
+		IntSliceEmpty []int
+		S2Pointer     *S2
+	}
+	ts := S1{
+		MapEmpty:      map[string]interface{}{},
+		IntSliceEmpty: []int{},
+	}
+
+	ts2 := map[string]interface{}{
+		"MapNil":        map[string]interface{}{},
+		"MapEmpty":      map[string]interface{}{},
+		"IntSliceNil":   []interface{}{},
+		"IntSliceEmpty": []interface{}{},
+		"S2Pointer":     nil,
+	}
+
+	ds2 := map[string]interface{}{}
+
+	marshalUnmarshalExpected(t, `{
+  MapNil: {}
+  MapEmpty: {}
+  IntSliceNil: []
+  IntSliceEmpty: []
+  S2Pointer: null
+}`, &ts2, &ts, &ds2)
+
+	ts3 := map[string]interface{}{
+		"MapNil":        ts.MapNil,
+		"MapEmpty":      ts.MapEmpty,
+		"IntSliceNil":   ts.IntSliceNil,
+		"IntSliceEmpty": ts.IntSliceEmpty,
+		"S2Pointer":     ts.S2Pointer,
+	}
+	ds3 := map[string]interface{}{}
+
+	marshalUnmarshalExpected(t, `{
+  IntSliceEmpty: []
+  IntSliceNil: []
+  MapEmpty: {}
+  MapNil: {}
+  S2Pointer: null
+}`, &ts2, &ts3, &ds3)
+}
+
 type TestMarshalStruct struct {
 	TestStruct
 }
@@ -151,9 +228,9 @@ func TestEncodeMarshal(t *testing.T) {
 }
 
 func TestEncodeSliceOfPtrOfPtrOfString(t *testing.T) {
-	s:="1"
-	s1:=&s
-	input:=[]**string{&s1}
+	s := "1"
+	s1 := &s
+	input := []**string{&s1}
 	buf, err := Marshal(input)
 	if err != nil {
 		t.Error(err)

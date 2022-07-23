@@ -5,6 +5,32 @@ import (
 	"testing"
 )
 
+func marshalUnmarshalExpected(
+	t *testing.T,
+	expectedHjson string,
+	expectedDst,
+	src,
+	dst interface{},
+) {
+	buf, err := Marshal(src)
+	if err != nil {
+		t.Error(err)
+	}
+	if string(buf) != expectedHjson {
+		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expectedHjson, string(buf))
+	}
+
+	decOpt := DefaultDecoderOptions()
+	decOpt.DisallowUnknownFields = true
+	err = UnmarshalWithOptions(buf, dst, decOpt)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(expectedDst, dst) {
+		t.Errorf("Expected:\n%#v\nGot:\n%#v\n\n", expectedDst, dst)
+	}
+}
+
 type TestStruct struct {
 	A int
 	B uint
@@ -122,6 +148,36 @@ func checkMissing(t *testing.T, m map[string]interface{}, key string) {
 	if ok {
 		t.Error("Unexpected key", key)
 	}
+}
+
+func TestStructPointers(t *testing.T) {
+	type S2 struct {
+		S2Field int
+	}
+
+	type S1 struct {
+		MapNil        map[string]interface{}
+		MapEmpty      map[string]interface{}
+		IntSliceNil   []int
+		IntSliceEmpty []int
+		S2Pointer     *S2
+	}
+	ts := S1{
+		MapEmpty:      map[string]interface{}{},
+		IntSliceEmpty: []int{},
+	}
+
+	ts2 := ts
+	ts2.MapNil = map[string]interface{}{}
+	ts2.IntSliceNil = []int{}
+
+	marshalUnmarshalExpected(t, `{
+  MapNil: {}
+  MapEmpty: {}
+  IntSliceNil: []
+  IntSliceEmpty: []
+  S2Pointer: null
+}`, &ts2, &ts, &S1{})
 }
 
 type TestMarshalStruct struct {

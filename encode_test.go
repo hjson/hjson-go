@@ -20,9 +20,7 @@ func marshalUnmarshalExpected(
 		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expectedHjson, string(buf))
 	}
 
-	decOpt := DefaultDecoderOptions()
-	decOpt.DisallowUnknownFields = true
-	err = UnmarshalWithOptions(buf, dst, decOpt)
+	err = Unmarshal(buf, dst)
 	if err != nil {
 		t.Error(err)
 	}
@@ -150,7 +148,7 @@ func checkMissing(t *testing.T, m map[string]interface{}, key string) {
 	}
 }
 
-func TestStructPointers(t *testing.T) {
+func TestEmptyMapsAndSlices(t *testing.T) {
 	type S2 struct {
 		S2Field int
 	}
@@ -167,9 +165,15 @@ func TestStructPointers(t *testing.T) {
 		IntSliceEmpty: []int{},
 	}
 
-	ts2 := ts
-	ts2.MapNil = map[string]interface{}{}
-	ts2.IntSliceNil = []int{}
+	ts2 := map[string]interface{}{
+		"MapNil":        map[string]interface{}{},
+		"MapEmpty":      map[string]interface{}{},
+		"IntSliceNil":   []interface{}{},
+		"IntSliceEmpty": []interface{}{},
+		"S2Pointer":     nil,
+	}
+
+	ds2 := map[string]interface{}{}
 
 	marshalUnmarshalExpected(t, `{
   MapNil: {}
@@ -177,7 +181,24 @@ func TestStructPointers(t *testing.T) {
   IntSliceNil: []
   IntSliceEmpty: []
   S2Pointer: null
-}`, &ts2, &ts, &S1{})
+}`, &ts2, &ts, &ds2)
+
+	ts3 := map[string]interface{}{
+		"MapNil":        ts.MapNil,
+		"MapEmpty":      ts.MapEmpty,
+		"IntSliceNil":   ts.IntSliceNil,
+		"IntSliceEmpty": ts.IntSliceEmpty,
+		"S2Pointer":     ts.S2Pointer,
+	}
+	ds3 := map[string]interface{}{}
+
+	marshalUnmarshalExpected(t, `{
+  IntSliceEmpty: []
+  IntSliceNil: []
+  MapEmpty: {}
+  MapNil: {}
+  S2Pointer: null
+}`, &ts2, &ts3, &ds3)
 }
 
 type TestMarshalStruct struct {
@@ -207,9 +228,9 @@ func TestEncodeMarshal(t *testing.T) {
 }
 
 func TestEncodeSliceOfPtrOfPtrOfString(t *testing.T) {
-	s:="1"
-	s1:=&s
-	input:=[]**string{&s1}
+	s := "1"
+	s1 := &s
+	input := []**string{&s1}
 	buf, err := Marshal(input)
 	if err != nil {
 		t.Error(err)

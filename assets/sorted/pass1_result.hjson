@@ -1,8 +1,7 @@
 [
   JSON Test Pattern pass1
   {
-    "object with 1 member":
-    [
+    "object with 1 member": [
       array with 1 element
     ]
   }
@@ -13,8 +12,7 @@
   false
   null
   {
-    " s p a c e d ":
-    [
+    " s p a c e d ": [
       1
       2
       3
@@ -34,8 +32,7 @@
     array: []
     backslash: \
     comment: "// /* <!-- --"
-    compact:
-    [
+    compact: [
       1
       2
       3

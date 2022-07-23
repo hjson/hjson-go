@@ -2,8 +2,7 @@
   key1: a key in single quotes
   "key 2": a key in single quotes
   "key \"": a key in single quotes
-  text:
-  [
+  text: [
     single quoted string
     '''You need quotes	for escapes'''
     " untrimmed "

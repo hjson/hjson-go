@@ -34,10 +34,17 @@ type EncoderOptions struct {
 }
 
 // DefaultOptions returns the default encoding options.
+// Eol = "\n"
+// BracesSameLine = true
+// EmitRootBraces = true
+// QuoteAlways = false
+// QuoteAmbiguousStrings = true
+// IndentBy = "  "
+// BaseIndentation = ""
 func DefaultOptions() EncoderOptions {
 	return EncoderOptions{
 		Eol:                   "\n",
-		BracesSameLine:        false,
+		BracesSameLine:        true,
 		EmitRootBraces:        true,
 		QuoteAlways:           false,
 		QuoteAmbiguousStrings: true,

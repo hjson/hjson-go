@@ -1,6 +1,5 @@
 {
-  native:
-  [
+  native: [
     true
     true
     false
@@ -8,8 +7,7 @@
     null
     null
   ]
-  numbers:
-  [
+  numbers: [
     0
     0
     0
@@ -22,8 +20,7 @@
     12.345
     -12.345
   ]
-  strings:
-  [
+  strings: [
     x 0
     .0
     00

@@ -3,6 +3,7 @@ package hjson
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net"
 	"reflect"
 	"testing"
@@ -489,6 +490,29 @@ func TestEncodeMarshalText(t *testing.T) {
 	if !reflect.DeepEqual(buf, []byte(`127.0.0.1`)) {
 		t.Errorf("Expected '127.0.0.1', got '%s'", string(buf))
 	}
+}
+
+type marshallerStruct struct {
+	A int
+}
+
+func (s marshallerStruct) MarshalText() ([]byte, error) {
+	return []byte(fmt.Sprintf("key%d", s.A)), nil
+}
+
+func TestEncodeMarshalTextMapKey(t *testing.T) {
+	input := map[marshallerStruct]int{
+		marshallerStruct{1}: 11,
+		marshallerStruct{2}: 22,
+	}
+	expectedUnmarshal := map[string]interface{}{
+		"key1": 11.0,
+		"key2": 22.0,
+	}
+	marshalUnmarshalExpected(t, `{
+  key1: 11
+  key2: 22
+}`, &expectedUnmarshal, &input, &map[string]interface{}{})
 }
 
 type TestMarshalInt int

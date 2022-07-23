@@ -339,12 +339,23 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 
 	case reflect.Map:
 		var fis []fieldInfo
+		useMarshalText := value.Type().Key().Implements(marshalerText)
 		keys := value.MapKeys()
 		sort.Sort(sortAlpha(keys))
 		for _, key := range keys {
+			var name string
+			if useMarshalText {
+				keyBytes, err := key.Interface().(encoding.TextMarshaler).MarshalText()
+				if err != nil {
+					return err
+				}
+				name = string(keyBytes)
+			} else {
+				name = fmt.Sprintf("%v", key)
+			}
 			fis = append(fis, fieldInfo{
 				field: value.MapIndex(key),
-				name:  fmt.Sprintf("%v", key),
+				name:  name,
 			})
 		}
 		return e.writeFields(fis, noIndent, separator, isRootObject)

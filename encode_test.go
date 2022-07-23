@@ -24,7 +24,9 @@ func marshalUnmarshalExpected(
 		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expectedHjson, string(buf))
 	}
 
-	err = Unmarshal(buf, dst)
+	decOpt := DefaultDecoderOptions()
+	decOpt.DisallowUnknownFields = true
+	err = UnmarshalWithOptions(buf, dst, decOpt)
 	if err != nil {
 		t.Error(err)
 	}
@@ -143,45 +145,6 @@ func TestEncodeStruct(t *testing.T) {
 	checkMissing(t, output, "Z")
 }
 
-func TestAnonymousStruct(t *testing.T) {
-	type TestStruct2 struct {
-		TestStruct
-		Q int
-	}
-
-	ts2 := TestStruct2{
-		Q: 4,
-	}
-	ts2.D = "ddd"
-
-	buf, err := Marshal(ts2)
-	if err != nil {
-		t.Error(err)
-	}
-	expected := `{
-  A: 0
-  B: 0
-  S: ""
-  D: ddd
-  -: ""
-  Q: 4
-}`
-	if string(buf) != expected {
-		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expected, string(buf))
-	}
-
-	var ts3 TestStruct2
-	decOpt := DefaultDecoderOptions()
-	decOpt.DisallowUnknownFields = true
-	err = UnmarshalWithOptions(buf, &ts3, decOpt)
-	if err != nil {
-		t.Error(err)
-	}
-	if !reflect.DeepEqual(ts3, ts2) {
-		t.Errorf("Expected:\n%v\nGot:\n%v\n\n", ts2, ts3)
-	}
-}
-
 func checkKeyValue(t *testing.T, m map[string]interface{}, key string, exp interface{}) {
 	obs, ok := m[key]
 	if !ok {
@@ -199,7 +162,108 @@ func checkMissing(t *testing.T, m map[string]interface{}, key string) {
 	}
 }
 
-func TestEmptyMapsAndSlices(t *testing.T) {
+func TestAnonymousStruct1(t *testing.T) {
+	type TestStruct2 struct {
+		TestStruct
+		Q int
+	}
+
+	ts2 := TestStruct2{
+		Q: 4,
+	}
+	ts2.D = "ddd"
+
+	ts3 := ts2
+
+	marshalUnmarshalExpected(t, `{
+  A: 0
+  B: 0
+  S: ""
+  D: ddd
+  -: ""
+  Q: 4
+}`, &ts3, &ts2, &TestStruct2{})
+}
+
+func TestAnonymousStruct2(t *testing.T) {
+	type TestStruct2 struct {
+		TestStruct `json:"subObj,omitempty"`
+		Q          int
+	}
+
+	ts2 := TestStruct2{
+		Q: 4,
+	}
+	ts2.D = "ddd"
+
+	marshalUnmarshalExpected(t, `{
+  subObj:
+  {
+    A: 0
+    B: 0
+    S: ""
+    D: ddd
+    -: ""
+  }
+  Q: 4
+}`, &ts2, &ts2, &TestStruct2{})
+}
+
+func TestAnonymousStruct3(t *testing.T) {
+	type S1 struct {
+		someField string `json:"smFil"`
+		Afi       int
+		Bfi       int `json:"BFI"`
+		Cfi       int
+		Dfi       int `json:"Dfi"`
+	}
+
+	type S2 struct {
+		OtherField int `json:",omitempty"`
+		Afi        int
+		Bfi        int
+		Dfi        int
+	}
+
+	type s4 struct {
+		YesIncluded bool
+		OmittedBool bool `json:",omitempty"`
+	}
+
+	type S3 struct {
+		S1
+		S2
+		s4
+		Cfi int `json:"-"`
+	}
+
+	ts := S3{
+		Cfi: 4,
+	}
+	ts.S1.Afi = 3
+	ts.S2.Afi = 5
+	ts.S1.Bfi = 7
+	ts.S2.Bfi = 8
+	ts.S1.Cfi = 9
+	ts.S1.Dfi = 11
+	ts.S2.Dfi = 22
+
+	ts2 := ts
+	ts2.S1.Afi = 0
+	ts2.S2.Afi = 0
+	ts2.S2.Dfi = 0
+	ts2.Cfi = 0
+
+	marshalUnmarshalExpected(t, `{
+  BFI: 7
+  Cfi: 9
+  Dfi: 11
+  Bfi: 8
+  YesIncluded: false
+}`, &ts2, &ts, &S3{})
+}
+
+func TestStructPointers(t *testing.T) {
 	type S2 struct {
 		S2Field int
 	}
@@ -216,15 +280,9 @@ func TestEmptyMapsAndSlices(t *testing.T) {
 		IntSliceEmpty: []int{},
 	}
 
-	ts2 := map[string]interface{}{
-		"MapNil":        map[string]interface{}{},
-		"MapEmpty":      map[string]interface{}{},
-		"IntSliceNil":   []interface{}{},
-		"IntSliceEmpty": []interface{}{},
-		"S2Pointer":     nil,
-	}
-
-	ds2 := map[string]interface{}{}
+	ts2 := ts
+	ts2.MapNil = map[string]interface{}{}
+	ts2.IntSliceNil = []int{}
 
 	marshalUnmarshalExpected(t, `{
   MapNil: {}
@@ -232,24 +290,7 @@ func TestEmptyMapsAndSlices(t *testing.T) {
   IntSliceNil: []
   IntSliceEmpty: []
   S2Pointer: null
-}`, &ts2, &ts, &ds2)
-
-	ts3 := map[string]interface{}{
-		"MapNil":        ts.MapNil,
-		"MapEmpty":      ts.MapEmpty,
-		"IntSliceNil":   ts.IntSliceNil,
-		"IntSliceEmpty": ts.IntSliceEmpty,
-		"S2Pointer":     ts.S2Pointer,
-	}
-	ds3 := map[string]interface{}{}
-
-	marshalUnmarshalExpected(t, `{
-  IntSliceEmpty: []
-  IntSliceNil: []
-  MapEmpty: {}
-  MapNil: {}
-  S2Pointer: null
-}`, &ts2, &ts3, &ds3)
+}`, &ts2, &ts, &S1{})
 }
 
 type TestMarshalStruct struct {

@@ -263,6 +263,59 @@ func TestAnonymousStruct3(t *testing.T) {
 }`, &ts2, &ts, &S3{})
 }
 
+func TestEmptyMapsAndSlices(t *testing.T) {
+	type S2 struct {
+		S2Field int
+	}
+
+	type S1 struct {
+		MapNil        map[string]interface{}
+		MapEmpty      map[string]interface{}
+		IntSliceNil   []int
+		IntSliceEmpty []int
+		S2Pointer     *S2
+	}
+	ts := S1{
+		MapEmpty:      map[string]interface{}{},
+		IntSliceEmpty: []int{},
+	}
+
+	ts2 := map[string]interface{}{
+		"MapNil":        map[string]interface{}{},
+		"MapEmpty":      map[string]interface{}{},
+		"IntSliceNil":   []interface{}{},
+		"IntSliceEmpty": []interface{}{},
+		"S2Pointer":     nil,
+	}
+
+	ds2 := map[string]interface{}{}
+
+	marshalUnmarshalExpected(t, `{
+  MapNil: {}
+  MapEmpty: {}
+  IntSliceNil: []
+  IntSliceEmpty: []
+  S2Pointer: null
+}`, &ts2, &ts, &ds2)
+
+	ts3 := map[string]interface{}{
+		"MapNil":        ts.MapNil,
+		"MapEmpty":      ts.MapEmpty,
+		"IntSliceNil":   ts.IntSliceNil,
+		"IntSliceEmpty": ts.IntSliceEmpty,
+		"S2Pointer":     ts.S2Pointer,
+	}
+	ds3 := map[string]interface{}{}
+
+	marshalUnmarshalExpected(t, `{
+  IntSliceEmpty: []
+  IntSliceNil: []
+  MapEmpty: {}
+  MapNil: {}
+  S2Pointer: null
+}`, &ts2, &ts3, &ds3)
+}
+
 func TestStructPointers(t *testing.T) {
 	type S2 struct {
 		S2Field int

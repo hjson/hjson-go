@@ -435,15 +435,17 @@ func Marshal(v interface{}) ([]byte, error) {
 // String values encode as Hjson strings (quoteless, multiline or
 // JSON).
 //
-// Array and slice values encode as arrays, surrounded by [].
+// Array and slice values encode as arrays, surrounded by []. Unlike
+// json.Marshal, hjson.Marshal will encode a nil-slice as [] instead of null.
 //
 // Map values encode as objects, surrounded by {}. The map's key type must be
 // possible to print to a string. The map keys are sorted alphanumerically and
-// used as object keys.
+// used as object keys. Unlike json.Marshal, hjson.Marshal will encode a
+// nil-map as {} instead of null.
 //
 // Struct values also encode as objects, surrounded by {}. Only the exported
-// fields are encoded to Hjson. Anonymous structs inside a struct are encoded
-// as child objects using the struct name as key.
+// fields are encoded to Hjson. The fields will appear in the same order as in
+// the struct.
 //
 // The encoding of each struct field can be customized by the format string
 // stored under the "json" key in the struct field's tag.
@@ -492,6 +494,27 @@ func Marshal(v interface{}) ([]byte, error) {
 //   // Field appears in Hjson as key "myName" preceded by a line just
 //   // containing `# A comment.`
 //   Field int `json:"myName" comment:"A comment."`
+//
+// Anonymous struct fields are usually marshaled as if their inner exported fields
+// were fields in the outer struct, subject to the usual Go visibility rules amended
+// as described in the next paragraph.
+// An anonymous struct field with a name given in its JSON tag is treated as
+// having that name, rather than being anonymous.
+// An anonymous struct field of interface type is treated the same as having
+// that type as its name, rather than being anonymous.
+//
+// The Go visibility rules for struct fields are amended for JSON when
+// deciding which field to marshal or unmarshal. If there are
+// multiple fields at the same level, and that level is the least
+// nested (and would therefore be the nesting level selected by the
+// usual Go rules), the following extra rules apply:
+//
+// 1) Of those fields, if any are JSON-tagged, only tagged fields are considered,
+// even if there are multiple untagged fields that would otherwise conflict.
+//
+// 2) If there is exactly one field (tagged or not according to the first rule), that is selected.
+//
+// 3) Otherwise there are multiple fields, and all are ignored; no error occurs.
 //
 // Pointer values encode as the value pointed to.
 // A nil pointer encodes as the null JSON value.

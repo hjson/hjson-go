@@ -198,8 +198,7 @@ func TestAnonymousStruct2(t *testing.T) {
 	ts2.D = "ddd"
 
 	marshalUnmarshalExpected(t, `{
-  subObj:
-  {
+  subObj: {
     A: 0
     B: 0
     S: ""
@@ -281,21 +280,17 @@ func TestAnonymousStruct4(t *testing.T) {
 
 	marshalUnmarshalExpected(t, `{
   S2Field: 0
-  Anon:
-  {
+  Anon: {
     S2Field: 0
     ReallyAnonymous: 0
   }
-  S2a:
-  {
+  S2a: {
     S2Field: 0
   }
-  S2b:
-  {
+  S2b: {
     S2Field: 0
   }
-  S2c:
-  {
+  S2c: {
     S2Field: 0
   }
 }`, &S1{}, &S1{}, &S1{})
@@ -404,13 +399,11 @@ func (s TestMarshalStruct) MarshalJSON() ([]byte, error) {
 func TestEncodeMarshalJSON(t *testing.T) {
 	input := TestMarshalStruct{}
 	expected1 := `{
-  arr:
-  [
+  arr: [
     foo
     bar
   ]
-  map:
-  {
+  map: {
     key1: 1
     key2: B
   }
@@ -449,21 +442,17 @@ func TestEncodeMarshalJSON(t *testing.T) {
 	}
 	expected2 := `{
   A: FirstField
-  B:
-  {
-    arr:
-    [
+  B: {
+    arr: [
       foo
       bar
     ]
-    map:
-    {
+    map: {
       key1: 1
       key2: B
     }
   }
-  C:
-  {
+  C: {
     D: struct field
     Zero: 0
   }

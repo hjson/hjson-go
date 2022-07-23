@@ -52,9 +52,10 @@ const depthLimit = 1024
 type hjsonEncoder struct {
 	bytes.Buffer // output
 	EncoderOptions
-	indent  int
-	pDepth  uint
-	parents map[uintptr]struct{} // Starts to be filled after pDepth has reached depthLimit
+	indent          int
+	pDepth          uint
+	parents         map[uintptr]struct{} // Starts to be filled after pDepth has reached depthLimit
+	structTypeCache map[reflect.Type][]structFieldInfo
 }
 
 var JSONNumberType = reflect.TypeOf(json.Number(""))
@@ -351,7 +352,12 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 	case reflect.Struct:
 		// Struct field info is identical for all instances of the same type.
 		// Only the values on the fields can be different.
-		sfis := getStructFieldInfo(value.Type())
+		t := value.Type()
+		sfis, ok := e.structTypeCache[t]
+		if !ok {
+			sfis = getStructFieldInfo(t)
+			e.structTypeCache[t] = sfis
+		}
 
 		// Collect fields first, too see if any should be shown (considering
 		// "omitEmpty").
@@ -509,8 +515,9 @@ func Marshal(v interface{}) ([]byte, error) {
 //
 func MarshalWithOptions(v interface{}, options EncoderOptions) ([]byte, error) {
 	e := &hjsonEncoder{
-		indent:         0,
-		EncoderOptions: options,
+		indent:          0,
+		EncoderOptions:  options,
+		structTypeCache: map[reflect.Type][]structFieldInfo{},
 	}
 
 	err := e.str(reflect.ValueOf(v), true, e.BaseIndentation, true)

@@ -263,6 +263,43 @@ func TestAnonymousStruct3(t *testing.T) {
 }`, &ts2, &ts, &S3{})
 }
 
+func TestAnonymousStruct4(t *testing.T) {
+	type S2 struct {
+		S2Field int
+	}
+	type S1 struct {
+		S2
+		Anon struct {
+			S2
+			ReallyAnonymous int
+		}
+		S2a S2
+		S2b S2
+		S2c S2
+	}
+
+	marshalUnmarshalExpected(t, `{
+  S2Field: 0
+  Anon:
+  {
+    S2Field: 0
+    ReallyAnonymous: 0
+  }
+  S2a:
+  {
+    S2Field: 0
+  }
+  S2b:
+  {
+    S2Field: 0
+  }
+  S2c:
+  {
+    S2Field: 0
+  }
+}`, &S1{}, &S1{}, &S1{})
+}
+
 func TestEmptyMapsAndSlices(t *testing.T) {
 	type S2 struct {
 		S2Field int

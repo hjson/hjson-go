@@ -159,14 +159,11 @@ func TestAnonymousStruct(t *testing.T) {
 		t.Error(err)
 	}
 	expected := `{
-  TestStruct:
-  {
-    A: 0
-    B: 0
-    S: ""
-    D: ddd
-    -: ""
-  }
+  A: 0
+  B: 0
+  S: ""
+  D: ddd
+  -: ""
   Q: 4
 }`
 	if string(buf) != expected {
@@ -577,14 +574,7 @@ func TestMarshalDuplicateFields(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	expected := `{
-  rate: 3
-  rate:
-  [
-    D
-    E
-  ]
-}`
+	expected := `{}`
 	if string(buf) != expected {
 		t.Errorf("Expected:\n%s\n\nGot:\n%s\n", expected, string(buf))
 	}

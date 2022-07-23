@@ -88,7 +88,7 @@ func getStructFieldInfo(rootType reflect.Type) []structFieldInfo {
 
 				if sf.Anonymous {
 					t := sf.Type
-					if t.Kind() == reflect.Pointer {
+					if t.Kind() == reflect.Ptr {
 						t = t.Elem()
 					}
 					// If the field is not exported and not a struct.
@@ -131,7 +131,7 @@ func getStructFieldInfo(rootType reflect.Type) []structFieldInfo {
 				sfi.indexPath[len(curStruct.indexPath)] = i
 
 				ft := sf.Type
-				if ft.Name() == "" && ft.Kind() == reflect.Pointer {
+				if ft.Name() == "" && ft.Kind() == reflect.Ptr {
 					// Follow pointer.
 					ft = ft.Elem()
 				}

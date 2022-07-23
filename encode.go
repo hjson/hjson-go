@@ -361,7 +361,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			// The field might be found on the root struct or in embedded structs.
 			fv := value
 			for _, i := range sfi.indexPath {
-				if fv.Kind() == reflect.Pointer {
+				if fv.Kind() == reflect.Ptr {
 					if fv.IsNil() {
 						continue FieldLoop
 					}

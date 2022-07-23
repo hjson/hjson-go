@@ -4,7 +4,7 @@
 [![Go Pkg](https://img.shields.io/github/release/hjson/hjson-go.svg?style=flat-square&label=go-pkg)](https://github.com/hjson/hjson-go/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hjson/hjson-go?style=flat-square)](https://goreportcard.com/report/github.com/hjson/hjson-go)
 [![coverage](https://img.shields.io/badge/coverage-ok-brightgreen.svg?style=flat-square)](http://gocover.io/github.com/hjson/hjson-go/)
-[![godoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](https://godoc.org/github.com/hjson/hjson-go)
+[![godoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](https://godoc.org/github.com/hjson/hjson-go/v4)
 
 ![Hjson Intro](https://hjson.github.io/hjson1.gif)
 
@@ -33,14 +33,13 @@ The Go implementation of Hjson is based on [hjson-js](https://github.com/hjson/h
 
 Make sure you have a working Go environment. See the [install instructions](http://golang.org/doc/install.html).
 
-1. Get the sources
-```bash
-$ go get -u github.com/hjson/hjson-go
+- In order to use Hjson from your own Go source code, just add an import line like the one here below. Before building your project, run `go mod tidy` in order to download the Hjson source files. The suffix `/v4` is required in the import path, unless you specifically want to use an older major version.
+```go
+import "github.com/hjson/hjson-go/v4"
 ```
-2. Build the **hjson-cli** commandline tool (optional)
+- If you instead want to use the **hjson-cli** command line tool, run the command here below in your terminal. The executable will be installed into your `go/bin` folder, make sure that folder is included in your `PATH` environment variable.
 ```bash
-$ cd $(go env GOPATH)/src/github.com/hjson/hjson-go/hjson-cli && go install
-$ hjson-cli --version
+$ go install github.com/hjson/hjson-go/hjson-cli@latest
 ```
 # Usage as command line tool
 ```
@@ -76,7 +75,7 @@ Sample:
 package main
 
 import (
-  "github.com/hjson/hjson-go"
+  "github.com/hjson/hjson-go/v4"
   "fmt"
 )
 
@@ -133,7 +132,7 @@ If you prefer, you can also unmarshal to Go objects by converting to JSON:
 package main
 
 import (
-  "github.com/hjson/hjson-go"
+  "github.com/hjson/hjson-go/v4"
   "encoding/json"
   "fmt"
 )
@@ -174,7 +173,7 @@ func main() {
 
 # API
 
-[![godoc](https://godoc.org/github.com/hjson/hjson-go?status.svg)](http://godoc.org/github.com/hjson/hjson-go)
+[![godoc](https://godoc.org/github.com/hjson/hjson-go/v4?status.svg)](http://godoc.org/github.com/hjson/hjson-go/v4)
 
 # History
 

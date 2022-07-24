@@ -529,3 +529,42 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 
 	return err
 }
+
+func (p *hjsonParser) rootValueWithTrail() (interface{}, error) {
+	// Braces for the root object are optional
+
+	p.white()
+	switch p.ch {
+	case '{':
+		return p.readObject(false)
+	case '[':
+		return p.readArray()
+	}
+
+	// assume we have a root object without braces
+	res, err := p.readObject(true)
+	if err == nil {
+		return res, nil
+	}
+
+	// test if we are dealing with a single JSON value instead (true/false/null/num/"")
+	p.resetAt()
+	if res2, err2 := p.readValue(); err2 == nil {
+		return res2, nil
+	}
+	return res, err
+}
+
+// UnmarshalPartially try to partially parse the Hjson-encoded data,
+// return the value and the start position of unprocessed parts.
+func UnmarshalPartially(data []byte) (v interface{}, next int, err error) {
+	parser := &hjsonParser{data, 0, ' '}
+	parser.resetAt()
+
+	v, err = parser.rootValueWithTrail()
+	if err != nil {
+		return
+	}
+	next = parser.at + 1
+	return
+}

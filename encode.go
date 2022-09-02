@@ -373,7 +373,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		t := value.Type()
 		sfis, ok := e.structTypeCache[t]
 		if !ok {
-			sfis = getStructFieldInfo(t)
+			sfis = getStructFieldInfoSlice(t)
 			e.structTypeCache[t] = sfis
 		}
 

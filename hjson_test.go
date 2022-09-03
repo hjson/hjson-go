@@ -2,6 +2,7 @@ package hjson
 
 import (
 	"bytes"
+	"encoding"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -752,6 +753,46 @@ FieLd: 3
 	if err != nil {
 		t.Error(err)
 	} else if sA.FieLd != "3" {
+		t.Errorf("Unexpected struct values:\n%#v\n", sA)
+	}
+}
+
+type itsJ struct {
+	anon string
+}
+
+func (c *itsJ) UnmarshalText(text []byte) error {
+	c.anon = string(text)
+	return nil
+}
+
+type itsK *itsJ
+
+func TestUnmarshalText(t *testing.T) {
+	type tsA struct {
+		A itsJ
+		B encoding.TextUnmarshaler
+		C itsK
+		D *itsJ
+	}
+
+	// Comment out field 'c' because json.Unmarshal() won't accept itsK as a
+	// TextUnmarshaler.
+	textA := []byte(`
+a: 3
+b: 4
+#c: 5
+d: 6
+`)
+	sA := tsA{
+		B: &itsJ{},
+		C: &itsJ{},
+		D: &itsJ{},
+	}
+	err := Unmarshal(textA, &sA)
+	if err != nil {
+		t.Error(err)
+	} else if sA.A.anon != "3" || sA.B.(*itsJ).anon != "4" || sA.D.anon != "6" {
 		t.Errorf("Unexpected struct values:\n%#v\n", sA)
 	}
 }

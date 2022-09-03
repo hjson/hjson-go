@@ -419,8 +419,13 @@ func (p *hjsonParser) readObject(withoutBraces bool, dest reflect.Value) (value 
 	destIsMap := false
 	var mapDefaultDest reflect.Value
 	if dest.IsValid() {
-		for a := 0; a < maxPointerDepth && dest.Kind() == reflect.Ptr; a++ {
+		for a := 0; a < maxPointerDepth && (dest.Kind() == reflect.Ptr ||
+			dest.Kind() == reflect.Interface); a++ {
+
 			if dest.IsZero() {
+				if dest.Kind() == reflect.Interface {
+					break
+				}
 				dest = reflect.New(dest.Type().Elem())
 			}
 			dest = dest.Elem()

@@ -675,3 +675,24 @@ two: {
 		}
 	}
 }
+
+func TestFieldCase(t *testing.T) {
+	type tsA struct {
+		Field int
+		FiEld int
+		FieLd string
+		FielD int
+	}
+
+	textA := []byte(`
+FieLd: 3
+`)
+
+	var sA tsA
+	err := Unmarshal(textA, &sA)
+	if err != nil {
+		t.Error(err)
+	} else if sA.FieLd != "3" {
+		t.Errorf("Unexpected struct values:\n%#v\n", sA)
+	}
+}

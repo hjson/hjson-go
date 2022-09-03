@@ -380,23 +380,14 @@ func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value inter
 
 	// All elements in any existing slice/array will be removed, so we only care
 	// about the type of the new elements that will be created.
-	if t != nil {
-		for a := 0; a < maxPointerDepth; a++ {
-			if t == nil {
-				break
-			}
-			switch t.Kind() {
-			case reflect.Ptr, reflect.Slice, reflect.Array:
-				t = t.Elem()
-			default:
-				break
-			}
-		}
+	var newDestType reflect.Type
+	if t != nil && (t.Kind() == reflect.Slice || t.Kind() == reflect.Array) {
+		newDestType = t.Elem()
 	}
 
 	for p.ch > 0 {
 		var val interface{}
-		if val, err = p.readValue(reflect.Value{}, t); err != nil {
+		if val, err = p.readValue(reflect.Value{}, newDestType); err != nil {
 			return nil, err
 		}
 		array = append(array, val)

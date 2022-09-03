@@ -297,6 +297,17 @@ func (p *hjsonParser) readTfnns(dest reflect.Value) (interface{}, error) {
 	value := new(bytes.Buffer)
 	value.WriteByte(p.ch)
 
+	for a := 0; a < maxPointerDepth && (dest.Kind() == reflect.Ptr ||
+		dest.Kind() == reflect.Interface); a++ {
+
+		if dest.IsZero() {
+			if dest.Kind() == reflect.Interface {
+				break
+			}
+		}
+		dest = dest.Elem()
+	}
+
 	for {
 		p.next()
 		isEol := p.ch == '\r' || p.ch == '\n' || p.ch == 0
@@ -352,6 +363,17 @@ func (p *hjsonParser) readArray(dest reflect.Value) (value interface{}, err erro
 	if p.ch == ']' {
 		p.next()
 		return array, nil // empty array
+	}
+
+	for a := 0; a < maxPointerDepth && (dest.Kind() == reflect.Ptr ||
+		dest.Kind() == reflect.Interface); a++ {
+
+		if dest.IsZero() {
+			if dest.Kind() == reflect.Interface {
+				break
+			}
+		}
+		dest = dest.Elem()
 	}
 
 	// All elements in any existing slice/array will be removed, so we only care

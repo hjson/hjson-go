@@ -331,8 +331,8 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 			p.ch == '/' && (p.peek(0) == '/' || p.peek(0) == '*') {
 
 			// Do not output anything else than a string if our destination is a string.
-			if t == nil || (t.Kind() != reflect.String && !t.Implements(unmarshalerText) &&
-				!reflect.PointerTo(t).Implements(unmarshalerText)) {
+			if t == nil || !(t.Kind() == reflect.String || t.Implements(unmarshalerText) ||
+				reflect.New(t).Type().Implements(unmarshalerText)) {
 
 				switch chf {
 				case 'f':

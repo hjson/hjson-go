@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const maxPointerDepth = 5
+const maxPointerDepth = 512
 
 // DecoderOptions defines options for decoding Hjson.
 type DecoderOptions struct {

@@ -103,7 +103,7 @@ var escapee = map[byte]byte{
 func unravelDestination(dest reflect.Value, t reflect.Type) (reflect.Value, reflect.Type) {
 	if dest.IsValid() {
 		for a := 0; a < maxPointerDepth && (dest.Kind() == reflect.Ptr ||
-			dest.Kind() == reflect.Interface) && !dest.IsZero(); a++ {
+			dest.Kind() == reflect.Interface) && !dest.IsNil(); a++ {
 
 			dest = dest.Elem()
 		}
@@ -474,10 +474,10 @@ func (p *hjsonParser) readObject(
 				newDest, newDestType = dest, t
 				for _, i := range sfi.indexPath {
 					if newDest.IsValid() {
-						if newDest.IsZero() {
+						if newDest.Kind() != reflect.Struct {
 							// We are only keeping track of newDest in case it contains a
-							// tree that we will partially update. But here we have found
-							// a zero-value, so we can ignore newDest and just look at
+							// tree that we will partially update. But here we have not found
+							// any tree, so we can ignore newDest and just look at
 							// newDestType instead.
 							newDest = reflect.Value{}
 						} else {
@@ -574,7 +574,6 @@ func (p *hjsonParser) checkTrailing(v interface{}, err error) (interface{}, erro
 // result in the value pointed to by v.
 //
 // See UnmarshalWithOptions.
-//
 func Unmarshal(data []byte, v interface{}) error {
 	return UnmarshalWithOptions(data, v, DefaultDecoderOptions())
 }

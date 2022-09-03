@@ -468,7 +468,7 @@ type itsA struct {
 	One   *int
 	Two   int
 	Three bool
-	Four  string
+	Four  *string
 	Five  InterfaceA
 }
 
@@ -477,12 +477,12 @@ func (c *itsB) FuncA() string {
 }
 
 func (c *itsA) FuncA() string {
-	return c.Four
+	return *c.Four
 }
 
 func TestStructInterface(t *testing.T) {
 	textA := []byte(`
-four: four
+four: 4
 three: true
 five: {
   sub1: 1
@@ -493,7 +493,7 @@ one: null
 `)
 
 	textB := []byte(`
-four: five
+four: 5
 five: {
 	sub2: 3
 }
@@ -511,13 +511,14 @@ five: {
 	if err != nil {
 		t.Error(err)
 	} else {
+		five := "5"
 		// Note that only the field Sub2 was replaced by textB in the tsB struct.
 		// The field Sub1 still has the value that was set by textA.
 		if !reflect.DeepEqual(sA, itsA{
 			One:   nil,
 			Two:   2,
 			Three: true,
-			Four:  "five",
+			Four:  &five,
 			Five: &itsB{
 				Sub1: "1",
 				Sub2: "3",
@@ -546,6 +547,20 @@ func TestStringInterface(t *testing.T) {
 	} else {
 		if string(sA) != "3" {
 			t.Errorf("Unexpected string value:\n%v\n", sA)
+		}
+	}
+}
+
+func TestStringPointer(t *testing.T) {
+	textA := []byte(`3`)
+
+	var psA *itsC
+	err := Unmarshal(textA, &psA)
+	if err != nil {
+		t.Error(err)
+	} else {
+		if string(*psA) != "3" {
+			t.Errorf("Unexpected string value:\n%v\n", *psA)
 		}
 	}
 }

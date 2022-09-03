@@ -301,11 +301,17 @@ func (p *hjsonParser) readTfnns(dest reflect.Value) (interface{}, error) {
 		dest.Kind() == reflect.Interface); a++ {
 
 		if dest.IsZero() {
-			if dest.Kind() == reflect.Interface {
-				break
-			}
+			break
 		}
 		dest = dest.Elem()
+	}
+
+	var t reflect.Type
+	if dest.IsValid() {
+		t = dest.Type()
+		for a := 0; a < maxPointerDepth && t != nil && t.Kind() == reflect.Ptr; a++ {
+			t = t.Elem()
+		}
 	}
 
 	for {
@@ -317,7 +323,7 @@ func (p *hjsonParser) readTfnns(dest reflect.Value) (interface{}, error) {
 			p.ch == '/' && (p.peek(0) == '/' || p.peek(0) == '*') {
 
 			// Do not output anything else than a string if our destination is a string.
-			if !dest.IsValid() || dest.Kind() != reflect.String {
+			if t == nil || t.Kind() != reflect.String {
 				switch chf {
 				case 'f':
 					if strings.TrimSpace(value.String()) == "false" {

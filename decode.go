@@ -443,33 +443,19 @@ func (p *hjsonParser) readObject(withoutBraces bool, dest reflect.Value) (value 
 			}
 
 		case reflect.Map:
-			validKeyType := false
+			destIsMap = true
 
-			// Map key must either have string kind, have an integer kind,
-			// or be an encoding.TextUnmarshaler.
-			switch t.Key().Kind() {
-			case reflect.String,
-				reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-				reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-				reflect.Uintptr:
-
-				validKeyType = true
-
-			default:
-				if reflect.PointerTo(t.Key()).Implements(marshalerText) {
-					validKeyType = true
-				}
-			}
-
-			if validKeyType {
-				destIsMap = true
-
+			t = t.Elem()
+			for a := 0; a < maxPointerDepth && t.Kind() == reflect.Ptr; a++ {
 				t = t.Elem()
-				for a := 0; a < maxPointerDepth && t.Kind() == reflect.Ptr; a++ {
-					t = t.Elem()
-				}
-				mapDefaultDest = reflect.New(t).Elem()
 			}
+
+			// For any key that we find in our loop here below, the new value fully
+			// replaces any old value. So no need for us to dig down into a tree.
+			// (This is because we are decoding into a map. If we were decoding into
+			// a struct we would need to dig down into a tree, to match the behavior
+			// of Golang's JSON decoder.)
+			mapDefaultDest = reflect.New(t).Elem()
 		}
 	}
 
@@ -486,13 +472,7 @@ func (p *hjsonParser) readObject(withoutBraces bool, dest reflect.Value) (value 
 
 		var newDest reflect.Value
 		if destIsMap {
-			vk := reflect.ValueOf(key)
-			if vk.Type().AssignableTo(dest.Type().Key()) {
-				newDest = dest.MapIndex(reflect.ValueOf(key))
-			}
-			if !newDest.IsValid() {
-				newDest = mapDefaultDest
-			}
+			newDest = mapDefaultDest
 		} else if stm != nil {
 			sfi, ok := stm.getField(key)
 			if ok {

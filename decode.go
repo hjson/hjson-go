@@ -443,7 +443,25 @@ func (p *hjsonParser) readObject(withoutBraces bool, dest reflect.Value) (value 
 			}
 
 		case reflect.Map:
-			if t.Key().Kind() == reflect.String {
+			validKeyType := false
+
+			// Map key must either have string kind, have an integer kind,
+			// or be an encoding.TextUnmarshaler.
+			switch t.Key().Kind() {
+			case reflect.String,
+				reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+				reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+				reflect.Uintptr:
+
+				validKeyType = true
+
+			default:
+				if reflect.PointerTo(t.Key()).Implements(marshalerText) {
+					validKeyType = true
+				}
+			}
+
+			if validKeyType {
 				destIsMap = true
 
 				t = t.Elem()

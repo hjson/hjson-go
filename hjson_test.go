@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -267,5 +268,86 @@ func TestJSONNumber(t *testing.T) {
 	_, err = n.Int64()
 	if err == nil {
 		t.Errorf("Did not expect %v to be parsable to int64", n)
+	}
+}
+
+func TestMapKeys(t *testing.T) {
+	sampleText := []byte(`
+4: four
+3: true
+2: 2
+1: null
+`)
+
+	{
+		var v map[string]interface{}
+		err := Unmarshal(sampleText, &v)
+		if err != nil {
+			t.Error(err)
+		} else {
+			if v["3"] != true {
+				t.Errorf("Expected boolean, got %v", reflect.TypeOf(v["3"]))
+			}
+			if v["2"] != 2.0 {
+				t.Errorf("Expected float64, got %v", reflect.TypeOf(v["2"]))
+			}
+			if v["1"] != nil {
+				t.Errorf("Expected nil-interface, got %v", reflect.TypeOf(v["1"]))
+			}
+		}
+	}
+
+	{
+		var v map[int]interface{}
+		err := Unmarshal(sampleText, &v)
+		if err != nil {
+			t.Error(err)
+		} else {
+			if v[3] != true {
+				t.Errorf("Expected boolean, got %v", reflect.TypeOf(v[3]))
+			}
+			if v[2] != 2.0 {
+				t.Errorf("Expected float64, got %v", reflect.TypeOf(v[2]))
+			}
+			if v[1] != nil {
+				t.Errorf("Expected nil-interface, got %v", reflect.TypeOf(v[1]))
+			}
+		}
+	}
+
+	{
+		var v map[string]string
+		err := Unmarshal(sampleText, &v)
+		if err != nil {
+			t.Error(err)
+		} else {
+			if v["3"] != "true" {
+				t.Errorf("Expected true, got %v", v["3"])
+			}
+			if v["2"] != "2" {
+				t.Errorf("Expected 2, got %v", v["2"])
+			}
+			if v["1"] != "null" {
+				t.Errorf("Expected null, got %v", v["1"])
+			}
+		}
+	}
+
+	{
+		var v map[int]string
+		err := Unmarshal(sampleText, &v)
+		if err != nil {
+			t.Error(err)
+		} else {
+			if v[3] != "true" {
+				t.Errorf("Expected true, got %v", v[3])
+			}
+			if v[2] != "2" {
+				t.Errorf("Expected 2, got %v", v[2])
+			}
+			if v[1] != "null" {
+				t.Errorf("Expected null, got %v", v[1])
+			}
+		}
 	}
 }

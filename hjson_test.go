@@ -455,6 +455,65 @@ five: {
 	}
 }
 
+type itsF struct {
+	itsG
+	F string
+}
+
+type itsG struct {
+	*itsH
+	G string
+}
+
+type itsH struct {
+	itsI
+	H string
+}
+
+type itsI struct {
+	I string
+}
+
+func TestEmbeddedStructTree(t *testing.T) {
+	textA := []byte(`
+f: 1.5
+g: true
+h: null
+i: false
+`)
+
+	sA := itsF{
+		itsG: itsG{
+			itsH: &itsH{},
+		},
+	}
+	err := Unmarshal(textA, &sA)
+	if err != nil {
+		t.Error(err)
+	} else {
+		buf, err := json.MarshalIndent(sA, "", "  ")
+		if err != nil {
+			t.Error(err)
+		}
+		// Note that only the field Sub2 was replaced by textB in the tsB struct.
+		// The field Sub1 still has the value that was set by textA.
+		if !reflect.DeepEqual(sA, itsF{
+			F: "1.5",
+			itsG: itsG{
+				G: "true",
+				itsH: &itsH{
+					H: "null",
+					itsI: itsI{
+						I: "false",
+					},
+				},
+			},
+		}) {
+			t.Errorf("Unexpected struct values:\n%v\n", string(buf))
+		}
+	}
+}
+
 type InterfaceA interface {
 	FuncA() string
 }

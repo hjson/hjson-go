@@ -585,3 +585,78 @@ func TestSliceInterface(t *testing.T) {
 		}
 	}
 }
+
+type InterfaceB interface{}
+
+func TestNilInterfaces(t *testing.T) {
+	textA := []byte(`
+[
+	3
+	alfa
+	5
+]
+`)
+
+	textB := []byte(`
+four: five
+five: {
+	sub2: 3
+}
+`)
+
+	var isA InterfaceA
+	err := Unmarshal(textA, &isA)
+	if err == nil {
+		// If the interface has at least one function it must not be empty.
+		t.Error("Unmarshal into empty InterfaceA did not return error")
+	}
+
+	var isB InterfaceB
+	err = Unmarshal(textA, &isB)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var isC interface{}
+	err = Unmarshal(textA, &isC)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var isD itsA
+	err = Unmarshal(textB, &isD)
+	if err == nil {
+		// If the interface has at least one function it must not be empty.
+		t.Error("Unmarshal into empty InterfaceA did not return error")
+	}
+}
+
+type itsE struct {
+	One string
+	Two *itsB
+}
+
+func TestStructPointer(t *testing.T) {
+	textA := []byte(`
+one: 1
+two: {
+	sub2: 3
+}
+`)
+
+	var psA *itsE
+	err := Unmarshal(textA, &psA)
+	if err != nil {
+		t.Error(err)
+	} else {
+		if !reflect.DeepEqual(psA, &itsE{
+			One: "1",
+			Two: &itsB{
+				Sub2: "3",
+			},
+		}) {
+			buf, _ := json.Marshal(psA)
+			t.Errorf("Unexpected struct values:\n%v\n", string(buf))
+		}
+	}
+}

@@ -466,19 +466,23 @@ func (p *hjsonParser) readObject(
 			sfi, ok := stm.getField(key)
 			if ok {
 				// The field might be found on the root struct or in embedded structs.
-				fv := dest
-				didBreak := false
+				newDest, newDestType = dest, t
 				for _, i := range sfi.indexPath {
-					for a := 0; a < maxPointerDepth && fv.Kind() == reflect.Ptr; a++ {
-						if fv.IsZero() {
-							fv = reflect.New(fv.Type().Elem())
+					if newDest.IsValid() {
+						if newDest.IsZero() {
+							// We are only keeping track of newDest in case it contains a
+							// tree that we will partially update. But here we have found
+							// a zero-value, so we can ignore newDest and just look at
+							// newDestType instead.
+							newDest = reflect.Value{}
+						} else {
+							newDest = newDest.Field(i)
 						}
-						fv = fv.Elem()
 					}
-					fv = fv.Field(i)
-				}
-				if !didBreak {
-					newDest = fv
+					if !newDest.IsValid() && newDestType != nil {
+						newDestType = newDestType.Field(i).Type
+					}
+					newDest, newDestType = unravelDestination(newDest, newDestType)
 				}
 			}
 		}

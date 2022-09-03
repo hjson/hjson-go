@@ -204,7 +204,7 @@ func main() {
     a := foo{A: "hi!", B: 3, C: "some text", D: 5}
     buf, err := hjson.Marshal(a)
     if err != nil {
-        fmt.Error(err)
+        fmt.Println(err)
     }
 
     fmt.Println(string(buf))
@@ -226,6 +226,44 @@ Output:
   D: 5
 }
 ```
+
+# Type ambiguity
+
+Hjson allows quoteless strings. But if a value is a valid number, boolean or `null` then it will be unmarshalled into that type instead of a string when unmarshalling into `interface{}`. This can lead to unintended consequences if the creator of an Hjson file meant to write a string but didn't think of that the quoteless string they wrote also was a valid number.
+
+The ambiguity can be avoided by using typed destinations when unmarshalling. A string destination will receive a string even if the quoteless string also was a valid number, boolean or `null`. Example:
+
+```go
+
+package main
+
+import (
+    "github.com/hjson/hjson-go/v4"
+    "fmt"
+)
+
+type foo struct {
+  A string
+}
+
+func main() {
+    var dest foo
+    err := hjson.Unmarshal([]byte(`a: 3`), &dest)
+    if err != nil {
+        fmt.Println(err)
+    }
+
+    fmt.Println(dest)
+}
+```
+
+Output:
+
+```
+{3}
+```
+
+String pointer destinations are treated the same as string destinations, so you cannot set a string pointer to `nil` by writing `null` in an Hjson file. Writing `null` in an Hjson file would result in the string "null" being stored in the destination string pointer.
 
 # API
 

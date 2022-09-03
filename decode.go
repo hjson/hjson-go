@@ -2,6 +2,7 @@ package hjson
 
 import (
 	"bytes"
+	"encoding"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,6 +22,8 @@ type DecoderOptions struct {
 	// non-ignored, exported fields in the destination.
 	DisallowUnknownFields bool
 }
+
+var unmarshalerText = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
 
 // DefaultDecoderOptions returns the default decoding options.
 func DefaultDecoderOptions() DecoderOptions {
@@ -328,7 +331,9 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 			p.ch == '/' && (p.peek(0) == '/' || p.peek(0) == '*') {
 
 			// Do not output anything else than a string if our destination is a string.
-			if t == nil || t.Kind() != reflect.String {
+			if t == nil || (t.Kind() != reflect.String && !t.Implements(unmarshalerText) &&
+				!reflect.PointerTo(t).Implements(unmarshalerText)) {
+
 				switch chf {
 				case 'f':
 					if strings.TrimSpace(value.String()) == "false" {

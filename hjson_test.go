@@ -351,3 +351,106 @@ func TestMapKeys(t *testing.T) {
 		}
 	}
 }
+
+func TestMapTree(t *testing.T) {
+	textA := []byte(`
+4: four
+3: true
+5: {
+  sub1: one
+	sub2: two
+}
+2: 2
+1: null
+`)
+
+	textB := []byte(`
+4: five
+5: {
+	sub2: three
+}
+`)
+
+	var v map[int]interface{}
+	err := Unmarshal(textA, &v)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = Unmarshal(textB, &v)
+	if err != nil {
+		t.Error(err)
+	} else {
+		// Note that the map on key 5 was fully replaced by textB.
+		if !reflect.DeepEqual(v, map[int]interface{}{
+			1: nil,
+			2: 2.0,
+			3: true,
+			4: "five",
+			5: map[string]interface{}{
+				"sub2": "three",
+			},
+		}) {
+			t.Errorf("Unexpected map values:\n%#v\n", v)
+		}
+	}
+}
+
+func TestStructTree(t *testing.T) {
+	type tsB struct {
+		Sub1 string
+		Sub2 string
+	}
+
+	type tsA struct {
+		One   *int
+		Two   int
+		Three bool
+		Four  string
+		Five  tsB
+	}
+
+	textA := []byte(`
+four: four
+three: true
+five: {
+  sub1: one
+	sub2: two
+}
+two: 2
+one: null
+`)
+
+	textB := []byte(`
+four: five
+five: {
+	sub2: three
+}
+`)
+
+	var v tsA
+	err := Unmarshal(textA, &v)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = Unmarshal(textB, &v)
+	if err != nil {
+		t.Error(err)
+	} else {
+		// Note that only the field Sub2 was replaced by textB in the tsB struct.
+		// The field Sub1 still has the value that was set by textA.
+		if !reflect.DeepEqual(v, tsA{
+			One:   nil,
+			Two:   2,
+			Three: true,
+			Four:  "five",
+			Five: tsB{
+				Sub1: "one",
+				Sub2: "three",
+			},
+		}) {
+			t.Errorf("Unexpected struct values:\n%#v\n", v)
+		}
+	}
+}

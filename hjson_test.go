@@ -811,4 +811,20 @@ e: 7
 	}) {
 		t.Errorf("Unexpected struct values:\n%#v\n", sA)
 	}
+
+	textB := []byte(`8`)
+
+	var sL itsL
+	err = Unmarshal(textB, &sL)
+	if err != nil {
+		t.Error(err)
+	} else if sL != itsL(textB[0]) {
+		t.Errorf("Unexpected sL value: %v\n", sL)
+	}
+
+	var m map[string]itsL
+	err = Unmarshal(textA, &m)
+	if err == nil {
+		t.Error("Should have failed, should not be possible to call pointer method UnmarshalText() on the map elements because they are not addressable.")
+	}
 }

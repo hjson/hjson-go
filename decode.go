@@ -338,9 +338,11 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 			p.ch == '/' && (p.peek(0) == '/' || p.peek(0) == '*') {
 
 			// Do not output anything else than a string if our destination is a string.
+			// Pointer methods can be called if the destination is addressable,
+			// therefore we also check if dest.Addr() implements encoding.TextUnmarshaler.
 			if (newT == nil || newT.Kind() != reflect.String) &&
 				(t == nil || !(t.Implements(unmarshalerText) ||
-					reflect.New(t).Type().Implements(unmarshalerText))) {
+					dest.CanAddr() && dest.Addr().Type().Implements(unmarshalerText))) {
 
 				switch chf {
 				case 'f':

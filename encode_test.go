@@ -396,6 +396,8 @@ func (s TestMarshalStruct) MarshalJSON() ([]byte, error) {
 }`), nil
 }
 
+type TestMarshalAlias TestMarshalStruct
+
 func TestEncodeMarshalJSON(t *testing.T) {
 	input := TestMarshalStruct{}
 	expected1 := `{
@@ -422,6 +424,23 @@ func TestEncodeMarshalJSON(t *testing.T) {
 	}
 	if string(buf) != expected1 {
 		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expected1, string(buf))
+	}
+
+	inputAlias := TestMarshalAlias(input)
+	buf, err = Marshal(inputAlias)
+	if err != nil {
+		t.Error(err)
+	}
+	if string(buf) == expected1 {
+		t.Error("Used interface on underlying type, even though the alias type doesn't implement it.")
+	}
+
+	buf, err = Marshal(&inputAlias)
+	if err != nil {
+		t.Error(err)
+	}
+	if string(buf) == expected1 {
+		t.Error("Used interface on underlying type, even though the alias type doesn't implement it.")
 	}
 
 	myMap := map[string]interface{}{
@@ -463,6 +482,8 @@ func TestEncodeMarshalJSON(t *testing.T) {
 	}
 }
 
+type myNet net.IP
+
 func TestEncodeMarshalText(t *testing.T) {
 	input := net.ParseIP("127.0.0.1")
 	buf, err := Marshal(input)
@@ -472,12 +493,30 @@ func TestEncodeMarshalText(t *testing.T) {
 	if !reflect.DeepEqual(buf, []byte(`127.0.0.1`)) {
 		t.Errorf("Expected '127.0.0.1', got '%s'", string(buf))
 	}
+
 	buf, err = Marshal(&input)
 	if err != nil {
 		t.Error(err)
 	}
 	if !reflect.DeepEqual(buf, []byte(`127.0.0.1`)) {
 		t.Errorf("Expected '127.0.0.1', got '%s'", string(buf))
+	}
+
+	myInput := myNet(input)
+	buf, err = Marshal(myInput)
+	if err != nil {
+		t.Error(err)
+	}
+	if reflect.DeepEqual(buf, []byte(`127.0.0.1`)) {
+		t.Error("Used interface on underlying type, even though the alias type doesn't implement it.")
+	}
+
+	buf, err = Marshal(&myInput)
+	if err != nil {
+		t.Error(err)
+	}
+	if reflect.DeepEqual(buf, []byte(`127.0.0.1`)) {
+		t.Error("Used interface on underlying type, even though the alias type doesn't implement it.")
 	}
 }
 

@@ -768,31 +768,47 @@ func (c *itsJ) UnmarshalText(text []byte) error {
 
 type itsK *itsJ
 
+type itsL int
+
+func (c *itsL) UnmarshalText(text []byte) error {
+	if len(text) > 0 {
+		*c = itsL(text[0])
+	}
+	return nil
+}
+
+type itsM itsL
+
 func TestUnmarshalText(t *testing.T) {
 	type tsA struct {
 		A itsJ
-		B encoding.TextUnmarshaler
-		C itsK
-		D *itsJ
+		B *itsJ
+		C encoding.TextUnmarshaler
+		D itsL
+		E itsM // Does not implement encoding.TextUnmarshaler, will receive int.
 	}
 
-	// Comment out field 'c' because json.Unmarshal() won't accept itsK as a
-	// TextUnmarshaler.
 	textA := []byte(`
 a: 3
 b: 4
-#c: 5
+c: 5
 d: 6
+e: 7
 `)
 	sA := tsA{
 		B: &itsJ{},
 		C: &itsJ{},
-		D: &itsJ{},
 	}
 	err := Unmarshal(textA, &sA)
 	if err != nil {
 		t.Error(err)
-	} else if sA.A.anon != "3" || sA.B.(*itsJ).anon != "4" || sA.D.anon != "6" {
+	} else if !reflect.DeepEqual(sA, tsA{
+		A: itsJ{"3"},
+		B: &itsJ{"4"},
+		C: &itsJ{"5"},
+		D: itsL([]byte(`6`)[0]),
+		E: 7,
+	}) {
 		t.Errorf("Unexpected struct values:\n%#v\n", sA)
 	}
 }

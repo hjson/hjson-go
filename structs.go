@@ -21,6 +21,29 @@ type structFieldInfo struct {
 	indexPath []int
 }
 
+// Use lower key name as key. Values are arrays in case some fields only differ
+// by upper/lower case.
+type structFieldMap map[string][]structFieldInfo
+
+func (s structFieldMap) insert(sfi structFieldInfo) {
+	key := strings.ToLower(sfi.name)
+	s[key] = append(s[key], sfi)
+}
+
+func (s structFieldMap) getField(name string) (structFieldInfo, bool) {
+	key := strings.ToLower(name)
+	if arr, ok := s[key]; ok {
+		for _, elem := range arr {
+			if elem.name == name {
+				return elem, true
+			}
+		}
+		return arr[0], true
+	}
+
+	return structFieldInfo{}, false
+}
+
 // dominantField looks through the fields, all of which are known to
 // have the same name, to find the single field that dominates the
 // others using Go's embedding rules, modified by the presence of
@@ -205,10 +228,26 @@ func getStructFieldInfo(rootType reflect.Type) []structFieldInfo {
 		}
 	}
 
-	sfis = out
+	return out
+}
+
+func getStructFieldInfoSlice(rootType reflect.Type) []structFieldInfo {
+	sfis := getStructFieldInfo(rootType)
+
 	sort.Sort(byIndex(sfis))
 
 	return sfis
+}
+
+func getStructFieldInfoMap(rootType reflect.Type) structFieldMap {
+	sfis := getStructFieldInfo(rootType)
+
+	out := structFieldMap{}
+	for _, elem := range sfis {
+		out.insert(elem)
+	}
+
+	return out
 }
 
 func (e *hjsonEncoder) writeFields(

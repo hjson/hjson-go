@@ -2,6 +2,7 @@ package hjson
 
 import (
 	"bytes"
+	"encoding"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -267,5 +269,562 @@ func TestJSONNumber(t *testing.T) {
 	_, err = n.Int64()
 	if err == nil {
 		t.Errorf("Did not expect %v to be parsable to int64", n)
+	}
+}
+
+func TestMapKeys(t *testing.T) {
+	sampleText := []byte(`
+4: four
+3: true
+2: 2
+1: null
+`)
+
+	{
+		var v map[string]interface{}
+		err := Unmarshal(sampleText, &v)
+		if err != nil {
+			t.Error(err)
+		} else {
+			if v["3"] != true {
+				t.Errorf("Expected boolean, got %v", reflect.TypeOf(v["3"]))
+			}
+			if v["2"] != 2.0 {
+				t.Errorf("Expected float64, got %v", reflect.TypeOf(v["2"]))
+			}
+			if v["1"] != nil {
+				t.Errorf("Expected nil-interface, got %v", reflect.TypeOf(v["1"]))
+			}
+		}
+	}
+
+	{
+		var v map[int]interface{}
+		err := Unmarshal(sampleText, &v)
+		if err != nil {
+			t.Error(err)
+		} else {
+			if v[3] != true {
+				t.Errorf("Expected boolean, got %v", reflect.TypeOf(v[3]))
+			}
+			if v[2] != 2.0 {
+				t.Errorf("Expected float64, got %v", reflect.TypeOf(v[2]))
+			}
+			if v[1] != nil {
+				t.Errorf("Expected nil-interface, got %v", reflect.TypeOf(v[1]))
+			}
+		}
+	}
+
+	{
+		var v map[string]string
+		err := Unmarshal(sampleText, &v)
+		if err != nil {
+			t.Error(err)
+		} else {
+			if v["3"] != "true" {
+				t.Errorf("Expected true, got %v", v["3"])
+			}
+			if v["2"] != "2" {
+				t.Errorf("Expected 2, got %v", v["2"])
+			}
+			if v["1"] != "null" {
+				t.Errorf("Expected null, got %v", v["1"])
+			}
+		}
+	}
+
+	{
+		var v map[int]string
+		err := Unmarshal(sampleText, &v)
+		if err != nil {
+			t.Error(err)
+		} else {
+			if v[3] != "true" {
+				t.Errorf("Expected true, got %v", v[3])
+			}
+			if v[2] != "2" {
+				t.Errorf("Expected 2, got %v", v[2])
+			}
+			if v[1] != "null" {
+				t.Errorf("Expected null, got %v", v[1])
+			}
+		}
+	}
+}
+
+func TestMapTree(t *testing.T) {
+	textA := []byte(`
+4: four
+3: true
+5: {
+  sub1: 1
+	sub2: 2
+}
+2: 2
+1: null
+`)
+
+	textB := []byte(`
+4: five
+5: {
+	sub2: 3
+}
+`)
+
+	var v map[int]interface{}
+	err := Unmarshal(textA, &v)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = Unmarshal(textB, &v)
+	if err != nil {
+		t.Error(err)
+	} else {
+		// Note that the map on key 5 was fully replaced by textB.
+		if !reflect.DeepEqual(v, map[int]interface{}{
+			1: nil,
+			2: 2.0,
+			3: true,
+			4: "five",
+			5: map[string]interface{}{
+				"sub2": 3.0,
+			},
+		}) {
+			t.Errorf("Unexpected map values:\n%#v\n", v)
+		}
+	}
+}
+
+func TestStructTree(t *testing.T) {
+	type tsB struct {
+		Sub1 string
+		Sub2 string
+	}
+
+	type tsA struct {
+		One   *int
+		Two   int
+		Three bool
+		Four  string
+		Five  tsB
+	}
+
+	textA := []byte(`
+four: four
+three: true
+five: {
+  sub1: 1
+	sub2: 2
+}
+two: 2
+one: null
+`)
+
+	textB := []byte(`
+four: five
+five: {
+	sub2: 3
+}
+`)
+
+	var v tsA
+	err := Unmarshal(textA, &v)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = Unmarshal(textB, &v)
+	if err != nil {
+		t.Error(err)
+	} else {
+		// Note that only the field Sub2 was replaced by textB in the tsB struct.
+		// The field Sub1 still has the value that was set by textA.
+		if !reflect.DeepEqual(v, tsA{
+			One:   nil,
+			Two:   2,
+			Three: true,
+			Four:  "five",
+			Five: tsB{
+				Sub1: "1",
+				Sub2: "3",
+			},
+		}) {
+			t.Errorf("Unexpected struct values:\n%#v\n", v)
+		}
+	}
+}
+
+type itsF struct {
+	itsG
+	F string
+}
+
+type itsG struct {
+	*itsH
+	G string
+}
+
+type itsH struct {
+	itsI
+	H string
+}
+
+type itsI struct {
+	I string
+}
+
+func TestEmbeddedStructTree(t *testing.T) {
+	textA := []byte(`
+f: 1.5
+g: true
+h: null
+i: false
+`)
+
+	sA := itsF{
+		itsG: itsG{
+			itsH: &itsH{},
+		},
+	}
+	err := Unmarshal(textA, &sA)
+	if err != nil {
+		t.Error(err)
+	} else {
+		buf, err := json.MarshalIndent(sA, "", "  ")
+		if err != nil {
+			t.Error(err)
+		}
+		// Note that only the field Sub2 was replaced by textB in the tsB struct.
+		// The field Sub1 still has the value that was set by textA.
+		if !reflect.DeepEqual(sA, itsF{
+			F: "1.5",
+			itsG: itsG{
+				G: "true",
+				itsH: &itsH{
+					H: "null",
+					itsI: itsI{
+						I: "false",
+					},
+				},
+			},
+		}) {
+			t.Errorf("Unexpected struct values:\n%v\n", string(buf))
+		}
+	}
+}
+
+type InterfaceA interface {
+	FuncA() string
+}
+
+type itsB struct {
+	Sub1 string
+	Sub2 string
+}
+
+type itsA struct {
+	One   *int
+	Two   int
+	Three bool
+	Four  *string
+	Five  InterfaceA
+}
+
+func (c *itsB) FuncA() string {
+	return c.Sub1
+}
+
+func (c *itsA) FuncA() string {
+	return *c.Four
+}
+
+func TestStructInterface(t *testing.T) {
+	textA := []byte(`
+four: 4
+three: true
+five: {
+  sub1: 1
+	sub2: 2
+}
+two: 2
+one: null
+`)
+
+	textB := []byte(`
+four: 5
+five: {
+	sub2: 3
+}
+`)
+
+	sA := itsA{
+		Five: &itsB{},
+	}
+	err := Unmarshal(textA, &sA)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = Unmarshal(textB, &sA)
+	if err != nil {
+		t.Error(err)
+	} else {
+		five := "5"
+		// Note that only the field Sub2 was replaced by textB in the tsB struct.
+		// The field Sub1 still has the value that was set by textA.
+		if !reflect.DeepEqual(sA, itsA{
+			One:   nil,
+			Two:   2,
+			Three: true,
+			Four:  &five,
+			Five: &itsB{
+				Sub1: "1",
+				Sub2: "3",
+			},
+		}) {
+			t.Errorf("Unexpected struct values:\n%#v\n", sA)
+		}
+	}
+}
+
+type itsC string
+
+func (c itsC) FuncA() string {
+	return string(c)
+}
+
+func TestStringInterface(t *testing.T) {
+	textA := []byte(`3`)
+
+	var sA itsC
+	var isA InterfaceA
+	isA = &sA
+	err := Unmarshal(textA, &isA)
+	if err != nil {
+		t.Error(err)
+	} else {
+		if string(sA) != "3" {
+			t.Errorf("Unexpected string value:\n%v\n", sA)
+		}
+	}
+}
+
+func TestStringPointer(t *testing.T) {
+	textA := []byte(`3`)
+
+	var psA *itsC
+	err := Unmarshal(textA, &psA)
+	if err != nil {
+		t.Error(err)
+	} else {
+		if string(*psA) != "3" {
+			t.Errorf("Unexpected string value:\n%v\n", *psA)
+		}
+	}
+}
+
+type itsD []*itsC
+
+func (c itsD) FuncA() string {
+	return ""
+}
+
+func TestSliceInterface(t *testing.T) {
+	textA := []byte(`
+[
+	3
+	alfa
+	5
+]
+`)
+
+	var sA itsD
+	var isA InterfaceA
+	isA = &sA
+	err := Unmarshal(textA, &isA)
+	if err != nil {
+		t.Error(err)
+	} else {
+		a := itsC("3")
+		b := itsC("alfa")
+		c := itsC("5")
+		if !reflect.DeepEqual(sA, itsD{
+			&a,
+			&b,
+			&c,
+		}) {
+			buf, _ := json.Marshal(sA)
+			t.Errorf("Unexpected slice values:\n%v\n", string(buf))
+		}
+	}
+}
+
+type InterfaceB interface{}
+
+func TestNilInterfaces(t *testing.T) {
+	textA := []byte(`
+[
+	3
+	alfa
+	5
+]
+`)
+
+	textB := []byte(`
+four: five
+five: {
+	sub2: 3
+}
+`)
+
+	var isA InterfaceA
+	err := Unmarshal(textA, &isA)
+	if err == nil {
+		// If the interface has at least one function it must not be empty.
+		t.Error("Unmarshal into empty InterfaceA did not return error")
+	}
+
+	var isB InterfaceB
+	err = Unmarshal(textA, &isB)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var isC interface{}
+	err = Unmarshal(textA, &isC)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var isD itsA
+	err = Unmarshal(textB, &isD)
+	if err == nil {
+		// If the interface has at least one function it must not be empty.
+		t.Error("Unmarshal into empty InterfaceA did not return error")
+	}
+}
+
+type itsE struct {
+	One string
+	Two *itsB
+}
+
+func TestStructPointer(t *testing.T) {
+	textA := []byte(`
+one: 1
+two: {
+	sub2: 3
+}
+`)
+
+	var psA *itsE
+	err := Unmarshal(textA, &psA)
+	if err != nil {
+		t.Error(err)
+	} else {
+		if !reflect.DeepEqual(psA, &itsE{
+			One: "1",
+			Two: &itsB{
+				Sub2: "3",
+			},
+		}) {
+			buf, _ := json.Marshal(psA)
+			t.Errorf("Unexpected struct values:\n%v\n", string(buf))
+		}
+	}
+}
+
+func TestFieldCase(t *testing.T) {
+	type tsA struct {
+		Field int
+		FiEld int
+		FieLd string
+		FielD int
+	}
+
+	textA := []byte(`
+FieLd: 3
+`)
+
+	var sA tsA
+	err := Unmarshal(textA, &sA)
+	if err != nil {
+		t.Error(err)
+	} else if sA.FieLd != "3" {
+		t.Errorf("Unexpected struct values:\n%#v\n", sA)
+	}
+}
+
+type itsJ struct {
+	anon string
+}
+
+func (c *itsJ) UnmarshalText(text []byte) error {
+	c.anon = string(text)
+	return nil
+}
+
+type itsK *itsJ
+
+type itsL int
+
+func (c *itsL) UnmarshalText(text []byte) error {
+	if len(text) > 0 {
+		*c = itsL(text[0])
+	}
+	return nil
+}
+
+type itsM itsL
+
+func TestUnmarshalText(t *testing.T) {
+	type tsA struct {
+		A itsJ
+		B *itsJ
+		C encoding.TextUnmarshaler
+		D itsL
+		E itsM // Does not implement encoding.TextUnmarshaler, will receive int.
+	}
+
+	textA := []byte(`
+a: 3
+b: 4
+c: 5
+d: 6
+e: 7
+`)
+	sA := tsA{
+		B: &itsJ{},
+		C: &itsJ{},
+	}
+	err := Unmarshal(textA, &sA)
+	if err != nil {
+		t.Error(err)
+	} else if !reflect.DeepEqual(sA, tsA{
+		A: itsJ{"3"},
+		B: &itsJ{"4"},
+		C: &itsJ{"5"},
+		D: itsL([]byte(`6`)[0]),
+		E: 7,
+	}) {
+		t.Errorf("Unexpected struct values:\n%#v\n", sA)
+	}
+
+	textB := []byte(`8`)
+
+	var sL itsL
+	err = Unmarshal(textB, &sL)
+	if err != nil {
+		t.Error(err)
+	} else if sL != itsL(textB[0]) {
+		t.Errorf("Unexpected sL value: %v\n", sL)
+	}
+
+	var m map[string]itsL
+	err = Unmarshal(textA, &m)
+	if err == nil {
+		t.Error("Should have failed, should not be possible to call pointer method UnmarshalText() on the map elements because they are not addressable.")
 	}
 }

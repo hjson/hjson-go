@@ -2,12 +2,15 @@ package hjson
 
 import (
 	"bytes"
+	"encoding"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 )
+
+const maxPointerDepth = 512
 
 // DecoderOptions defines options for decoding Hjson.
 type DecoderOptions struct {
@@ -20,6 +23,8 @@ type DecoderOptions struct {
 	DisallowUnknownFields bool
 }
 
+var unmarshalerText = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+
 // DefaultDecoderOptions returns the default decoding options.
 func DefaultDecoderOptions() DecoderOptions {
 	return DecoderOptions{
@@ -30,9 +35,10 @@ func DefaultDecoderOptions() DecoderOptions {
 
 type hjsonParser struct {
 	DecoderOptions
-	data []byte
-	at   int  // The index of the current character
-	ch   byte // The current character
+	data            []byte
+	at              int  // The index of the current character
+	ch              byte // The current character
+	structTypeCache map[reflect.Type]structFieldMap
 }
 
 func (p *hjsonParser) resetAt() {
@@ -92,6 +98,26 @@ var escapee = map[byte]byte{
 	'n':  '\n',
 	'r':  '\r',
 	't':  '\t',
+}
+
+func unravelDestination(dest reflect.Value, t reflect.Type) (reflect.Value, reflect.Type) {
+	if dest.IsValid() {
+		for a := 0; a < maxPointerDepth && (dest.Kind() == reflect.Ptr ||
+			dest.Kind() == reflect.Interface) && !dest.IsNil(); a++ {
+
+			dest = dest.Elem()
+		}
+
+		if dest.IsValid() {
+			t = dest.Type()
+		}
+	}
+
+	for a := 0; a < maxPointerDepth && t != nil && t.Kind() == reflect.Ptr; a++ {
+		t = t.Elem()
+	}
+
+	return dest, t
 }
 
 func (p *hjsonParser) readString(allowML bool) (string, error) {
@@ -282,10 +308,10 @@ func (p *hjsonParser) white() {
 	}
 }
 
-func (p *hjsonParser) readTfnns() (interface{}, error) {
+func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}, error) {
 
 	// Hjson strings can be quoteless
-	// returns string, true, false, or null.
+	// returns string, json.Number, true, false, or null.
 
 	if isPunctuatorChar(p.ch) {
 		return nil, p.errAt("Found a punctuator character '" + string(p.ch) + "' when expecting a quoteless string (check your syntax)")
@@ -294,6 +320,15 @@ func (p *hjsonParser) readTfnns() (interface{}, error) {
 	value := new(bytes.Buffer)
 	value.WriteByte(p.ch)
 
+	// t might be nil
+	if dest.IsValid() {
+		t = dest.Type()
+	}
+
+	// Keep the original dest and t, because we need to check if it implements
+	// encoding.TextUnmarshaler.
+	_, newT := unravelDestination(dest, t)
+
 	for {
 		p.next()
 		isEol := p.ch == '\r' || p.ch == '\n' || p.ch == 0
@@ -301,27 +336,37 @@ func (p *hjsonParser) readTfnns() (interface{}, error) {
 			p.ch == ',' || p.ch == '}' || p.ch == ']' ||
 			p.ch == '#' ||
 			p.ch == '/' && (p.peek(0) == '/' || p.peek(0) == '*') {
-			switch chf {
-			case 'f':
-				if strings.TrimSpace(value.String()) == "false" {
-					return false, nil
-				}
-			case 'n':
-				if strings.TrimSpace(value.String()) == "null" {
-					return nil, nil
-				}
-			case 't':
-				if strings.TrimSpace(value.String()) == "true" {
-					return true, nil
-				}
-			default:
-				if chf == '-' || chf >= '0' && chf <= '9' {
-					// Always use json.Number because we will marshal to JSON.
-					if n, err := tryParseNumber(value.Bytes(), false, true); err == nil {
-						return n, nil
+
+			// Do not output anything else than a string if our destination is a string.
+			// Pointer methods can be called if the destination is addressable,
+			// therefore we also check if dest.Addr() implements encoding.TextUnmarshaler.
+			if (newT == nil || newT.Kind() != reflect.String) &&
+				(t == nil || !(t.Implements(unmarshalerText) ||
+					dest.CanAddr() && dest.Addr().Type().Implements(unmarshalerText))) {
+
+				switch chf {
+				case 'f':
+					if strings.TrimSpace(value.String()) == "false" {
+						return false, nil
+					}
+				case 'n':
+					if strings.TrimSpace(value.String()) == "null" {
+						return nil, nil
+					}
+				case 't':
+					if strings.TrimSpace(value.String()) == "true" {
+						return true, nil
+					}
+				default:
+					if chf == '-' || chf >= '0' && chf <= '9' {
+						// Always use json.Number because we will marshal to JSON.
+						if n, err := tryParseNumber(value.Bytes(), false, true); err == nil {
+							return n, nil
+						}
 					}
 				}
 			}
+
 			if isEol {
 				// remove any whitespace at the end (ignored in quoteless strings)
 				return strings.TrimSpace(value.String()), nil
@@ -331,7 +376,7 @@ func (p *hjsonParser) readTfnns() (interface{}, error) {
 	}
 }
 
-func (p *hjsonParser) readArray() (value interface{}, err error) {
+func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value interface{}, err error) {
 
 	// Parse an array value.
 	// assuming ch == '['
@@ -346,9 +391,18 @@ func (p *hjsonParser) readArray() (value interface{}, err error) {
 		return array, nil // empty array
 	}
 
+	dest, t = unravelDestination(dest, t)
+
+	// All elements in any existing slice/array will be removed, so we only care
+	// about the type of the new elements that will be created.
+	var newDestType reflect.Type
+	if t != nil && (t.Kind() == reflect.Slice || t.Kind() == reflect.Array) {
+		newDestType = t.Elem()
+	}
+
 	for p.ch > 0 {
 		var val interface{}
-		if val, err = p.readValue(); err != nil {
+		if val, err = p.readValue(reflect.Value{}, newDestType); err != nil {
 			return nil, err
 		}
 		array = append(array, val)
@@ -368,7 +422,11 @@ func (p *hjsonParser) readArray() (value interface{}, err error) {
 	return nil, p.errAt("End of input while parsing an array (did you forget a closing ']'?)")
 }
 
-func (p *hjsonParser) readObject(withoutBraces bool) (value interface{}, err error) {
+func (p *hjsonParser) readObject(
+	withoutBraces bool,
+	dest reflect.Value,
+	t reflect.Type,
+) (value interface{}, err error) {
 	// Parse an object value.
 
 	object := make(map[string]interface{})
@@ -383,6 +441,30 @@ func (p *hjsonParser) readObject(withoutBraces bool) (value interface{}, err err
 		p.next()
 		return object, nil // empty object
 	}
+
+	var stm structFieldMap
+	var newDestType reflect.Type
+	dest, t = unravelDestination(dest, t)
+	if t != nil {
+		switch t.Kind() {
+		case reflect.Struct:
+			var ok bool
+			stm, ok = p.structTypeCache[t]
+			if !ok {
+				stm = getStructFieldInfoMap(t)
+				p.structTypeCache[t] = stm
+			}
+
+		case reflect.Map:
+			// For any key that we find in our loop here below, the new value fully
+			// replaces any old value. So no need for us to dig down into a tree.
+			// (This is because we are decoding into a map. If we were decoding into
+			// a struct we would need to dig down into a tree, to match the behavior
+			// of Golang's JSON decoder.)
+			newDestType = t.Elem()
+		}
+	}
+
 	for p.ch > 0 {
 		var key string
 		if key, err = p.readKeyname(); err != nil {
@@ -393,9 +475,37 @@ func (p *hjsonParser) readObject(withoutBraces bool) (value interface{}, err err
 			return nil, p.errAt("Expected ':' instead of '" + string(p.ch) + "'")
 		}
 		p.next()
+
+		var newDest reflect.Value
+		if stm != nil {
+			sfi, ok := stm.getField(key)
+			if ok {
+				// The field might be found on the root struct or in embedded structs.
+				newDest, newDestType = dest, t
+				for _, i := range sfi.indexPath {
+					newDest, newDestType = unravelDestination(newDest, newDestType)
+
+					if newDest.IsValid() {
+						if newDest.Kind() != reflect.Struct {
+							// We are only keeping track of newDest in case it contains a
+							// tree that we will partially update. But here we have not found
+							// any tree, so we can ignore newDest and just look at
+							// newDestType instead.
+							newDest = reflect.Value{}
+						} else {
+							newDest = newDest.Field(i)
+						}
+					}
+					if !newDest.IsValid() && newDestType != nil {
+						newDestType = newDestType.Field(i).Type
+					}
+				}
+			}
+		}
+
 		// duplicate keys overwrite the previous value
 		var val interface{}
-		if val, err = p.readValue(); err != nil {
+		if val, err = p.readValue(newDest, newDestType); err != nil {
 			return nil, err
 		}
 		object[key] = val
@@ -418,43 +528,46 @@ func (p *hjsonParser) readObject(withoutBraces bool) (value interface{}, err err
 	return nil, p.errAt("End of input while parsing an object (did you forget a closing '}'?)")
 }
 
-func (p *hjsonParser) readValue() (interface{}, error) {
+// dest and t must not have been unraveled yet here. In readTfnns we need
+// to check if the original type (or a pointer to it) implements
+// encoding.TextUnmarshaler.
+func (p *hjsonParser) readValue(dest reflect.Value, t reflect.Type) (interface{}, error) {
 
 	// Parse a Hjson value. It could be an object, an array, a string, a number or a word.
 
 	p.white()
 	switch p.ch {
 	case '{':
-		return p.readObject(false)
+		return p.readObject(false, dest, t)
 	case '[':
-		return p.readArray()
+		return p.readArray(dest, t)
 	case '"', '\'':
 		return p.readString(true)
 	default:
-		return p.readTfnns()
+		return p.readTfnns(dest, t)
 	}
 }
 
-func (p *hjsonParser) rootValue() (interface{}, error) {
+func (p *hjsonParser) rootValue(dest reflect.Value) (interface{}, error) {
 	// Braces for the root object are optional
 
 	p.white()
 	switch p.ch {
 	case '{':
-		return p.checkTrailing(p.readObject(false))
+		return p.checkTrailing(p.readObject(false, dest, nil))
 	case '[':
-		return p.checkTrailing(p.readArray())
+		return p.checkTrailing(p.readArray(dest, nil))
 	}
 
 	// assume we have a root object without braces
-	res, err := p.checkTrailing(p.readObject(true))
+	res, err := p.checkTrailing(p.readObject(true, dest, nil))
 	if err == nil {
 		return res, nil
 	}
 
 	// test if we are dealing with a single JSON value instead (true/false/null/num/"")
 	p.resetAt()
-	if res2, err2 := p.checkTrailing(p.readValue()); err2 == nil {
+	if res2, err2 := p.checkTrailing(p.readValue(dest, nil)); err2 == nil {
 		return res2, nil
 	}
 	return res, err
@@ -475,7 +588,6 @@ func (p *hjsonParser) checkTrailing(v interface{}, err error) (interface{}, erro
 // result in the value pointed to by v.
 //
 // See UnmarshalWithOptions.
-//
 func Unmarshal(data []byte, v interface{}) error {
 	return UnmarshalWithOptions(data, v, DefaultDecoderOptions())
 }
@@ -495,13 +607,14 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 	}
 
 	parser := &hjsonParser{
-		DecoderOptions: options,
-		data:           data,
-		at:             0,
-		ch:             ' ',
+		DecoderOptions:  options,
+		data:            data,
+		at:              0,
+		ch:              ' ',
+		structTypeCache: map[reflect.Type]structFieldMap{},
 	}
 	parser.resetAt()
-	value, err := parser.rootValue()
+	value, err := parser.rootValue(rv)
 	if err != nil {
 		return err
 	}

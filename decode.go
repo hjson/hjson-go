@@ -320,7 +320,14 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 	value := new(bytes.Buffer)
 	value.WriteByte(p.ch)
 
-	dest, t = unravelDestination(dest, t)
+	// t might be nil
+	if dest.IsValid() {
+		t = dest.Type()
+	}
+
+	// Keep the original dest and t, because we need to check if it implements
+	// encoding.TextUnmarshaler.
+	_, newT := unravelDestination(dest, t)
 
 	for {
 		p.next()
@@ -331,8 +338,9 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 			p.ch == '/' && (p.peek(0) == '/' || p.peek(0) == '*') {
 
 			// Do not output anything else than a string if our destination is a string.
-			if t == nil || !(t.Kind() == reflect.String || t.Implements(unmarshalerText) ||
-				reflect.New(t).Type().Implements(unmarshalerText)) {
+			if (newT == nil || newT.Kind() != reflect.String) &&
+				(t == nil || !(t.Implements(unmarshalerText) ||
+					reflect.New(t).Type().Implements(unmarshalerText))) {
 
 				switch chf {
 				case 'f':
@@ -473,6 +481,8 @@ func (p *hjsonParser) readObject(
 				// The field might be found on the root struct or in embedded structs.
 				newDest, newDestType = dest, t
 				for _, i := range sfi.indexPath {
+					newDest, newDestType = unravelDestination(newDest, newDestType)
+
 					if newDest.IsValid() {
 						if newDest.Kind() != reflect.Struct {
 							// We are only keeping track of newDest in case it contains a
@@ -487,7 +497,6 @@ func (p *hjsonParser) readObject(
 					if !newDest.IsValid() && newDestType != nil {
 						newDestType = newDestType.Field(i).Type
 					}
-					newDest, newDestType = unravelDestination(newDest, newDestType)
 				}
 			}
 		}
@@ -517,6 +526,9 @@ func (p *hjsonParser) readObject(
 	return nil, p.errAt("End of input while parsing an object (did you forget a closing '}'?)")
 }
 
+// dest and t must not have been unraveled yet here. In readTfnns we need
+// to check if the original type (or a pointer to it) implements
+// encoding.TextUnmarshaler.
 func (p *hjsonParser) readValue(dest reflect.Value, t reflect.Type) (interface{}, error) {
 
 	// Parse a Hjson value. It could be an object, an array, a string, a number or a word.

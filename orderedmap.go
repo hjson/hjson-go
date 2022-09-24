@@ -1,10 +1,13 @@
 package hjson
 
-import "bytes"
+import (
+	"bytes"
+	"encoding/json"
+)
 
 type keyVal struct {
-	key   []byte
-	value []byte
+	key   string
+	value interface{}
 }
 
 type orderedMap []keyVal
@@ -18,7 +21,17 @@ func (c orderedMap) MarshalJSON() ([]byte, error) {
 		if index > 0 {
 			b.WriteString(",")
 		}
-		b.WriteString(`"` + string(elem.key) + `":"` + string(elem.value) + `"`)
+		jbuf, err := json.Marshal(elem.key)
+		if err != nil {
+			return nil, err
+		}
+		b.Write(jbuf)
+		b.WriteString(":")
+		jbuf, err = json.Marshal(elem.value)
+		if err != nil {
+			return nil, err
+		}
+		b.Write(jbuf)
 	}
 
 	b.WriteString("}")

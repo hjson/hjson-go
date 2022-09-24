@@ -230,8 +230,8 @@ func (c *orderedMap) UnmarshalJSON(in []byte) error {
 		index = i4 + 1
 
 		*c = append(*c, keyVal{
-			in[i1+1 : i2],
-			in[i3+1 : i4],
+			string(in[i1+1 : i2]),
+			string(in[i3+1 : i4]),
 		})
 	}
 
@@ -249,11 +249,12 @@ func TestUnmarshalInterface(t *testing.T) {
 		t.Error(err)
 	}
 	// Make sure that obj got the elements in the correct order (B before A).
-	if !reflect.DeepEqual(obj, []keyVal{
-		{[]byte("B"), []byte("first")},
-		{[]byte("A"), []byte("second")},
-	}) {
-		t.Errorf("Unexpected obj: %#v", obj)
+	expected := orderedMap{
+		{"B", "first"},
+		{"A", "second"},
+	}
+	if !reflect.DeepEqual(obj, expected) {
+		t.Errorf("Unexpected obj: %#v\n", obj)
 	}
 
 	buf, err := Marshal(obj)

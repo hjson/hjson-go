@@ -429,7 +429,7 @@ func (p *hjsonParser) readObject(
 ) (value interface{}, err error) {
 	// Parse an object value.
 
-	object := make(map[string]interface{})
+	var object orderedMap
 
 	if !withoutBraces {
 		// assuming ch == '{'
@@ -508,7 +508,7 @@ func (p *hjsonParser) readObject(
 		if val, err = p.readValue(newDest, newDestType); err != nil {
 			return nil, err
 		}
-		object[key] = val
+		object = append(object, keyVal{key, val})
 		p.white()
 		// in Hjson the comma is optional and trailing commas are allowed
 		if p.ch == ',' {

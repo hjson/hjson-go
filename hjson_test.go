@@ -198,16 +198,7 @@ func TestUnknownFields(t *testing.T) {
 	}
 }
 
-type keyVal struct {
-	key   []byte
-	value []byte
-}
-
-type MyUnmarshaller struct {
-	elems []keyVal
-}
-
-func (c *MyUnmarshaller) UnmarshalJSON(in []byte) error {
+func (c *orderedMap) UnmarshalJSON(in []byte) error {
 	index := 0
 	for true {
 		i1 := bytes.IndexByte(in[index:], '"')
@@ -238,7 +229,7 @@ func (c *MyUnmarshaller) UnmarshalJSON(in []byte) error {
 		i4 += index
 		index = i4 + 1
 
-		c.elems = append(c.elems, keyVal{
+		*c = append(*c, keyVal{
 			in[i1+1 : i2],
 			in[i3+1 : i4],
 		})
@@ -247,35 +238,18 @@ func (c *MyUnmarshaller) UnmarshalJSON(in []byte) error {
 	return nil
 }
 
-func (c MyUnmarshaller) MarshalJSON() ([]byte, error) {
-	var b bytes.Buffer
-
-	b.WriteString("{")
-
-	for index, elem := range c.elems {
-		if index > 0 {
-			b.WriteString(",")
-		}
-		b.WriteString(`"` + string(elem.key) + `":"` + string(elem.value) + `"`)
-	}
-
-	b.WriteString("}")
-
-	return b.Bytes(), nil
-}
-
 func TestUnmarshalInterface(t *testing.T) {
 	txt := []byte(`{
 	B: first
 	A: second
 }`)
-	var obj MyUnmarshaller
+	var obj orderedMap
 	err := Unmarshal(txt, &obj)
 	if err != nil {
 		t.Error(err)
 	}
 	// Make sure that obj got the elements in the correct order (B before A).
-	if !reflect.DeepEqual(obj.elems, []keyVal{
+	if !reflect.DeepEqual(obj, []keyVal{
 		{[]byte("B"), []byte("first")},
 		{[]byte("A"), []byte("second")},
 	}) {

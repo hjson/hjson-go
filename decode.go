@@ -12,7 +12,16 @@ import (
 
 const maxPointerDepth = 512
 
+// If a destination of kind slice, array, map or struct implements ElemTyper
+// Unmarshal() will call ElemType() on the destination to see if any leaf node
+// should be of type string even if it can be treated as a number, boolean or
+// null. This is most useful if the destination also implements the
+// json.Unmarshaler interface, because then there is no other way for
+// Unmarshal() to know the type of the elements on the destination. If a
+// destination implements ElemTyper all of its elements must be of the same
+// type.
 type ElemTyper interface {
+	// Returns the type of any elements.
 	ElemType() reflect.Type
 }
 

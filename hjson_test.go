@@ -198,37 +198,97 @@ func TestUnknownFields(t *testing.T) {
 	}
 }
 
+type keyVal struct {
+	key   []byte
+	value []byte
+}
+
 type MyUnmarshaller struct {
-	A string
-	x string
+	elems []keyVal
 }
 
 func (c *MyUnmarshaller) UnmarshalJSON(in []byte) error {
-	var out map[string]interface{}
-	err := Unmarshal(in, &out)
-	if err != nil {
-		return err
+	index := 0
+	for true {
+		i1 := bytes.IndexByte(in[index:], '"')
+		if i1 < 0 {
+			break
+		}
+		i1 += index
+		index = i1 + 1
+
+		i2 := bytes.IndexByte(in[index:], '"')
+		if i2 < 0 {
+			break
+		}
+		i2 += index
+		index = i2 + 1
+
+		i3 := bytes.IndexByte(in[index:], '"')
+		if i3 < 0 {
+			break
+		}
+		i3 += index
+		index = i3 + 1
+
+		i4 := bytes.IndexByte(in[index:], '"')
+		if i4 < 0 {
+			break
+		}
+		i4 += index
+		index = i4 + 1
+
+		c.elems = append(c.elems, keyVal{
+			in[i1+1 : i2],
+			in[i3+1 : i4],
+		})
 	}
-	a, ok := out["A"]
-	if !ok {
-		return errors.New("Missing key")
-	}
-	b, ok := a.(string)
-	if !ok {
-		return errors.New("Not a string")
-	}
-	c.x = b
+
 	return nil
 }
 
+func (c MyUnmarshaller) MarshalJSON() ([]byte, error) {
+	var b bytes.Buffer
+
+	b.WriteString("{")
+
+	for index, elem := range c.elems {
+		if index > 0 {
+			b.WriteString(",")
+		}
+		b.WriteString(`"` + string(elem.key) + `":"` + string(elem.value) + `"`)
+	}
+
+	b.WriteString("}")
+
+	return b.Bytes(), nil
+}
+
 func TestUnmarshalInterface(t *testing.T) {
+	txt := []byte(`{
+	B: first
+	A: second
+}`)
 	var obj MyUnmarshaller
-	err := Unmarshal([]byte("A: test"), &obj)
+	err := Unmarshal(txt, &obj)
 	if err != nil {
 		t.Error(err)
 	}
-	if obj.A != "" || obj.x != "test" {
-		t.Errorf("Unexpected obj values: %+v", obj)
+	// Make sure that obj got the elements in the correct order (B before A).
+	if !reflect.DeepEqual(obj.elems, []keyVal{
+		{[]byte("B"), []byte("first")},
+		{[]byte("A"), []byte("second")},
+	}) {
+		t.Errorf("Unexpected obj: %#v", obj)
+	}
+
+	buf, err := Marshal(obj)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that Hjson kept the order from MarshalJSON() (B before A).
+	if !bytes.Equal(buf, txt) {
+		t.Errorf("Unexpected Hjson output: %s", string(buf))
 	}
 }
 

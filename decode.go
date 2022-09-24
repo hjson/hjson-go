@@ -12,6 +12,10 @@ import (
 
 const maxPointerDepth = 512
 
+type ElemTyper interface {
+	ElemType() reflect.Type
+}
+
 // DecoderOptions defines options for decoding Hjson.
 type DecoderOptions struct {
 	// UseJSONNumber causes the Decoder to unmarshal a number into an interface{} as a
@@ -22,8 +26,6 @@ type DecoderOptions struct {
 	// non-ignored, exported fields in the destination.
 	DisallowUnknownFields bool
 }
-
-var unmarshalerText = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
 
 // DefaultDecoderOptions returns the default decoding options.
 func DefaultDecoderOptions() DecoderOptions {
@@ -40,6 +42,9 @@ type hjsonParser struct {
 	ch              byte // The current character
 	structTypeCache map[reflect.Type]structFieldMap
 }
+
+var unmarshalerText = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+var elemTyper = reflect.TypeOf((*ElemTyper)(nil)).Elem()
 
 func (p *hjsonParser) resetAt() {
 	p.at = 0
@@ -396,8 +401,16 @@ func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value inter
 	// All elements in any existing slice/array will be removed, so we only care
 	// about the type of the new elements that will be created.
 	var newDestType reflect.Type
-	if t != nil && (t.Kind() == reflect.Slice || t.Kind() == reflect.Array) {
-		newDestType = t.Elem()
+	if t != nil {
+		if t.Implements(elemTyper) {
+			rv := dest
+			if !rv.IsValid() {
+				rv = reflect.Zero(t)
+			}
+			newDestType = rv.Interface().(ElemTyper).ElemType()
+		} else if t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
+			newDestType = t.Elem()
+		}
 	}
 
 	for p.ch > 0 {
@@ -446,22 +459,30 @@ func (p *hjsonParser) readObject(
 	var newDestType reflect.Type
 	dest, t = unravelDestination(dest, t)
 	if t != nil {
-		switch t.Kind() {
-		case reflect.Struct:
-			var ok bool
-			stm, ok = p.structTypeCache[t]
-			if !ok {
-				stm = getStructFieldInfoMap(t)
-				p.structTypeCache[t] = stm
+		if t.Implements(elemTyper) {
+			rv := dest
+			if !rv.IsValid() {
+				rv = reflect.Zero(t)
 			}
+			newDestType = rv.Interface().(ElemTyper).ElemType()
+		} else {
+			switch t.Kind() {
+			case reflect.Struct:
+				var ok bool
+				stm, ok = p.structTypeCache[t]
+				if !ok {
+					stm = getStructFieldInfoMap(t)
+					p.structTypeCache[t] = stm
+				}
 
-		case reflect.Map:
-			// For any key that we find in our loop here below, the new value fully
-			// replaces any old value. So no need for us to dig down into a tree.
-			// (This is because we are decoding into a map. If we were decoding into
-			// a struct we would need to dig down into a tree, to match the behavior
-			// of Golang's JSON decoder.)
-			newDestType = t.Elem()
+			case reflect.Map:
+				// For any key that we find in our loop here below, the new value fully
+				// replaces any old value. So no need for us to dig down into a tree.
+				// (This is because we are decoding into a map. If we were decoding into
+				// a struct we would need to dig down into a tree, to match the behavior
+				// of Golang's JSON decoder.)
+				newDestType = t.Elem()
+			}
 		}
 	}
 

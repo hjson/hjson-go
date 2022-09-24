@@ -198,7 +198,11 @@ func TestUnknownFields(t *testing.T) {
 	}
 }
 
-func (c *orderedMap) UnmarshalJSON(in []byte) error {
+type testOrderedMap struct {
+	orderedMap
+}
+
+func (c *testOrderedMap) UnmarshalJSON(in []byte) error {
 	index := 0
 	for true {
 		i1 := bytes.IndexByte(in[index:], '"')
@@ -229,7 +233,7 @@ func (c *orderedMap) UnmarshalJSON(in []byte) error {
 		i4 += index
 		index = i4 + 1
 
-		*c = append(*c, keyVal{
+		c.orderedMap = append(c.orderedMap, keyVal{
 			string(in[i1+1 : i2]),
 			string(in[i3+1 : i4]),
 		})
@@ -238,20 +242,26 @@ func (c *orderedMap) UnmarshalJSON(in []byte) error {
 	return nil
 }
 
+func (c testOrderedMap) ElemType() reflect.Type {
+	return reflect.TypeOf("")
+}
+
 func TestUnmarshalInterface(t *testing.T) {
 	txt := []byte(`{
   B: first
   A: second
 }`)
-	var obj orderedMap
+	var obj testOrderedMap
 	err := Unmarshal(txt, &obj)
 	if err != nil {
 		t.Error(err)
 	}
 	// Make sure that obj got the elements in the correct order (B before A).
-	expected := orderedMap{
-		{"B", "first"},
-		{"A", "second"},
+	expected := testOrderedMap{
+		orderedMap{
+			{"B", "first"},
+			{"A", "second"},
+		},
 	}
 	if !reflect.DeepEqual(obj, expected) {
 		t.Errorf("Unexpected obj: %#v\n", obj)
@@ -264,6 +274,40 @@ func TestUnmarshalInterface(t *testing.T) {
 	// Make sure that Hjson kept the order from MarshalJSON() (B before A).
 	if !bytes.Equal(buf, txt) {
 		t.Errorf("Unexpected Hjson output: %s", string(buf))
+	}
+}
+
+func TestUnmarshalInterfaceElemType(t *testing.T) {
+	txt := []byte(`{
+  B: first
+  A: 2
+	C: third
+}`)
+	var obj testOrderedMap
+	err := Unmarshal(txt, &obj)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expected := testOrderedMap{
+		orderedMap{
+			{"B", "first"},
+			{"A", "2"},
+			{"C", "third"},
+		},
+	}
+	if !reflect.DeepEqual(obj, expected) {
+		t.Errorf("Unexpected obj: %#v\n", obj)
+	}
+
+	obj = testOrderedMap{}
+	pObj := &obj
+	err = Unmarshal(txt, &pObj)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(obj, expected) {
+		t.Errorf("Unexpected obj: %#v\n", obj)
 	}
 }
 

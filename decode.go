@@ -592,18 +592,10 @@ func Unmarshal(data []byte, v interface{}) error {
 	return UnmarshalWithOptions(data, v, DefaultDecoderOptions())
 }
 
-// UnmarshalWithOptions parses the Hjson-encoded data and stores the result
-// in the value pointed to by v.
-//
-// Internally the Hjson input is converted to JSON, which is then used as input
-// to the function json.Unmarshal().
-//
-// For more details about the output from this function, see the documentation
-// for json.Unmarshal().
-func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) error {
+func orderedUnmarshal(data []byte, v interface{}, options DecoderOptions) (interface{}, error) {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return fmt.Errorf("Cannot unmarshal into non-pointer %v", reflect.TypeOf(v))
+		return nil, fmt.Errorf("Cannot unmarshal into non-pointer %v", reflect.TypeOf(v))
 	}
 
 	parser := &hjsonParser{
@@ -615,6 +607,23 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 	}
 	parser.resetAt()
 	value, err := parser.rootValue(rv)
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+// UnmarshalWithOptions parses the Hjson-encoded data and stores the result
+// in the value pointed to by v.
+//
+// Internally the Hjson input is converted to JSON, which is then used as input
+// to the function json.Unmarshal().
+//
+// For more details about the output from this function, see the documentation
+// for json.Unmarshal().
+func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) error {
+	value, err := orderedUnmarshal(data, v, options)
 	if err != nil {
 		return err
 	}
@@ -628,10 +637,10 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 	}
 
 	dec := json.NewDecoder(bytes.NewBuffer(buf))
-	if parser.UseJSONNumber {
+	if options.UseJSONNumber {
 		dec.UseNumber()
 	}
-	if parser.DisallowUnknownFields {
+	if options.DisallowUnknownFields {
 		dec.DisallowUnknownFields()
 	}
 

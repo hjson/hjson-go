@@ -240,8 +240,8 @@ func (c *orderedMap) UnmarshalJSON(in []byte) error {
 
 func TestUnmarshalInterface(t *testing.T) {
 	txt := []byte(`{
-	B: first
-	A: second
+  B: first
+  A: second
 }`)
 	var obj orderedMap
 	err := Unmarshal(txt, &obj)

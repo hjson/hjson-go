@@ -13,7 +13,7 @@ import (
 const maxPointerDepth = 512
 
 // If a destination type implements ElemTyper, Unmarshal() will call ElemType()
-// on the destination when unmarshaling an array or an object, to see if any
+// on the destination when unmarshalling an array or an object, to see if any
 // array element or leaf node should be of type string even if it can be treated
 // as a number, boolean or null. This is most useful if the destination also
 // implements the json.Unmarshaler interface, because then there is no other way
@@ -21,7 +21,8 @@ const maxPointerDepth = 512
 // destination implements ElemTyper all of its elements must be of the same
 // type.
 type ElemTyper interface {
-	// Returns the desired type of any elements.
+	// Returns the desired type of any elements. If ElemType() is implemented
+	// using a pointer receiver it must be possible to call with nil as receiver.
 	ElemType() reflect.Type
 }
 

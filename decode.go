@@ -12,16 +12,16 @@ import (
 
 const maxPointerDepth = 512
 
-// If a destination of kind slice, array, map or struct implements ElemTyper
-// Unmarshal() will call ElemType() on the destination to see if any leaf node
-// should be of type string even if it can be treated as a number, boolean or
-// null. This is most useful if the destination also implements the
-// json.Unmarshaler interface, because then there is no other way for
-// Unmarshal() to know the type of the elements on the destination. If a
+// If a destination type implements ElemTyper, Unmarshal() will call ElemType()
+// on the destination when unmarshaling an array or an object, to see if any
+// array element or leaf node should be of type string even if it can be treated
+// as a number, boolean or null. This is most useful if the destination also
+// implements the json.Unmarshaler interface, because then there is no other way
+// for Unmarshal() to know the type of the elements on the destination. If a
 // destination implements ElemTyper all of its elements must be of the same
 // type.
 type ElemTyper interface {
-	// Returns the type of any elements.
+	// Returns the desired type of any elements.
 	ElemType() reflect.Type
 }
 
@@ -385,6 +385,43 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 	}
 }
 
+// t must not have been unraveled
+func getElemTyperType(rv reflect.Value, t reflect.Type) reflect.Type {
+	var elemType reflect.Type
+	isElemTyper := false
+
+	if t != nil && t.Implements(elemTyper) {
+		isElemTyper = true
+		if t.Kind() == reflect.Ptr {
+			// If ElemType() has a value receiver we would get a panic if we call it
+			// on a nil pointer.
+			if !rv.IsValid() || rv.IsNil() {
+				rv = reflect.New(t.Elem())
+			}
+		} else if !rv.IsValid() {
+			rv = reflect.Zero(t)
+		}
+	}
+	if !isElemTyper && rv.CanAddr() {
+		rv = rv.Addr()
+		if rv.Type().Implements(elemTyper) {
+			isElemTyper = true
+		}
+	}
+	if !isElemTyper && t != nil {
+		pt := reflect.PtrTo(t)
+		if pt.Implements(elemTyper) {
+			isElemTyper = true
+			rv = reflect.Zero(pt)
+		}
+	}
+	if isElemTyper {
+		elemType = rv.Interface().(ElemTyper).ElemType()
+	}
+
+	return elemType
+}
+
 func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value interface{}, err error) {
 
 	// Parse an array value.
@@ -400,22 +437,7 @@ func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value inter
 		return array, nil // empty array
 	}
 
-	var elemType reflect.Type
-
-	// t must not have been unraveled
-	if t != nil && t.Implements(elemTyper) {
-		rv := dest
-		if t.Kind() == reflect.Ptr {
-			// If ElemType() has a value receiver we would get a panic if we call it
-			// on a nil pointer.
-			if !rv.IsValid() || rv.IsNil() {
-				rv = reflect.New(t.Elem())
-			}
-		} else if !rv.IsValid() {
-			rv = reflect.Zero(t)
-		}
-		elemType = rv.Interface().(ElemTyper).ElemType()
-	}
+	elemType := getElemTyperType(dest, t)
 
 	dest, t = unravelDestination(dest, t)
 
@@ -468,42 +490,7 @@ func (p *hjsonParser) readObject(
 	}
 
 	var stm structFieldMap
-	var elemType reflect.Type
-
-	{
-		// t must not have been unraveled
-		isElemTyper := false
-		rv := dest
-
-		if t != nil && t.Implements(elemTyper) {
-			isElemTyper = true
-			if t.Kind() == reflect.Ptr {
-				// If ElemType() has a value receiver we would get a panic if we call it
-				// on a nil pointer.
-				if !rv.IsValid() || rv.IsNil() {
-					rv = reflect.New(t.Elem())
-				}
-			} else if !rv.IsValid() {
-				rv = reflect.Zero(t)
-			}
-		}
-		if !isElemTyper && rv.CanAddr() {
-			rv = rv.Addr()
-			if rv.Type().Implements(elemTyper) {
-				isElemTyper = true
-			}
-		}
-		if !isElemTyper && t != nil {
-			pt := reflect.PtrTo(t)
-			if pt.Implements(elemTyper) {
-				isElemTyper = true
-				rv = reflect.Zero(pt)
-			}
-		}
-		if isElemTyper {
-			elemType = rv.Interface().(ElemTyper).ElemType()
-		}
-	}
+	elemType := getElemTyperType(dest, t)
 
 	dest, t = unravelDestination(dest, t)
 

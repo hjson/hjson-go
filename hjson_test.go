@@ -294,6 +294,18 @@ func (c *testOrderedMapB) ElemType() reflect.Type {
 	return reflect.TypeOf("")
 }
 
+type testSliceElemTyperA []interface{}
+
+func (c testSliceElemTyperA) ElemType() reflect.Type {
+	return reflect.TypeOf("")
+}
+
+type testSliceElemTyperB []interface{}
+
+func (c *testSliceElemTyperB) ElemType() reflect.Type {
+	return reflect.TypeOf("")
+}
+
 func TestUnmarshalInterface(t *testing.T) {
 	txt := []byte(`{
   B: first
@@ -411,7 +423,7 @@ func TestUnmarshalInterfaceElemType(t *testing.T) {
 	}
 }
 
-func TestUnmarshalSliceElemType(t *testing.T) {
+func TestUnmarshalSliceMapElemType(t *testing.T) {
 	txt := []byte(`[
   {
     B: first
@@ -491,7 +503,7 @@ func TestUnmarshalSliceElemType(t *testing.T) {
 	}
 }
 
-func TestUnmarshalSlicePointerElemType(t *testing.T) {
+func TestUnmarshalSliceMapPointerElemType(t *testing.T) {
 	txt := []byte(`[
   {
     B: first
@@ -736,6 +748,321 @@ func TestUnmarshalStructPointerElemType(t *testing.T) {
 			orderedMap{
 				{"D", "3"},
 			},
+		},
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+
+	objB = tsB{}
+	pObjB := &objB
+	err = Unmarshal(txt, &pObjB)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+}
+
+func TestUnmarshalSliceElemType(t *testing.T) {
+	txt := []byte(`[
+	1
+	two
+]`)
+
+	var objA testSliceElemTyperA
+	err := Unmarshal(txt, &objA)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testSliceElemTyper.ElemType()).
+	expectedA := testSliceElemTyperA{
+		"1",
+		"two",
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	objA = nil
+	pObjA := &objA
+	err = Unmarshal(txt, &pObjA)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	var objB testSliceElemTyperB
+	err = Unmarshal(txt, &objB)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedB := testSliceElemTyperB{
+		"1",
+		"two",
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+
+	objB = nil
+	pObjB := &objB
+	err = Unmarshal(txt, &pObjB)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+}
+
+func TestUnmarshalSliceSliceElemType(t *testing.T) {
+	txt := []byte(`[
+  [
+    1
+    two
+  ]
+]`)
+
+	var objA []testSliceElemTyperA
+	err := Unmarshal(txt, &objA)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testSliceElemTyper.ElemType()).
+	expectedA := []testSliceElemTyperA{
+		testSliceElemTyperA{
+			"1",
+			"two",
+		},
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	objA = nil
+	pObjA := &objA
+	err = Unmarshal(txt, &pObjA)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	var objB []testSliceElemTyperB
+	err = Unmarshal(txt, &objB)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedB := []testSliceElemTyperB{
+		testSliceElemTyperB{
+			"1",
+			"two",
+		},
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+
+	objB = nil
+	pObjB := &objB
+	err = Unmarshal(txt, &pObjB)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+}
+
+func TestUnmarshalSlicePointerSliceElemType(t *testing.T) {
+	txt := []byte(`[
+  [
+    1
+    two
+  ]
+]`)
+
+	var objA []*testSliceElemTyperA
+	err := Unmarshal(txt, &objA)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testSliceElemTyper.ElemType()).
+	expectedA := []*testSliceElemTyperA{
+		&testSliceElemTyperA{
+			"1",
+			"two",
+		},
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	objA = nil
+	pObjA := &objA
+	err = Unmarshal(txt, &pObjA)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	var objB []*testSliceElemTyperB
+	err = Unmarshal(txt, &objB)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedB := []*testSliceElemTyperB{
+		&testSliceElemTyperB{
+			"1",
+			"two",
+		},
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+
+	objB = nil
+	pObjB := &objB
+	err = Unmarshal(txt, &pObjB)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+}
+
+func TestUnmarshalStructSliceElemType(t *testing.T) {
+	txt := []byte(`{
+  Key1: [
+    1
+    two
+  ]
+}`)
+
+	type tsA struct {
+		Key1 testSliceElemTyperA
+	}
+
+	var objA tsA
+	err := Unmarshal(txt, &objA)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testSliceElemTyper.ElemType()).
+	expectedA := tsA{
+		Key1: testSliceElemTyperA{
+			"1",
+			"two",
+		},
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	objA = tsA{}
+	pObjA := &objA
+	err = Unmarshal(txt, &pObjA)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	type tsB struct {
+		Key1 testSliceElemTyperB
+	}
+
+	var objB tsB
+	err = Unmarshal(txt, &objB)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedB := tsB{
+		Key1: testSliceElemTyperB{
+			"1",
+			"two",
+		},
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+
+	objB = tsB{}
+	pObjB := &objB
+	err = Unmarshal(txt, &pObjB)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+}
+
+func TestUnmarshalStructPointerSliceElemType(t *testing.T) {
+	txt := []byte(`{
+  Key1: [
+    1
+    two
+  ]
+}`)
+
+	type tsA struct {
+		Key1 *testSliceElemTyperA
+	}
+
+	var objA tsA
+	err := Unmarshal(txt, &objA)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testSliceElemTyper.ElemType()).
+	expectedA := tsA{
+		Key1: &testSliceElemTyperA{
+			"1",
+			"two",
+		},
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	objA = tsA{}
+	pObjA := &objA
+	err = Unmarshal(txt, &pObjA)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	type tsB struct {
+		Key1 *testSliceElemTyperB
+	}
+
+	var objB tsB
+	err = Unmarshal(txt, &objB)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedB := tsB{
+		Key1: &testSliceElemTyperB{
+			"1",
+			"two",
 		},
 	}
 	if !reflect.DeepEqual(objB, expectedB) {

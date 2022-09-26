@@ -405,7 +405,7 @@ func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value inter
 	// t must not have been unraveled
 	if t != nil && t.Implements(elemTyper) {
 		rv := dest
-		if t.Kind() == reflect.Pointer {
+		if t.Kind() == reflect.Ptr {
 			// If ElemType() has a value receiver we would get a panic if we call it
 			// on a nil pointer.
 			if !rv.IsValid() || rv.IsNil() {
@@ -477,7 +477,7 @@ func (p *hjsonParser) readObject(
 
 		if t != nil && t.Implements(elemTyper) {
 			isElemTyper = true
-			if t.Kind() == reflect.Pointer {
+			if t.Kind() == reflect.Ptr {
 				// If ElemType() has a value receiver we would get a panic if we call it
 				// on a nil pointer.
 				if !rv.IsValid() || rv.IsNil() {

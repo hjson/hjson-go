@@ -198,11 +198,11 @@ func TestUnknownFields(t *testing.T) {
 	}
 }
 
-type testOrderedMap struct {
+type testOrderedMapA struct {
 	orderedMap
 }
 
-func (c *testOrderedMap) UnmarshalJSON(in []byte) error {
+func (c *testOrderedMapA) UnmarshalJSON(in []byte) error {
 	index := 0
 	for true {
 		i1 := bytes.IndexByte(in[index:], '"')
@@ -242,7 +242,55 @@ func (c *testOrderedMap) UnmarshalJSON(in []byte) error {
 	return nil
 }
 
-func (c testOrderedMap) ElemType() reflect.Type {
+func (c testOrderedMapA) ElemType() reflect.Type {
+	return reflect.TypeOf("")
+}
+
+type testOrderedMapB struct {
+	orderedMap
+}
+
+func (c *testOrderedMapB) UnmarshalJSON(in []byte) error {
+	index := 0
+	for true {
+		i1 := bytes.IndexByte(in[index:], '"')
+		if i1 < 0 {
+			break
+		}
+		i1 += index
+		index = i1 + 1
+
+		i2 := bytes.IndexByte(in[index:], '"')
+		if i2 < 0 {
+			break
+		}
+		i2 += index
+		index = i2 + 1
+
+		i3 := bytes.IndexByte(in[index:], '"')
+		if i3 < 0 {
+			break
+		}
+		i3 += index
+		index = i3 + 1
+
+		i4 := bytes.IndexByte(in[index:], '"')
+		if i4 < 0 {
+			break
+		}
+		i4 += index
+		index = i4 + 1
+
+		c.orderedMap = append(c.orderedMap, keyVal{
+			string(in[i1+1 : i2]),
+			string(in[i3+1 : i4]),
+		})
+	}
+
+	return nil
+}
+
+func (c *testOrderedMapB) ElemType() reflect.Type {
 	return reflect.TypeOf("")
 }
 
@@ -251,23 +299,48 @@ func TestUnmarshalInterface(t *testing.T) {
   B: first
   A: second
 }`)
-	var obj testOrderedMap
-	err := Unmarshal(txt, &obj)
+	var objA testOrderedMapA
+	err := Unmarshal(txt, &objA)
 	if err != nil {
 		t.Error(err)
 	}
 	// Make sure that obj got the elements in the correct order (B before A).
-	expected := testOrderedMap{
+	expectedA := testOrderedMapA{
 		orderedMap{
 			{"B", "first"},
 			{"A", "second"},
 		},
 	}
-	if !reflect.DeepEqual(obj, expected) {
-		t.Errorf("Unexpected obj: %#v\n", obj)
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
 	}
 
-	buf, err := Marshal(obj)
+	buf, err := Marshal(objA)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that Hjson kept the order from MarshalJSON() (B before A).
+	if !bytes.Equal(buf, txt) {
+		t.Errorf("Unexpected Hjson output: %s", string(buf))
+	}
+
+	var objB testOrderedMapB
+	err = Unmarshal(txt, &objB)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that obj got the elements in the correct order (B before A).
+	expectedB := testOrderedMapB{
+		orderedMap{
+			{"B", "first"},
+			{"A", "second"},
+		},
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+
+	buf, err = Marshal(objB)
 	if err != nil {
 		t.Error(err)
 	}
@@ -283,31 +356,400 @@ func TestUnmarshalInterfaceElemType(t *testing.T) {
   A: 2
 	C: third
 }`)
-	var obj testOrderedMap
-	err := Unmarshal(txt, &obj)
+	var objA testOrderedMapA
+	err := Unmarshal(txt, &objA)
 	if err != nil {
 		t.Error(err)
 	}
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
-	expected := testOrderedMap{
+	expectedA := testOrderedMapA{
 		orderedMap{
 			{"B", "first"},
 			{"A", "2"},
 			{"C", "third"},
 		},
 	}
-	if !reflect.DeepEqual(obj, expected) {
-		t.Errorf("Unexpected obj: %#v\n", obj)
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
 	}
 
-	obj = testOrderedMap{}
-	pObj := &obj
-	err = Unmarshal(txt, &pObj)
+	objA = testOrderedMapA{}
+	pObjA := &objA
+	err = Unmarshal(txt, &pObjA)
 	if err != nil {
 		t.Error(err)
 	}
-	if !reflect.DeepEqual(obj, expected) {
-		t.Errorf("Unexpected obj: %#v\n", obj)
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	var objB testOrderedMapB
+	err = Unmarshal(txt, &objB)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedB := testOrderedMapB{
+		orderedMap{
+			{"B", "first"},
+			{"A", "2"},
+			{"C", "third"},
+		},
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+
+	objB = testOrderedMapB{}
+	pObjB := &objB
+	err = Unmarshal(txt, &pObjB)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+}
+
+func TestUnmarshalSliceElemType(t *testing.T) {
+	txt := []byte(`[
+  {
+    B: first
+    A: 2
+    C: third
+  }
+  {
+    D: 3
+  }
+]`)
+	var objA []testOrderedMapA
+	err := Unmarshal(txt, &objA)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedA := []testOrderedMapA{
+		testOrderedMapA{
+			orderedMap{
+				{"B", "first"},
+				{"A", "2"},
+				{"C", "third"},
+			},
+		},
+		testOrderedMapA{
+			orderedMap{
+				{"D", "3"},
+			},
+		},
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	objA = nil
+	pObjA := &objA
+	err = Unmarshal(txt, &pObjA)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	var objB []testOrderedMapB
+	err = Unmarshal(txt, &objB)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedB := []testOrderedMapB{
+		testOrderedMapB{
+			orderedMap{
+				{"B", "first"},
+				{"A", "2"},
+				{"C", "third"},
+			},
+		},
+		testOrderedMapB{
+			orderedMap{
+				{"D", "3"},
+			},
+		},
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+
+	objB = nil
+	pObjB := &objB
+	err = Unmarshal(txt, &pObjB)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+}
+
+func TestUnmarshalSlicePointerElemType(t *testing.T) {
+	txt := []byte(`[
+  {
+    B: first
+    A: 2
+    C: third
+  }
+  {
+    D: 3
+  }
+]`)
+	var objA []*testOrderedMapA
+	err := Unmarshal(txt, &objA)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedA := []*testOrderedMapA{
+		&testOrderedMapA{
+			orderedMap{
+				{"B", "first"},
+				{"A", "2"},
+				{"C", "third"},
+			},
+		},
+		&testOrderedMapA{
+			orderedMap{
+				{"D", "3"},
+			},
+		},
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	objA = nil
+	pObjA := &objA
+	err = Unmarshal(txt, &pObjA)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	var objB []*testOrderedMapB
+	err = Unmarshal(txt, &objB)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedB := []*testOrderedMapB{
+		&testOrderedMapB{
+			orderedMap{
+				{"B", "first"},
+				{"A", "2"},
+				{"C", "third"},
+			},
+		},
+		&testOrderedMapB{
+			orderedMap{
+				{"D", "3"},
+			},
+		},
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+
+	objB = nil
+	pObjB := &objB
+	err = Unmarshal(txt, &pObjB)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+}
+
+func TestUnmarshalStructElemType(t *testing.T) {
+	txt := []byte(`{
+  key1: {
+    B: first
+    A: 2
+    C: third
+  }
+  key2: {
+    D: 3
+  }
+}`)
+
+	type tsA struct {
+		Key1 testOrderedMapA
+		Key2 testOrderedMapA
+	}
+
+	var objA tsA
+	err := Unmarshal(txt, &objA)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedA := tsA{
+		Key1: testOrderedMapA{
+			orderedMap{
+				{"B", "first"},
+				{"A", "2"},
+				{"C", "third"},
+			},
+		},
+		Key2: testOrderedMapA{
+			orderedMap{
+				{"D", "3"},
+			},
+		},
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	objA = tsA{}
+	pObjA := &objA
+	err = Unmarshal(txt, &pObjA)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	type tsB struct {
+		Key1 testOrderedMapB
+		Key2 testOrderedMapB
+	}
+
+	var objB tsB
+	err = Unmarshal(txt, &objB)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedB := tsB{
+		Key1: testOrderedMapB{
+			orderedMap{
+				{"B", "first"},
+				{"A", "2"},
+				{"C", "third"},
+			},
+		},
+		Key2: testOrderedMapB{
+			orderedMap{
+				{"D", "3"},
+			},
+		},
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+
+	objB = tsB{}
+	pObjB := &objB
+	err = Unmarshal(txt, &pObjB)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+}
+
+func TestUnmarshalStructPointerElemType(t *testing.T) {
+	txt := []byte(`{
+  key1: {
+    B: first
+    A: 2
+    C: third
+  }
+  key2: {
+    D: 3
+  }
+}`)
+
+	type tsA struct {
+		Key1 *testOrderedMapA
+		Key2 *testOrderedMapA
+	}
+
+	var objA tsA
+	err := Unmarshal(txt, &objA)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedA := tsA{
+		Key1: &testOrderedMapA{
+			orderedMap{
+				{"B", "first"},
+				{"A", "2"},
+				{"C", "third"},
+			},
+		},
+		Key2: &testOrderedMapA{
+			orderedMap{
+				{"D", "3"},
+			},
+		},
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	objA = tsA{}
+	pObjA := &objA
+	err = Unmarshal(txt, &pObjA)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objA, expectedA) {
+		t.Errorf("Unexpected obj: %#v\n", objA)
+	}
+
+	type tsB struct {
+		Key1 *testOrderedMapB
+		Key2 *testOrderedMapB
+	}
+
+	var objB tsB
+	err = Unmarshal(txt, &objB)
+	if err != nil {
+		t.Error(err)
+	}
+	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
+	expectedB := tsB{
+		Key1: &testOrderedMapB{
+			orderedMap{
+				{"B", "first"},
+				{"A", "2"},
+				{"C", "third"},
+			},
+		},
+		Key2: &testOrderedMapB{
+			orderedMap{
+				{"D", "3"},
+			},
+		},
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
+	}
+
+	objB = tsB{}
+	pObjB := &objB
+	err = Unmarshal(txt, &pObjB)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(objB, expectedB) {
+		t.Errorf("Unexpected obj: %#v\n", objB)
 	}
 }
 

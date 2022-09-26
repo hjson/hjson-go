@@ -334,11 +334,6 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 	value := new(bytes.Buffer)
 	value.WriteByte(p.ch)
 
-	// t might be nil
-	if dest.IsValid() {
-		t = dest.Type()
-	}
-
 	// Keep the original dest and t, because we need to check if it implements
 	// encoding.TextUnmarshaler.
 	_, newT := unravelDestination(dest, t)
@@ -405,26 +400,34 @@ func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value inter
 		return array, nil // empty array
 	}
 
+	var elemType reflect.Type
+
+	// t must not have been unraveled
+	if t != nil && t.Implements(elemTyper) {
+		rv := dest
+		if t.Kind() == reflect.Pointer {
+			// If ElemType() has a value receiver we would get a panic if we call it
+			// on a nil pointer.
+			if !rv.IsValid() || rv.IsNil() {
+				rv = reflect.New(t.Elem())
+			}
+		} else if !rv.IsValid() {
+			rv = reflect.Zero(t)
+		}
+		elemType = rv.Interface().(ElemTyper).ElemType()
+	}
+
 	dest, t = unravelDestination(dest, t)
 
 	// All elements in any existing slice/array will be removed, so we only care
 	// about the type of the new elements that will be created.
-	var newDestType reflect.Type
-	if t != nil {
-		if t.Implements(elemTyper) {
-			rv := dest
-			if !rv.IsValid() {
-				rv = reflect.Zero(t)
-			}
-			newDestType = rv.Interface().(ElemTyper).ElemType()
-		} else if t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
-			newDestType = t.Elem()
-		}
+	if elemType == nil && t != nil && (t.Kind() == reflect.Slice || t.Kind() == reflect.Array) {
+		elemType = t.Elem()
 	}
 
 	for p.ch > 0 {
 		var val interface{}
-		if val, err = p.readValue(reflect.Value{}, newDestType); err != nil {
+		if val, err = p.readValue(reflect.Value{}, elemType); err != nil {
 			return nil, err
 		}
 		array = append(array, val)
@@ -465,33 +468,62 @@ func (p *hjsonParser) readObject(
 	}
 
 	var stm structFieldMap
-	var newDestType reflect.Type
-	dest, t = unravelDestination(dest, t)
-	if t != nil {
-		if t.Implements(elemTyper) {
-			rv := dest
-			if !rv.IsValid() {
+	var elemType reflect.Type
+
+	{
+		// t must not have been unraveled
+		isElemTyper := false
+		rv := dest
+
+		if t != nil && t.Implements(elemTyper) {
+			isElemTyper = true
+			if t.Kind() == reflect.Pointer {
+				// If ElemType() has a value receiver we would get a panic if we call it
+				// on a nil pointer.
+				if !rv.IsValid() || rv.IsNil() {
+					rv = reflect.New(t.Elem())
+				}
+			} else if !rv.IsValid() {
 				rv = reflect.Zero(t)
 			}
-			newDestType = rv.Interface().(ElemTyper).ElemType()
-		} else {
-			switch t.Kind() {
-			case reflect.Struct:
-				var ok bool
-				stm, ok = p.structTypeCache[t]
-				if !ok {
-					stm = getStructFieldInfoMap(t)
-					p.structTypeCache[t] = stm
-				}
-
-			case reflect.Map:
-				// For any key that we find in our loop here below, the new value fully
-				// replaces any old value. So no need for us to dig down into a tree.
-				// (This is because we are decoding into a map. If we were decoding into
-				// a struct we would need to dig down into a tree, to match the behavior
-				// of Golang's JSON decoder.)
-				newDestType = t.Elem()
+		}
+		if !isElemTyper && rv.CanAddr() {
+			rv = rv.Addr()
+			if rv.Type().Implements(elemTyper) {
+				isElemTyper = true
 			}
+		}
+		if !isElemTyper && t != nil {
+			pt := reflect.PtrTo(t)
+			if pt.Implements(elemTyper) {
+				isElemTyper = true
+				rv = reflect.Zero(pt)
+			}
+		}
+		if isElemTyper {
+			elemType = rv.Interface().(ElemTyper).ElemType()
+		}
+	}
+
+	dest, t = unravelDestination(dest, t)
+
+	if elemType == nil && t != nil {
+		switch t.Kind() {
+		case reflect.Struct:
+			var ok bool
+			stm, ok = p.structTypeCache[t]
+			if !ok {
+				stm = getStructFieldInfoMap(t)
+				p.structTypeCache[t] = stm
+			}
+
+		case reflect.Map:
+			// For any key that we find in our loop here below, the new value fully
+			// replaces any old value. So no need for us to dig down into a tree.
+			// (This is because we are decoding into a map. If we were decoding into
+			// a struct we would need to dig down into a tree, to match the behavior
+			// of Golang's JSON decoder.)
+			elemType = t.Elem()
 		}
 	}
 
@@ -507,6 +539,7 @@ func (p *hjsonParser) readObject(
 		p.next()
 
 		var newDest reflect.Value
+		var newDestType reflect.Type
 		if stm != nil {
 			sfi, ok := stm.getField(key)
 			if ok {
@@ -514,6 +547,12 @@ func (p *hjsonParser) readObject(
 				newDest, newDestType = dest, t
 				for _, i := range sfi.indexPath {
 					newDest, newDestType = unravelDestination(newDest, newDestType)
+
+					if newDestType == nil {
+						return nil, p.errAt("Internal error")
+					}
+					newDestType = newDestType.Field(i).Type
+					elemType = newDestType
 
 					if newDest.IsValid() {
 						if newDest.Kind() != reflect.Struct {
@@ -526,16 +565,13 @@ func (p *hjsonParser) readObject(
 							newDest = newDest.Field(i)
 						}
 					}
-					if !newDest.IsValid() && newDestType != nil {
-						newDestType = newDestType.Field(i).Type
-					}
 				}
 			}
 		}
 
 		// duplicate keys overwrite the previous value
 		var val interface{}
-		if val, err = p.readValue(newDest, newDestType); err != nil {
+		if val, err = p.readValue(newDest, elemType); err != nil {
 			return nil, err
 		}
 		object = append(object, keyVal{key, val})
@@ -581,23 +617,29 @@ func (p *hjsonParser) readValue(dest reflect.Value, t reflect.Type) (interface{}
 func (p *hjsonParser) rootValue(dest reflect.Value) (interface{}, error) {
 	// Braces for the root object are optional
 
+	// We have checked that dest is a pointer before calling rootValue().
+	// Dereference here because readObject() etc will pass on child destinations
+	// without creating pointers.
+	dest = dest.Elem()
+	t := dest.Type()
+
 	p.white()
 	switch p.ch {
 	case '{':
-		return p.checkTrailing(p.readObject(false, dest, nil))
+		return p.checkTrailing(p.readObject(false, dest, t))
 	case '[':
-		return p.checkTrailing(p.readArray(dest, nil))
+		return p.checkTrailing(p.readArray(dest, t))
 	}
 
 	// assume we have a root object without braces
-	res, err := p.checkTrailing(p.readObject(true, dest, nil))
+	res, err := p.checkTrailing(p.readObject(true, dest, t))
 	if err == nil {
 		return res, nil
 	}
 
 	// test if we are dealing with a single JSON value instead (true/false/null/num/"")
 	p.resetAt()
-	if res2, err2 := p.checkTrailing(p.readValue(dest, nil)); err2 == nil {
+	if res2, err2 := p.checkTrailing(p.readValue(dest, t)); err2 == nil {
 		return res2, nil
 	}
 	return res, err

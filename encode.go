@@ -244,6 +244,12 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		defer func() { e.pDepth-- }()
 	}
 
+	if !value.IsValid() {
+		e.WriteString(separator)
+		e.WriteString("null")
+		return nil
+	}
+
 	if kind == reflect.Interface || kind == reflect.Ptr {
 		if value.IsNil() {
 			e.WriteString(separator)

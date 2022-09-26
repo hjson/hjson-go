@@ -227,7 +227,7 @@ Output:
 }
 ```
 
-# Type ambiguity
+## Type ambiguity
 
 Hjson allows quoteless strings. But if a value is a valid number, boolean or `null` then it will be unmarshalled into that type instead of a string when unmarshalling into `interface{}`. This can lead to unintended consequences if the creator of an Hjson file meant to write a string but didn't think of that the quoteless string they wrote also was a valid number.
 
@@ -264,6 +264,19 @@ Output:
 ```
 
 String pointer destinations are treated the same as string destinations, so you cannot set a string pointer to `nil` by writing `null` in an Hjson file. Writing `null` in an Hjson file would result in the string "null" being stored in the destination string pointer.
+
+## ElemTyper interface
+
+If a destination type implements hjson.ElemTyper, Unmarshal() will call ElemType() on the destination when unmarshalling an array or an object, to see if any array element or leaf node should be of type string even if it can be treated as a number, boolean or null. This is most useful if the destination also implements the json.Unmarshaler interface, because then there is no other way for Unmarshal() to know the type of the elements on the destination. If a destination implements ElemTyper all of its elements must be of the same type.
+
+Example implementation for a generic ordered map:
+
+```go
+
+func (o *OrderedMap[T]) ElemType() reflect.Type {
+  return reflect.TypeOf((*T)(nil)).Elem()
+}
+```
 
 # API
 

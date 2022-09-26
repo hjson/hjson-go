@@ -207,8 +207,10 @@ func (e *hjsonEncoder) useMarshalerJSON(
 		return err
 	}
 
-	var jsonRoot interface{}
-	err = Unmarshal(b, &jsonRoot)
+	decOpt := DefaultDecoderOptions()
+	decOpt.UseJSONNumber = true
+	var dummyDest interface{}
+	jsonRoot, err := orderedUnmarshal(b, &dummyDest, decOpt)
 	if err != nil {
 		return err
 	}
@@ -242,6 +244,12 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		defer func() { e.pDepth-- }()
 	}
 
+	if !value.IsValid() {
+		e.WriteString(separator)
+		e.WriteString("null")
+		return nil
+	}
+
 	if kind == reflect.Interface || kind == reflect.Ptr {
 		if value.IsNil() {
 			e.WriteString(separator)
@@ -249,6 +257,20 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			return nil
 		}
 		return e.str(value.Elem(), noIndent, separator, isRootObject)
+	}
+
+	// Our internal orderedMap implements marshalerJSON. We must therefore place
+	// this check before checking marshalerJSON. Calling orderedMap.MarshalJSON()
+	// from this function would cause an infinite loop.
+	if om, ok := value.Interface().(orderedMap); ok {
+		var fis []fieldInfo
+		for _, elem := range om {
+			fis = append(fis, fieldInfo{
+				field: reflect.ValueOf(elem.value),
+				name:  elem.key,
+			})
+		}
+		return e.writeFields(fis, noIndent, separator, isRootObject)
 	}
 
 	if value.Type().Implements(marshalerJSON) {
@@ -436,7 +458,6 @@ func isEmptyValue(v reflect.Value) bool {
 // default options.
 //
 // See MarshalWithOptions.
-//
 func Marshal(v interface{}) ([]byte, error) {
 	return MarshalWithOptions(v, DefaultOptions())
 }
@@ -490,29 +511,29 @@ func Marshal(v interface{}) ([]byte, error) {
 //
 // Examples of struct field tags and their meanings:
 //
-//   // Field appears in Hjson as key "myName".
-//   Field int `json:"myName"`
+//	// Field appears in Hjson as key "myName".
+//	Field int `json:"myName"`
 //
-//   // Field appears in Hjson as key "myName" and the field is omitted from
-//   // the object if its value is empty, as defined above.
-//   Field int `json:"myName,omitempty"`
+//	// Field appears in Hjson as key "myName" and the field is omitted from
+//	// the object if its value is empty, as defined above.
+//	Field int `json:"myName,omitempty"`
 //
-//   // Field appears in Hjson as key "Field" (the default), but the field is
-//   // skipped if empty. Note the leading comma.
-//   Field int `json:",omitempty"`
+//	// Field appears in Hjson as key "Field" (the default), but the field is
+//	// skipped if empty. Note the leading comma.
+//	Field int `json:",omitempty"`
 //
-//   // Field is ignored by this package.
-//   Field int `json:"-"`
+//	// Field is ignored by this package.
+//	Field int `json:"-"`
 //
-//   // Field appears in Hjson as key "-".
-//   Field int `json:"-,"`
+//	// Field appears in Hjson as key "-".
+//	Field int `json:"-,"`
 //
-//   // Field appears in Hjson preceded by a line just containing `# A comment.`
-//   Field int `comment:"A comment."`
+//	// Field appears in Hjson preceded by a line just containing `# A comment.`
+//	Field int `comment:"A comment."`
 //
-//   // Field appears in Hjson as key "myName" preceded by a line just
-//   // containing `# A comment.`
-//   Field int `json:"myName" comment:"A comment."`
+//	// Field appears in Hjson as key "myName" preceded by a line just
+//	// containing `# A comment.`
+//	Field int `json:"myName" comment:"A comment."`
 //
 // Anonymous struct fields are usually marshaled as if their inner exported fields
 // were fields in the outer struct, subject to the usual Go visibility rules amended
@@ -554,7 +575,6 @@ func Marshal(v interface{}) ([]byte, error) {
 //
 // Hjson cannot represent cyclic data structures and Marshal does not handle
 // them. Passing cyclic structures to Marshal will result in an error.
-//
 func MarshalWithOptions(v interface{}, options EncoderOptions) ([]byte, error) {
 	e := &hjsonEncoder{
 		indent:          0,

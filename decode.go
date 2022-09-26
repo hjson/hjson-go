@@ -12,6 +12,20 @@ import (
 
 const maxPointerDepth = 512
 
+// If a destination type implements ElemTyper, Unmarshal() will call ElemType()
+// on the destination when unmarshalling an array or an object, to see if any
+// array element or leaf node should be of type string even if it can be treated
+// as a number, boolean or null. This is most useful if the destination also
+// implements the json.Unmarshaler interface, because then there is no other way
+// for Unmarshal() to know the type of the elements on the destination. If a
+// destination implements ElemTyper all of its elements must be of the same
+// type.
+type ElemTyper interface {
+	// Returns the desired type of any elements. If ElemType() is implemented
+	// using a pointer receiver it must be possible to call with nil as receiver.
+	ElemType() reflect.Type
+}
+
 // DecoderOptions defines options for decoding Hjson.
 type DecoderOptions struct {
 	// UseJSONNumber causes the Decoder to unmarshal a number into an interface{} as a
@@ -22,8 +36,6 @@ type DecoderOptions struct {
 	// non-ignored, exported fields in the destination.
 	DisallowUnknownFields bool
 }
-
-var unmarshalerText = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
 
 // DefaultDecoderOptions returns the default decoding options.
 func DefaultDecoderOptions() DecoderOptions {
@@ -40,6 +52,9 @@ type hjsonParser struct {
 	ch              byte // The current character
 	structTypeCache map[reflect.Type]structFieldMap
 }
+
+var unmarshalerText = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+var elemTyper = reflect.TypeOf((*ElemTyper)(nil)).Elem()
 
 func (p *hjsonParser) resetAt() {
 	p.at = 0
@@ -320,11 +335,6 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 	value := new(bytes.Buffer)
 	value.WriteByte(p.ch)
 
-	// t might be nil
-	if dest.IsValid() {
-		t = dest.Type()
-	}
-
 	// Keep the original dest and t, because we need to check if it implements
 	// encoding.TextUnmarshaler.
 	_, newT := unravelDestination(dest, t)
@@ -376,6 +386,43 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 	}
 }
 
+// t must not have been unraveled
+func getElemTyperType(rv reflect.Value, t reflect.Type) reflect.Type {
+	var elemType reflect.Type
+	isElemTyper := false
+
+	if t != nil && t.Implements(elemTyper) {
+		isElemTyper = true
+		if t.Kind() == reflect.Ptr {
+			// If ElemType() has a value receiver we would get a panic if we call it
+			// on a nil pointer.
+			if !rv.IsValid() || rv.IsNil() {
+				rv = reflect.New(t.Elem())
+			}
+		} else if !rv.IsValid() {
+			rv = reflect.Zero(t)
+		}
+	}
+	if !isElemTyper && rv.CanAddr() {
+		rv = rv.Addr()
+		if rv.Type().Implements(elemTyper) {
+			isElemTyper = true
+		}
+	}
+	if !isElemTyper && t != nil {
+		pt := reflect.PtrTo(t)
+		if pt.Implements(elemTyper) {
+			isElemTyper = true
+			rv = reflect.Zero(pt)
+		}
+	}
+	if isElemTyper {
+		elemType = rv.Interface().(ElemTyper).ElemType()
+	}
+
+	return elemType
+}
+
 func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value interface{}, err error) {
 
 	// Parse an array value.
@@ -391,18 +438,19 @@ func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value inter
 		return array, nil // empty array
 	}
 
+	elemType := getElemTyperType(dest, t)
+
 	dest, t = unravelDestination(dest, t)
 
 	// All elements in any existing slice/array will be removed, so we only care
 	// about the type of the new elements that will be created.
-	var newDestType reflect.Type
-	if t != nil && (t.Kind() == reflect.Slice || t.Kind() == reflect.Array) {
-		newDestType = t.Elem()
+	if elemType == nil && t != nil && (t.Kind() == reflect.Slice || t.Kind() == reflect.Array) {
+		elemType = t.Elem()
 	}
 
 	for p.ch > 0 {
 		var val interface{}
-		if val, err = p.readValue(reflect.Value{}, newDestType); err != nil {
+		if val, err = p.readValue(reflect.Value{}, elemType); err != nil {
 			return nil, err
 		}
 		array = append(array, val)
@@ -429,7 +477,7 @@ func (p *hjsonParser) readObject(
 ) (value interface{}, err error) {
 	// Parse an object value.
 
-	object := make(map[string]interface{})
+	var object orderedMap
 
 	if !withoutBraces {
 		// assuming ch == '{'
@@ -443,9 +491,11 @@ func (p *hjsonParser) readObject(
 	}
 
 	var stm structFieldMap
-	var newDestType reflect.Type
+	elemType := getElemTyperType(dest, t)
+
 	dest, t = unravelDestination(dest, t)
-	if t != nil {
+
+	if elemType == nil && t != nil {
 		switch t.Kind() {
 		case reflect.Struct:
 			var ok bool
@@ -461,7 +511,7 @@ func (p *hjsonParser) readObject(
 			// (This is because we are decoding into a map. If we were decoding into
 			// a struct we would need to dig down into a tree, to match the behavior
 			// of Golang's JSON decoder.)
-			newDestType = t.Elem()
+			elemType = t.Elem()
 		}
 	}
 
@@ -477,6 +527,7 @@ func (p *hjsonParser) readObject(
 		p.next()
 
 		var newDest reflect.Value
+		var newDestType reflect.Type
 		if stm != nil {
 			sfi, ok := stm.getField(key)
 			if ok {
@@ -484,6 +535,12 @@ func (p *hjsonParser) readObject(
 				newDest, newDestType = dest, t
 				for _, i := range sfi.indexPath {
 					newDest, newDestType = unravelDestination(newDest, newDestType)
+
+					if newDestType == nil {
+						return nil, p.errAt("Internal error")
+					}
+					newDestType = newDestType.Field(i).Type
+					elemType = newDestType
 
 					if newDest.IsValid() {
 						if newDest.Kind() != reflect.Struct {
@@ -496,19 +553,16 @@ func (p *hjsonParser) readObject(
 							newDest = newDest.Field(i)
 						}
 					}
-					if !newDest.IsValid() && newDestType != nil {
-						newDestType = newDestType.Field(i).Type
-					}
 				}
 			}
 		}
 
 		// duplicate keys overwrite the previous value
 		var val interface{}
-		if val, err = p.readValue(newDest, newDestType); err != nil {
+		if val, err = p.readValue(newDest, elemType); err != nil {
 			return nil, err
 		}
-		object[key] = val
+		object = append(object, keyVal{key, val})
 		p.white()
 		// in Hjson the comma is optional and trailing commas are allowed
 		if p.ch == ',' {
@@ -551,23 +605,29 @@ func (p *hjsonParser) readValue(dest reflect.Value, t reflect.Type) (interface{}
 func (p *hjsonParser) rootValue(dest reflect.Value) (interface{}, error) {
 	// Braces for the root object are optional
 
+	// We have checked that dest is a pointer before calling rootValue().
+	// Dereference here because readObject() etc will pass on child destinations
+	// without creating pointers.
+	dest = dest.Elem()
+	t := dest.Type()
+
 	p.white()
 	switch p.ch {
 	case '{':
-		return p.checkTrailing(p.readObject(false, dest, nil))
+		return p.checkTrailing(p.readObject(false, dest, t))
 	case '[':
-		return p.checkTrailing(p.readArray(dest, nil))
+		return p.checkTrailing(p.readArray(dest, t))
 	}
 
 	// assume we have a root object without braces
-	res, err := p.checkTrailing(p.readObject(true, dest, nil))
+	res, err := p.checkTrailing(p.readObject(true, dest, t))
 	if err == nil {
 		return res, nil
 	}
 
 	// test if we are dealing with a single JSON value instead (true/false/null/num/"")
 	p.resetAt()
-	if res2, err2 := p.checkTrailing(p.readValue(dest, nil)); err2 == nil {
+	if res2, err2 := p.checkTrailing(p.readValue(dest, t)); err2 == nil {
 		return res2, nil
 	}
 	return res, err
@@ -592,18 +652,10 @@ func Unmarshal(data []byte, v interface{}) error {
 	return UnmarshalWithOptions(data, v, DefaultDecoderOptions())
 }
 
-// UnmarshalWithOptions parses the Hjson-encoded data and stores the result
-// in the value pointed to by v.
-//
-// Internally the Hjson input is converted to JSON, which is then used as input
-// to the function json.Unmarshal().
-//
-// For more details about the output from this function, see the documentation
-// for json.Unmarshal().
-func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) error {
+func orderedUnmarshal(data []byte, v interface{}, options DecoderOptions) (interface{}, error) {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return fmt.Errorf("Cannot unmarshal into non-pointer %v", reflect.TypeOf(v))
+		return nil, fmt.Errorf("Cannot unmarshal into non-pointer %v", reflect.TypeOf(v))
 	}
 
 	parser := &hjsonParser{
@@ -615,6 +667,23 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 	}
 	parser.resetAt()
 	value, err := parser.rootValue(rv)
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+// UnmarshalWithOptions parses the Hjson-encoded data and stores the result
+// in the value pointed to by v.
+//
+// Internally the Hjson input is converted to JSON, which is then used as input
+// to the function json.Unmarshal().
+//
+// For more details about the output from this function, see the documentation
+// for json.Unmarshal().
+func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) error {
+	value, err := orderedUnmarshal(data, v, options)
 	if err != nil {
 		return err
 	}
@@ -628,10 +697,10 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 	}
 
 	dec := json.NewDecoder(bytes.NewBuffer(buf))
-	if parser.UseJSONNumber {
+	if options.UseJSONNumber {
 		dec.UseNumber()
 	}
-	if parser.DisallowUnknownFields {
+	if options.DisallowUnknownFields {
 		dec.DisallowUnknownFields()
 	}
 

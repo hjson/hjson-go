@@ -262,13 +262,15 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 	// Our internal orderedMap implements marshalerJSON. We must therefore place
 	// this check before checking marshalerJSON. Calling orderedMap.MarshalJSON()
 	// from this function would cause an infinite loop.
-	if om, ok := value.Interface().(orderedMap); ok {
+	if om, ok := value.Interface().(OrderedMap); ok {
 		var fis []fieldInfo
-		for _, elem := range om {
-			fis = append(fis, fieldInfo{
-				field: reflect.ValueOf(elem.value),
-				name:  elem.key,
-			})
+		if om.Keys != nil {
+			for _, key := range *om.Keys {
+				fis = append(fis, fieldInfo{
+					field: reflect.ValueOf(om.Map[key]),
+					name:  key,
+				})
+			}
 		}
 		return e.writeFields(fis, noIndent, separator, isRootObject)
 	}

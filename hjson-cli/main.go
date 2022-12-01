@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"runtime/debug"
 
 	"github.com/hjson/hjson-go/v4"
 )
@@ -53,7 +54,13 @@ func main() {
 	}
 
 	if *showVersion {
-		fmt.Println(Version)
+		if Version != "" {
+			fmt.Println(Version)
+		} else if bi, ok := debug.ReadBuildInfo(); ok {
+			fmt.Println(bi.Main.Version)
+		} else {
+			fmt.Println("Unknown version")
+		}
 		os.Exit(0)
 	}
 

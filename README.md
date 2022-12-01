@@ -33,7 +33,9 @@ More documentation can be found at https://pkg.go.dev/github.com/hjson/hjson-go/
 
 # Install
 
-Make sure you have a working Go environment. See the [install instructions](https://golang.org/doc/install.html).
+Instructions for installing a pre-built **hjson-cli** tool can be found at https://hjson.github.io/users-bin.html
+
+If you instead want to build locally, make sure you have a working Go environment. See the [install instructions](https://golang.org/doc/install.html).
 
 - In order to use Hjson from your own Go source code, just add an import line like the one here below. Before building your project, run `go mod tidy` in order to download the Hjson source files. The suffix `/v4` is required in the import path, unless you specifically want to use an older major version.
 ```go
@@ -41,7 +43,7 @@ import "github.com/hjson/hjson-go/v4"
 ```
 - If you instead want to use the **hjson-cli** command line tool, run the command here below in your terminal. The executable will be installed into your `go/bin` folder, make sure that folder is included in your `PATH` environment variable.
 ```bash
-$ go install github.com/hjson/hjson-go/hjson-cli@latest
+go install github.com/hjson/hjson-go/v4/hjson-cli@latest
 ```
 # Usage as command line tool
 ```

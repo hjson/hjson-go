@@ -6,6 +6,8 @@ import (
 )
 
 type OrderedMap struct {
+	// Pointer to slice instead of just slice, because if an OrderedMap is passed
+	// around by value we still want calls to Append() to affect all copies.
 	Keys *[]string
 	Map  map[string]interface{}
 }
@@ -63,4 +65,8 @@ func (c OrderedMap) MarshalJSON() ([]byte, error) {
 	b.WriteString("}")
 
 	return b.Bytes(), nil
+}
+
+func (c *OrderedMap) UnmarshalJSON(b []byte) error {
+	return Unmarshal(b, c)
 }

@@ -677,8 +677,9 @@ func orderedUnmarshal(data []byte, v interface{}, options DecoderOptions) (inter
 // UnmarshalWithOptions parses the Hjson-encoded data and stores the result
 // in the value pointed to by v.
 //
-// Internally the Hjson input is converted to JSON, which is then used as input
-// to the function json.Unmarshal().
+// Unless v is of type *hjson.OrderedMap, the Hjson input is internally
+// converted to JSON, which is then used as input to the function
+// json.Unmarshal().
 //
 // For more details about the output from this function, see the documentation
 // for json.Unmarshal().
@@ -686,6 +687,16 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 	value, err := orderedUnmarshal(data, v, options)
 	if err != nil {
 		return err
+	}
+
+	if inOM, ok := v.(*OrderedMap); ok {
+		if outOM, ok := value.(*OrderedMap); ok {
+			*inOM = *outOM
+			return nil
+		} else {
+			return fmt.Errorf("Cannot unmarshal into hjson.OrderedMap: Try %v as destination instead",
+				reflect.TypeOf(v))
+		}
 	}
 
 	// Convert to JSON so we can let json.Unmarshal() handle all destination

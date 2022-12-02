@@ -5,6 +5,17 @@ import (
 	"encoding/json"
 )
 
+// OrderedMap wraps a map and a slice containing all of the keys from the map,
+// so that the order of the keys can be specified. The Keys slice can be sorted
+// or rearranged like any other slice, but do not add or remove keys manually
+// on it. Use OrderedMap.Insert(), OrderedMap.Append(),
+// OrderedMap.DeleteIndex() or OrderedMap.DeleteKey() instead.
+//
+// Example of how to iterate through the elements of an OrderedMap in order:
+//
+//	for _, key := range om.Keys {
+//	  fmt.Printf("%v\n", om.Map[key])
+//	}
 type OrderedMap struct {
 	Keys []string
 	Map  map[string]interface{}

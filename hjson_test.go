@@ -203,6 +203,7 @@ type testOrderedMapA struct {
 }
 
 func (c *testOrderedMapA) UnmarshalJSON(in []byte) error {
+	c.OrderedMap = NewOrderedMap()
 	index := 0
 	for true {
 		i1 := bytes.IndexByte(in[index:], '"')
@@ -251,6 +252,7 @@ type testOrderedMapB struct {
 }
 
 func (c *testOrderedMapB) UnmarshalJSON(in []byte) error {
+	c.OrderedMap = NewOrderedMap()
 	index := 0
 	for true {
 		i1 := bytes.IndexByte(in[index:], '"')
@@ -318,7 +320,7 @@ func TestUnmarshalInterface(t *testing.T) {
 	}
 	// Make sure that obj got the elements in the correct order (B before A).
 	expectedA := testOrderedMapA{
-		CreateOrderedMap([]KeyValue{
+		NewOrderedMapFromSlice([]KeyValue{
 			{"B", "first"},
 			{"A", "second"},
 		}),
@@ -343,7 +345,7 @@ func TestUnmarshalInterface(t *testing.T) {
 	}
 	// Make sure that obj got the elements in the correct order (B before A).
 	expectedB := testOrderedMapB{
-		CreateOrderedMap([]KeyValue{
+		NewOrderedMapFromSlice([]KeyValue{
 			{"B", "first"},
 			{"A", "second"},
 		}),
@@ -375,7 +377,7 @@ func TestUnmarshalInterfaceElemType(t *testing.T) {
 	}
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedA := testOrderedMapA{
-		CreateOrderedMap([]KeyValue{
+		NewOrderedMapFromSlice([]KeyValue{
 			{"B", "first"},
 			{"A", "2"},
 			{"C", "third"},
@@ -402,7 +404,7 @@ func TestUnmarshalInterfaceElemType(t *testing.T) {
 	}
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedB := testOrderedMapB{
-		CreateOrderedMap([]KeyValue{
+		NewOrderedMapFromSlice([]KeyValue{
 			{"B", "first"},
 			{"A", "2"},
 			{"C", "third"},
@@ -442,14 +444,14 @@ func TestUnmarshalSliceMapElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedA := []testOrderedMapA{
 		testOrderedMapA{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
 			}),
 		},
 		testOrderedMapA{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
 			}),
 		},
@@ -476,14 +478,14 @@ func TestUnmarshalSliceMapElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedB := []testOrderedMapB{
 		testOrderedMapB{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
 			}),
 		},
 		testOrderedMapB{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
 			}),
 		},
@@ -522,14 +524,14 @@ func TestUnmarshalSliceMapPointerElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedA := []*testOrderedMapA{
 		&testOrderedMapA{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
 			}),
 		},
 		&testOrderedMapA{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
 			}),
 		},
@@ -556,14 +558,14 @@ func TestUnmarshalSliceMapPointerElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedB := []*testOrderedMapB{
 		&testOrderedMapB{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
 			}),
 		},
 		&testOrderedMapB{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
 			}),
 		},
@@ -608,14 +610,14 @@ func TestUnmarshalStructElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedA := tsA{
 		Key1: testOrderedMapA{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
 			}),
 		},
 		Key2: testOrderedMapA{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
 			}),
 		},
@@ -647,14 +649,14 @@ func TestUnmarshalStructElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedB := tsB{
 		Key1: testOrderedMapB{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
 			}),
 		},
 		Key2: testOrderedMapB{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
 			}),
 		},
@@ -699,14 +701,14 @@ func TestUnmarshalStructPointerElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedA := tsA{
 		Key1: &testOrderedMapA{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
 			}),
 		},
 		Key2: &testOrderedMapA{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
 			}),
 		},
@@ -738,14 +740,14 @@ func TestUnmarshalStructPointerElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedB := tsB{
 		Key1: &testOrderedMapB{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
 			}),
 		},
 		Key2: &testOrderedMapB{
-			CreateOrderedMap([]KeyValue{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
 			}),
 		},

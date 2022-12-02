@@ -477,7 +477,7 @@ func (p *hjsonParser) readObject(
 ) (value interface{}, err error) {
 	// Parse an object value.
 
-	var object OrderedMap
+	object := NewOrderedMap()
 
 	if !withoutBraces {
 		// assuming ch == '{'

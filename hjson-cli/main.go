@@ -46,7 +46,6 @@ func main() {
 	var omitRootBraces = flag.Bool("omitRootBraces", false, "Omit braces at the root.")
 	var quoteAlways = flag.Bool("quoteAlways", false, "Always quote string values.")
 	var showVersion = flag.Bool("v", false, "Show version.")
-	var preserveKeyOrder = flag.Bool("preserveKeyOrder", false, "Preserve key order in objects/maps.")
 
 	flag.Parse()
 	if *help || flag.NArg() > 1 {

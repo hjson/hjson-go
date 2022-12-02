@@ -199,7 +199,7 @@ func TestUnknownFields(t *testing.T) {
 }
 
 type testOrderedMapA struct {
-	OrderedMap
+	*OrderedMap
 }
 
 func (c *testOrderedMapA) UnmarshalJSON(in []byte) error {
@@ -248,7 +248,7 @@ func (c testOrderedMapA) ElemType() reflect.Type {
 }
 
 type testOrderedMapB struct {
-	OrderedMap
+	*OrderedMap
 }
 
 func (c *testOrderedMapB) UnmarshalJSON(in []byte) error {

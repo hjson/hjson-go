@@ -2,6 +2,7 @@ package hjson
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 )
 
@@ -78,4 +79,8 @@ func TestUnmarshalJSON(t *testing.T) {
 	}
 
 	verifyContent(t, om, `{"B":"first","C":3,"sub":{"z":7,"y":8},"A":2}`)
+
+	if _, ok := om.Map["C"].(float64); !ok {
+		t.Errorf("Expected type float64, got type %v", reflect.TypeOf(om.Map["C"]))
+	}
 }

@@ -1,0 +1,81 @@
+package hjson
+
+import (
+	"encoding/json"
+	"testing"
+)
+
+func verifyContent(t *testing.T, om *OrderedMap, txtExpected string) {
+	bOut, err := json.Marshal(om)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if string(bOut) != txtExpected {
+		t.Errorf("Expected:\n%s\n\nGot:\n%s\n\n", txtExpected, string(bOut))
+	}
+}
+
+func TestAppend(t *testing.T) {
+	om := NewOrderedMap()
+	om.Append("B", "first")
+	om.Append("A", 2)
+
+	verifyContent(t, om, `{"B":"first","A":2}`)
+}
+
+func TestInsert(t *testing.T) {
+	om := NewOrderedMapFromSlice([]KeyValue{
+		{"B", "first"},
+		{"A", 2},
+	})
+
+	ok := om.Insert(1, "C", 1)
+	if !ok {
+		t.Error("Insert returned false for non-existing key")
+	}
+	verifyContent(t, om, `{"B":"first","C":1,"A":2}`)
+
+	ok = om.Insert(3, "C", 3)
+	if ok {
+		t.Error("Insert returned true for existing key")
+	}
+	verifyContent(t, om, `{"B":"first","C":3,"A":2}`)
+
+	if om.Len() != 3 {
+		t.Errorf("Expected length: 3  Got length: %d\n", om.Len())
+	}
+
+	if om.AtIndex(1) != 3 {
+		t.Errorf("Expected value 3 at index 1.  Got value: %d\n", om.AtIndex(3))
+	}
+
+	if om.Map["C"] != 3 {
+		t.Errorf("Expected value 3 for key C.  Got value: %d\n", om.AtIndex(3))
+	}
+
+	if om.DeleteKey("XYZ") {
+		t.Errorf("DeleteKey returned true for non-existing key.")
+	}
+
+	if !om.DeleteKey("C") {
+		t.Errorf("DeleteKey returned false for existing key.")
+	}
+	verifyContent(t, om, `{"B":"first","A":2}`)
+
+	om.DeleteIndex(1)
+	verifyContent(t, om, `{"B":"first"}`)
+
+	om.DeleteIndex(0)
+	verifyContent(t, om, `{}`)
+}
+
+func TestUnmarshalJSON(t *testing.T) {
+	var om *OrderedMap
+	err := json.Unmarshal([]byte(`{"B":"first","C":3,"sub":{"z":7,"y":8},"A":2}`), &om)
+	if err != nil {
+		t.Error(err)
+	}
+
+	verifyContent(t, om, `{"B":"first","C":3,"sub":{"z":7,"y":8},"A":2}`)
+}

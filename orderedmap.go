@@ -6,8 +6,8 @@ import (
 )
 
 type OrderedMap struct {
-	k []string
-	m map[string]interface{}
+	Keys []string
+	Map  map[string]interface{}
 }
 
 type KeyValue struct {
@@ -21,8 +21,8 @@ type KeyValue struct {
 // OrderedMap.
 func NewOrderedMap() *OrderedMap {
 	return &OrderedMap{
-		k: nil,
-		m: map[string]interface{}{},
+		Keys: nil,
+		Map:  map[string]interface{}{},
 	}
 }
 
@@ -41,10 +41,60 @@ func NewOrderedMapFromSlice(args []KeyValue) *OrderedMap {
 	return c
 }
 
-// Append adds a new key/value pair at the end of the OrderedMap.
-func (c *OrderedMap) Append(key string, value interface{}) {
-	c.k = append(c.k, key)
-	c.m[key] = value
+// Len returns the number of values contained in the OrderedMap.
+func (c *OrderedMap) Len() int {
+	return len(c.Keys)
+}
+
+// AtIndex returns the value found at the specified index. Panics if
+// index < 0 or index >= c.Len().
+func (c *OrderedMap) AtIndex(index int) interface{} {
+	return c.Map[c.Keys[index]]
+}
+
+// Insert inserts a new key/value pair at the specified index. Panics if
+// index < 0 or index > c.Len(). If the key already exists in the OrderedMap,
+// the new value is set but the position of the key is not changed. Returns
+// false if the key already existed in the OrderedMap.
+func (c *OrderedMap) Insert(index int, key string, value interface{}) bool {
+	c.Map[key] = value
+	if len(c.Map) == len(c.Keys) {
+		return false
+	}
+	if index == len(c.Keys) {
+		c.Keys = append(c.Keys, key)
+	} else {
+		c.Keys = append(c.Keys[:index+1], c.Keys[index:]...)
+		c.Keys[index] = key
+	}
+	return true
+}
+
+// Append adds a new key/value pair at the end of the OrderedMap. If the key
+// already exists in the OrderedMap, the new value is set but the position of
+// the key is not changed. Returns false if the key already existed in the
+// OrderedMap.
+func (c *OrderedMap) Append(key string, value interface{}) bool {
+	return c.Insert(len(c.Keys), key, value)
+}
+
+// DeleteIndex deletes the key/value pair found at the specified index.
+// Panics if index < 0 or index >= c.Len().
+func (c *OrderedMap) DeleteIndex(index int) {
+	delete(c.Map, c.Keys[index])
+	c.Keys = append(c.Keys[:index], c.Keys[index+1:]...)
+}
+
+// DeleteKey deletes the key/value pair with the specified key, if found.
+// Returns true if the key was found.
+func (c *OrderedMap) DeleteKey(key string) bool {
+	for index, ck := range c.Keys {
+		if ck == key {
+			c.DeleteIndex(index)
+			return true
+		}
+	}
+	return false
 }
 
 func (c *OrderedMap) MarshalJSON() ([]byte, error) {
@@ -52,7 +102,7 @@ func (c *OrderedMap) MarshalJSON() ([]byte, error) {
 
 	b.WriteString("{")
 
-	for index, key := range c.k {
+	for index, key := range c.Keys {
 		if index > 0 {
 			b.WriteString(",")
 		}
@@ -62,7 +112,7 @@ func (c *OrderedMap) MarshalJSON() ([]byte, error) {
 		}
 		b.Write(jbuf)
 		b.WriteString(":")
-		jbuf, err = json.Marshal(c.m[key])
+		jbuf, err = json.Marshal(c.Map[key])
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +125,7 @@ func (c *OrderedMap) MarshalJSON() ([]byte, error) {
 }
 
 func (c *OrderedMap) UnmarshalJSON(b []byte) error {
-	c.k = nil
-	c.m = map[string]interface{}{}
+	c.Keys = nil
+	c.Map = map[string]interface{}{}
 	return Unmarshal(b, c)
 }

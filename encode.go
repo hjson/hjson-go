@@ -264,9 +264,9 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 	// from this function would cause an infinite loop.
 	if om, ok := value.Interface().(OrderedMap); ok {
 		var fis []fieldInfo
-		for _, key := range om.k {
+		for _, key := range om.Keys {
 			fis = append(fis, fieldInfo{
-				field: reflect.ValueOf(om.m[key]),
+				field: reflect.ValueOf(om.Map[key]),
 				name:  key,
 			})
 		}

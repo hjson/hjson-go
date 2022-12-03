@@ -708,6 +708,16 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 		}
 	}
 
+	inNode, destinationIsNode := v.(*Node)
+	if !destinationIsNode {
+		pInNode, ok := v.(**Node)
+		if ok {
+			destinationIsNode = true
+			inNode = &Node{}
+			*pInNode = inNode
+		}
+	}
+
 	value, err := orderedUnmarshal(data, v, options, !destinationIsOrderedMap)
 	if err != nil {
 		return err

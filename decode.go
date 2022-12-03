@@ -699,6 +699,14 @@ func orderedUnmarshal(
 // for json.Unmarshal().
 func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) error {
 	inOM, destinationIsOrderedMap := v.(*OrderedMap)
+	if !destinationIsOrderedMap {
+		pInOM, ok := v.(**OrderedMap)
+		if ok {
+			destinationIsOrderedMap = true
+			inOM = &OrderedMap{}
+			*pInOM = inOM
+		}
+	}
 
 	value, err := orderedUnmarshal(data, v, options, !destinationIsOrderedMap)
 	if err != nil {
@@ -709,10 +717,9 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 		if outOM, ok := value.(*OrderedMap); ok {
 			*inOM = *outOM
 			return nil
-		} else {
-			return fmt.Errorf("Cannot unmarshal into hjson.OrderedMap: Try %v as destination instead",
-				reflect.TypeOf(v))
 		}
+		return fmt.Errorf("Cannot unmarshal into hjson.OrderedMap: Try %v as destination instead",
+			reflect.TypeOf(v))
 	}
 
 	// Convert to JSON so we can let json.Unmarshal() handle all destination

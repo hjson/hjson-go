@@ -84,3 +84,37 @@ func TestUnmarshalJSON(t *testing.T) {
 		t.Errorf("Expected type float64, got type %v", reflect.TypeOf(om.Map["C"]))
 	}
 }
+
+func TestUnmarshalJSON_2(t *testing.T) {
+	var om OrderedMap
+	err := json.Unmarshal([]byte(`{"B":"first","C":3,"sub":{"z":7,"y":8},"A":2}`), &om)
+	if err != nil {
+		t.Error(err)
+	}
+
+	verifyContent(t, &om, `{"B":"first","C":3,"sub":{"z":7,"y":8},"A":2}`)
+}
+
+func TestUnmarshalHJSON(t *testing.T) {
+	var om *OrderedMap
+	err := Unmarshal([]byte(`{"B":"first","C":3,"sub":{"z":7,"y":8},"A":2}`), &om)
+	if err != nil {
+		t.Error(err)
+	}
+
+	verifyContent(t, om, `{"B":"first","C":3,"sub":{"z":7,"y":8},"A":2}`)
+
+	if _, ok := om.Map["C"].(float64); !ok {
+		t.Errorf("Expected type float64, got type %v", reflect.TypeOf(om.Map["C"]))
+	}
+}
+
+func TestUnmarshalHJSON_2(t *testing.T) {
+	var om OrderedMap
+	err := Unmarshal([]byte(`{"B":"first","C":3,"sub":{"z":7,"y":8},"A":2}`), &om)
+	if err != nil {
+		t.Error(err)
+	}
+
+	verifyContent(t, &om, `{"B":"first","C":3,"sub":{"z":7,"y":8},"A":2}`)
+}

@@ -210,7 +210,7 @@ func (e *hjsonEncoder) useMarshalerJSON(
 	decOpt := DefaultDecoderOptions()
 	decOpt.UseJSONNumber = true
 	var dummyDest interface{}
-	jsonRoot, err := orderedUnmarshal(b, &dummyDest, decOpt, false)
+	jsonRoot, err := orderedUnmarshal(b, &dummyDest, decOpt, false, false)
 	if err != nil {
 		return err
 	}

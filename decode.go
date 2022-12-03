@@ -52,6 +52,7 @@ type hjsonParser struct {
 	ch                byte // The current character
 	structTypeCache   map[reflect.Type]structFieldMap
 	willMarshalToJSON bool
+	nodeDestination   bool
 }
 
 var unmarshalerText = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
@@ -324,21 +325,34 @@ func (p *hjsonParser) white() {
 	}
 }
 
+func (p *hjsonParser) maybeWrapNode(n *Node, v interface{}) (interface{}, error) {
+	if p.nodeDestination {
+		n.Value = v
+		return *n, nil
+	}
+	return v, nil
+}
+
 func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}, error) {
 
 	// Hjson strings can be quoteless
 	// returns string, (json.Number or float64), true, false, or null.
+	// Or wraps the value in a Node.
 
 	if isPunctuatorChar(p.ch) {
 		return nil, p.errAt("Found a punctuator character '" + string(p.ch) + "' when expecting a quoteless string (check your syntax)")
 	}
 	chf := p.ch
+	var node Node
 	value := new(bytes.Buffer)
 	value.WriteByte(p.ch)
 
-	// Keep the original dest and t, because we need to check if it implements
-	// encoding.TextUnmarshaler.
-	_, newT := unravelDestination(dest, t)
+	var newT reflect.Type
+	if !p.nodeDestination {
+		// Keep the original dest and t, because we need to check if it implements
+		// encoding.TextUnmarshaler.
+		_, newT = unravelDestination(dest, t)
+	}
 
 	for {
 		p.next()
@@ -358,15 +372,15 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 				switch chf {
 				case 'f':
 					if strings.TrimSpace(value.String()) == "false" {
-						return false, nil
+						return p.maybeWrapNode(&node, false)
 					}
 				case 'n':
 					if strings.TrimSpace(value.String()) == "null" {
-						return nil, nil
+						return p.maybeWrapNode(&node, nil)
 					}
 				case 't':
 					if strings.TrimSpace(value.String()) == "true" {
-						return true, nil
+						return p.maybeWrapNode(&node, true)
 					}
 				default:
 					if chf == '-' || chf >= '0' && chf <= '9' {
@@ -376,7 +390,7 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 							false,
 							p.willMarshalToJSON || p.DecoderOptions.UseJSONNumber,
 						); err == nil {
-							return n, nil
+							return p.maybeWrapNode(&node, n)
 						}
 					}
 				}
@@ -384,7 +398,7 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 
 			if isEol {
 				// remove any whitespace at the end (ignored in quoteless strings)
-				return strings.TrimSpace(value.String()), nil
+				return p.maybeWrapNode(&node, strings.TrimSpace(value.String()))
 			}
 		}
 		value.WriteByte(p.ch)
@@ -433,6 +447,7 @@ func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value inter
 	// Parse an array value.
 	// assuming ch == '['
 
+	var node Node
 	array := make([]interface{}, 0, 1)
 
 	p.next()
@@ -440,17 +455,20 @@ func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value inter
 
 	if p.ch == ']' {
 		p.next()
-		return array, nil // empty array
+		return p.maybeWrapNode(&node, array) // empty array
 	}
 
-	elemType := getElemTyperType(dest, t)
+	var elemType reflect.Type
+	if !p.nodeDestination {
+		elemType = getElemTyperType(dest, t)
 
-	dest, t = unravelDestination(dest, t)
+		dest, t = unravelDestination(dest, t)
 
-	// All elements in any existing slice/array will be removed, so we only care
-	// about the type of the new elements that will be created.
-	if elemType == nil && t != nil && (t.Kind() == reflect.Slice || t.Kind() == reflect.Array) {
-		elemType = t.Elem()
+		// All elements in any existing slice/array will be removed, so we only care
+		// about the type of the new elements that will be created.
+		if elemType == nil && t != nil && (t.Kind() == reflect.Slice || t.Kind() == reflect.Array) {
+			elemType = t.Elem()
+		}
 	}
 
 	for p.ch > 0 {
@@ -467,7 +485,7 @@ func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value inter
 		}
 		if p.ch == ']' {
 			p.next()
-			return array, nil
+			return p.maybeWrapNode(&node, array)
 		}
 		p.white()
 	}
@@ -482,6 +500,7 @@ func (p *hjsonParser) readObject(
 ) (value interface{}, err error) {
 	// Parse an object value.
 
+	var node Node
 	object := NewOrderedMap()
 
 	if !withoutBraces {
@@ -492,31 +511,35 @@ func (p *hjsonParser) readObject(
 	p.white()
 	if p.ch == '}' && !withoutBraces {
 		p.next()
-		return object, nil // empty object
+		return p.maybeWrapNode(&node, object) // empty object
 	}
 
 	var stm structFieldMap
-	elemType := getElemTyperType(dest, t)
 
-	dest, t = unravelDestination(dest, t)
+	var elemType reflect.Type
+	if !p.nodeDestination {
+		elemType = getElemTyperType(dest, t)
 
-	if elemType == nil && t != nil {
-		switch t.Kind() {
-		case reflect.Struct:
-			var ok bool
-			stm, ok = p.structTypeCache[t]
-			if !ok {
-				stm = getStructFieldInfoMap(t)
-				p.structTypeCache[t] = stm
+		dest, t = unravelDestination(dest, t)
+
+		if elemType == nil && t != nil {
+			switch t.Kind() {
+			case reflect.Struct:
+				var ok bool
+				stm, ok = p.structTypeCache[t]
+				if !ok {
+					stm = getStructFieldInfoMap(t)
+					p.structTypeCache[t] = stm
+				}
+
+			case reflect.Map:
+				// For any key that we find in our loop here below, the new value fully
+				// replaces any old value. So no need for us to dig down into a tree.
+				// (This is because we are decoding into a map. If we were decoding into
+				// a struct we would need to dig down into a tree, to match the behavior
+				// of Golang's JSON decoder.)
+				elemType = t.Elem()
 			}
-
-		case reflect.Map:
-			// For any key that we find in our loop here below, the new value fully
-			// replaces any old value. So no need for us to dig down into a tree.
-			// (This is because we are decoding into a map. If we were decoding into
-			// a struct we would need to dig down into a tree, to match the behavior
-			// of Golang's JSON decoder.)
-			elemType = t.Elem()
 		}
 	}
 
@@ -576,13 +599,13 @@ func (p *hjsonParser) readObject(
 		}
 		if p.ch == '}' && !withoutBraces {
 			p.next()
-			return object, nil
+			return p.maybeWrapNode(&node, object)
 		}
 		p.white()
 	}
 
 	if withoutBraces {
-		return object, nil
+		return p.maybeWrapNode(&node, object)
 	}
 	return nil, p.errAt("End of input while parsing an object (did you forget a closing '}'?)")
 }
@@ -601,7 +624,11 @@ func (p *hjsonParser) readValue(dest reflect.Value, t reflect.Type) (interface{}
 	case '[':
 		return p.readArray(dest, t)
 	case '"', '\'':
-		return p.readString(true)
+		s, err := p.readString(true)
+		if err != nil {
+			return nil, err
+		}
+		return p.maybeWrapNode(&Node{}, s)
 	default:
 		return p.readTfnns(dest, t)
 	}
@@ -662,6 +689,7 @@ func orderedUnmarshal(
 	v interface{},
 	options DecoderOptions,
 	willMarshalToJSON bool,
+	nodeDestination bool,
 ) (
 	interface{},
 	error,
@@ -678,6 +706,7 @@ func orderedUnmarshal(
 		ch:                ' ',
 		structTypeCache:   map[reflect.Type]structFieldMap{},
 		willMarshalToJSON: willMarshalToJSON,
+		nodeDestination:   nodeDestination,
 	}
 	parser.resetAt()
 	value, err := parser.rootValue(rv)
@@ -691,9 +720,14 @@ func orderedUnmarshal(
 // UnmarshalWithOptions parses the Hjson-encoded data and stores the result
 // in the value pointed to by v.
 //
-// Unless v is of type *hjson.OrderedMap, the Hjson input is internally
-// converted to JSON, which is then used as input to the function
-// json.Unmarshal().
+// The Hjson input is internally converted to JSON, which is then used as input
+// to the function json.Unmarshal(). Unless the input argument v is of any of
+// these types:
+//
+//	*hjson.OrderedMap
+//	**hjson.OrderedMap
+//	*hjson.Node
+//	**hjson.Node
 //
 // For more details about the output from this function, see the documentation
 // for json.Unmarshal().
@@ -718,7 +752,8 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 		}
 	}
 
-	value, err := orderedUnmarshal(data, v, options, !destinationIsOrderedMap)
+	value, err := orderedUnmarshal(data, v, options, !destinationIsOrderedMap,
+		destinationIsNode)
 	if err != nil {
 		return err
 	}
@@ -730,6 +765,13 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 		}
 		return fmt.Errorf("Cannot unmarshal into hjson.OrderedMap: Try %v as destination instead",
 			reflect.TypeOf(v))
+	}
+
+	if destinationIsNode {
+		if outNode, ok := value.(*Node); ok {
+			*inNode = *outNode
+			return nil
+		}
 	}
 
 	// Convert to JSON so we can let json.Unmarshal() handle all destination

@@ -89,22 +89,25 @@ func isPunctuatorChar(c byte) bool {
 }
 
 func (p *hjsonParser) errAt(message string) error {
-	var i int
-	col := 0
-	line := 1
-	for i = p.at - 1; i > 0 && p.data[i] != '\n'; i-- {
-		col++
-	}
-	for ; i > 0; i-- {
-		if p.data[i] == '\n' {
-			line++
+	if p.at <= len(p.data) {
+		var i int
+		col := 0
+		line := 1
+		for i = p.at - 1; i > 0 && p.data[i] != '\n'; i-- {
+			col++
 		}
+		for ; i > 0; i-- {
+			if p.data[i] == '\n' {
+				line++
+			}
+		}
+		samEnd := p.at - col + 20
+		if samEnd > len(p.data) {
+			samEnd = len(p.data)
+		}
+		return fmt.Errorf("%s at line %d,%d >>> %s", message, line, col, string(p.data[p.at-col:samEnd]))
 	}
-	samEnd := p.at - col + 20
-	if samEnd > len(p.data) {
-		samEnd = len(p.data)
-	}
-	return fmt.Errorf("%s at line %d,%d >>> %s", message, line, col, string(p.data[p.at-col:samEnd]))
+	return errors.New(message)
 }
 
 func (p *hjsonParser) next() bool {
@@ -791,13 +794,16 @@ func (p *hjsonParser) rootValue(dest reflect.Value) (ret interface{}, err error)
 	switch p.ch {
 	case '{':
 		ret, err = p.readObject(false, dest, t)
+		ret, err = p.checkTrailing(ret, err, &ciExtra)
+		if err != nil {
+			return
+		}
 	case '[':
 		ret, err = p.readArray(dest, t)
-	}
-
-	ret, err = p.checkTrailing(ret, err, &ciExtra)
-	if err != nil {
-		return
+		ret, err = p.checkTrailing(ret, err, &ciExtra)
+		if err != nil {
+			return
+		}
 	}
 
 	if ret == nil {

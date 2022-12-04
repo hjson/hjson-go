@@ -79,22 +79,6 @@ func (p *hjsonParser) setComment2(pCm *string, ciA, ciB commentInfo) {
 	}
 }
 
-func (p *hjsonParser) setNodeCommentBefore(value interface{}, ciA, ciB commentInfo) {
-	if ciA.hasComment || ciB.hasComment {
-		if node, ok := value.(*Node); ok {
-			p.setComment2(&node.Comments.Before, ciA, ciB)
-		}
-	}
-}
-
-func (p *hjsonParser) setNodeCommentAfter(value interface{}, ciA, ciB commentInfo) {
-	if ciA.hasComment || ciB.hasComment {
-		if node, ok := value.(*Node); ok {
-			p.setComment2(&node.Comments.After, ciA, ciB)
-		}
-	}
-}
-
 func (p *hjsonParser) resetAt() {
 	p.at = 0
 	p.ch = ' '
@@ -130,7 +114,19 @@ func (p *hjsonParser) next() bool {
 		p.at++
 		return true
 	}
+	p.at++
 	p.ch = 0
+	return false
+}
+
+func (p *hjsonParser) prev() bool {
+	// get the previous character.
+	if p.at > 1 {
+		p.ch = p.data[p.at-2]
+		p.at--
+		return true
+	}
+
 	return false
 }
 
@@ -541,7 +537,7 @@ func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value inter
 	ciBefore := p.white()
 
 	if p.ch == ']' {
-		p.setComment1(&node.Comments.Inside, ciBefore)
+		p.setComment1(&node.Cm.Inside, ciBefore)
 		p.next()
 		return p.maybeWrapNode(&node, array) // empty array
 	}
@@ -570,7 +566,7 @@ func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value inter
 		if p.nodeDestination {
 			var ok bool
 			if elemNode, ok = val.(*Node); ok {
-				p.setComment2(&elemNode.Comments.Before, ciBefore, ciExtra)
+				p.setComment2(&elemNode.Cm.Before, ciBefore, ciExtra)
 			}
 		}
 		ciAfter := p.white()
@@ -581,9 +577,9 @@ func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value inter
 		}
 		if p.ch == ']' {
 			if elemNode != nil {
-				existingAfter := elemNode.Comments.After
-				p.setComment2(&elemNode.Comments.After, ciAfter, ciExtra)
-				elemNode.Comments.After = existingAfter + elemNode.Comments.After
+				existingAfter := elemNode.Cm.After
+				p.setComment2(&elemNode.Cm.After, ciAfter, ciExtra)
+				elemNode.Cm.After = existingAfter + elemNode.Cm.After
 			}
 			array = append(array, val)
 			p.next()
@@ -615,7 +611,7 @@ func (p *hjsonParser) readObject(
 	ciBefore := p.white()
 
 	if p.ch == '}' && !withoutBraces {
-		p.setComment1(&node.Comments.Inside, ciBefore)
+		p.setComment1(&node.Cm.Inside, ciBefore)
 		p.next()
 		return p.maybeWrapNode(&node, object) // empty object
 	}
@@ -700,9 +696,9 @@ func (p *hjsonParser) readObject(
 		if p.nodeDestination {
 			var ok bool
 			if elemNode, ok = val.(*Node); ok {
-				p.setComment1(&elemNode.Comments.Key, ciKey)
-				elemNode.Comments.Key += elemNode.Comments.Before
-				elemNode.Comments.Before = ""
+				p.setComment1(&elemNode.Cm.Key, ciKey)
+				elemNode.Cm.Key += elemNode.Cm.Before
+				elemNode.Cm.Before = ""
 			}
 		}
 		ciAfter := p.white()
@@ -715,9 +711,9 @@ func (p *hjsonParser) readObject(
 		}
 		if p.ch == '}' && !withoutBraces {
 			if elemNode != nil {
-				existingAfter := elemNode.Comments.After
-				p.setComment2(&elemNode.Comments.After, ciAfter, ciExtra)
-				elemNode.Comments.After = existingAfter + elemNode.Comments.After
+				existingAfter := elemNode.Cm.After
+				p.setComment2(&elemNode.Cm.After, ciAfter, ciExtra)
+				elemNode.Cm.After = existingAfter + elemNode.Cm.After
 			}
 			object.Set(key, val)
 			p.next()
@@ -729,10 +725,10 @@ func (p *hjsonParser) readObject(
 
 	if withoutBraces {
 		if object.Len() == 0 {
-			p.setComment1(&node.Comments.Inside, ciBefore)
+			p.setComment1(&node.Cm.Inside, ciBefore)
 		} else if elemNode != nil {
 			// Set Comments.After on the last element.
-			p.setComment2(&elemNode.Comments.After, ciBefore, ciExtra)
+			p.setComment2(&elemNode.Cm.After, ciBefore, ciExtra)
 		}
 		return p.maybeWrapNode(&node, object)
 	}
@@ -742,28 +738,44 @@ func (p *hjsonParser) readObject(
 // dest and t must not have been unraveled yet here. In readTfnns we need
 // to check if the original type (or a pointer to it) implements
 // encoding.TextUnmarshaler.
-func (p *hjsonParser) readValue(dest reflect.Value, t reflect.Type) (interface{}, error) {
+func (p *hjsonParser) readValue(dest reflect.Value, t reflect.Type) (ret interface{}, err error) {
+	ciBefore := p.white()
 
-	// Parse a Hjson value. It could be an object, an array, a string, a number or a word.
-
-	p.white()
+	// Parse an Hjson value. It could be an object, an array, a string, a number or a word.
 	switch p.ch {
 	case '{':
-		return p.readObject(false, dest, t)
+		ret, err = p.readObject(false, dest, t)
 	case '[':
-		return p.readArray(dest, t)
+		ret, err = p.readArray(dest, t)
 	case '"', '\'':
 		s, err := p.readString(true)
 		if err != nil {
 			return nil, err
 		}
-		return p.maybeWrapNode(&Node{}, s)
+		ret, err = p.maybeWrapNode(&Node{}, s)
 	default:
-		return p.readTfnns(dest, t)
+		ret, err = p.readTfnns(dest, t)
+		// Make sure that any comment will include preceding whitespace.
+		if p.ch == '#' || p.ch == '/' {
+			for p.prev() && p.ch <= ' ' {
+			}
+			p.next()
+		}
 	}
+
+	if p.nodeDestination {
+		ciAfter := p.getCommentAfter()
+
+		if node, ok := ret.(*Node); ok {
+			p.setComment1(&node.Cm.Before, ciBefore)
+			p.setComment1(&node.Cm.After, ciAfter)
+		}
+	}
+
+	return
 }
 
-func (p *hjsonParser) rootValue(dest reflect.Value) (interface{}, error) {
+func (p *hjsonParser) rootValue(dest reflect.Value) (ret interface{}, err error) {
 	// Braces for the root object are optional
 
 	// We have checked that dest is a pointer before calling rootValue().
@@ -772,33 +784,76 @@ func (p *hjsonParser) rootValue(dest reflect.Value) (interface{}, error) {
 	dest = dest.Elem()
 	t := dest.Type()
 
-	p.white()
+	var errSyntax error
+	var ciExtra commentInfo
+	ciBefore := p.white()
+
 	switch p.ch {
 	case '{':
-		return p.checkTrailing(p.readObject(false, dest, t))
+		ret, err = p.readObject(false, dest, t)
 	case '[':
-		return p.checkTrailing(p.readArray(dest, t))
+		ret, err = p.readArray(dest, t)
 	}
 
-	// assume we have a root object without braces
-	res, err := p.checkTrailing(p.readObject(true, dest, t))
+	ret, err = p.checkTrailing(ret, err, &ciExtra)
+	if err != nil {
+		return
+	}
+
+	if ret == nil {
+		// assume we have a root object without braces
+		ret, errSyntax = p.readObject(true, dest, t)
+		ret, err = p.checkTrailing(ret, errSyntax, &ciExtra)
+		if err != nil {
+			// Syntax error, or maybe a single JSON value.
+			ret = nil
+			err = nil
+		} else if ciBefore.hasComment {
+			if node, ok := ret.(*Node); ok {
+				if om, ok := node.Value.(*OrderedMap); ok {
+					if om.Len() > 0 {
+						if elemNode, ok := om.AtIndex(0).(*Node); ok {
+							p.setComment1(&elemNode.Cm.Before, ciBefore)
+							ciBefore = commentInfo{}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if ret == nil {
+		// test if we are dealing with a single JSON value instead (true/false/null/num/"")
+		p.resetAt()
+		ret, err = p.readValue(dest, t)
+		ret, err = p.checkTrailing(ret, err, &ciExtra)
+	}
+
 	if err == nil {
-		return res, nil
+		if p.nodeDestination {
+			if node, ok := ret.(*Node); ok {
+				p.setComment1(&node.Cm.Before, ciBefore)
+				existingAfter := node.Cm.After
+				p.setComment1(&node.Cm.After, ciExtra)
+				node.Cm.After = existingAfter + node.Cm.After
+			}
+		}
+
+		return
 	}
 
-	// test if we are dealing with a single JSON value instead (true/false/null/num/"")
-	p.resetAt()
-	if res2, err2 := p.checkTrailing(p.readValue(dest, t)); err2 == nil {
-		return res2, nil
+	if errSyntax != nil {
+		return nil, errSyntax
 	}
-	return res, err
+
+	return
 }
 
-func (p *hjsonParser) checkTrailing(v interface{}, err error) (interface{}, error) {
+func (p *hjsonParser) checkTrailing(v interface{}, err error, ci *commentInfo) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	p.white()
+	*ci = p.white()
 	if p.ch > 0 {
 		return nil, p.errAt("Syntax error, found trailing characters")
 	}

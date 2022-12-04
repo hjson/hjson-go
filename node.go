@@ -10,8 +10,8 @@ type Comments struct {
 }
 
 type Node struct {
-	Comments
 	Value interface{}
+	Cm    Comments
 }
 
 func (c Node) MarshalJSON() ([]byte, error) {

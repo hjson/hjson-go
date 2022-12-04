@@ -12,6 +12,12 @@ import (
 
 const maxPointerDepth = 512
 
+type commentInfo struct {
+	hasComment bool
+	cmStart    int
+	cmEnd      int
+}
+
 // If a destination type implements ElemTyper, Unmarshal() will call ElemType()
 // on the destination when unmarshalling an array or an object, to see if any
 // array element or leaf node should be of type string even if it can be treated
@@ -57,6 +63,37 @@ type hjsonParser struct {
 
 var unmarshalerText = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
 var elemTyper = reflect.TypeOf((*ElemTyper)(nil)).Elem()
+
+func (p *hjsonParser) setComment1(pCm *string, ci commentInfo) {
+	if ci.hasComment {
+		*pCm = string(p.data[ci.cmStart:ci.cmEnd])
+	}
+}
+
+func (p *hjsonParser) setComment2(pCm *string, ciA, ciB commentInfo) {
+	if ciA.hasComment && ciB.hasComment {
+		*pCm = string(p.data[ciA.cmStart:ciA.cmEnd]) + string(p.data[ciB.cmStart:ciB.cmEnd])
+	} else {
+		p.setComment1(pCm, ciA)
+		p.setComment1(pCm, ciB)
+	}
+}
+
+func (p *hjsonParser) setNodeCommentBefore(value interface{}, ciA, ciB commentInfo) {
+	if ciA.hasComment || ciB.hasComment {
+		if node, ok := value.(*Node); ok {
+			p.setComment2(&node.Comments.Before, ciA, ciB)
+		}
+	}
+}
+
+func (p *hjsonParser) setNodeCommentAfter(value interface{}, ciA, ciB commentInfo) {
+	if ciA.hasComment || ciB.hasComment {
+		if node, ok := value.(*Node); ok {
+			p.setComment2(&node.Comments.After, ciA, ciB)
+		}
+	}
+}
 
 func (p *hjsonParser) resetAt() {
 	p.at = 0
@@ -298,7 +335,13 @@ func (p *hjsonParser) readKeyname() (string, error) {
 	}
 }
 
-func (p *hjsonParser) white() {
+func (p *hjsonParser) white() commentInfo {
+	ci := commentInfo{
+		false,
+		p.at - 1,
+		0,
+	}
+
 	for p.ch > 0 {
 		// Skip whitespace.
 		for p.ch > 0 && p.ch <= ' ' {
@@ -306,10 +349,12 @@ func (p *hjsonParser) white() {
 		}
 		// Hjson allows comments
 		if p.ch == '#' || p.ch == '/' && p.peek(0) == '/' {
+			ci.hasComment = p.nodeDestination
 			for p.ch > 0 && p.ch != '\n' {
 				p.next()
 			}
 		} else if p.ch == '/' && p.peek(0) == '*' {
+			ci.hasComment = p.nodeDestination
 			p.next()
 			p.next()
 			for p.ch > 0 && !(p.ch == '*' && p.peek(0) == '/') {
@@ -323,6 +368,51 @@ func (p *hjsonParser) white() {
 			break
 		}
 	}
+
+	// cmEnd is the first char after the comment (i.e. not included in the comment).
+	ci.cmEnd = p.at - 1
+
+	return ci
+}
+
+func (p *hjsonParser) getCommentAfter() commentInfo {
+	ci := commentInfo{
+		false,
+		p.at - 1,
+		0,
+	}
+
+	for p.ch > 0 {
+		// Skip whitespace, but only until EOL.
+		for p.ch > 0 && p.ch <= ' ' && p.ch != '\n' {
+			p.next()
+		}
+		// Hjson allows comments
+		if p.ch == '#' || p.ch == '/' && p.peek(0) == '/' {
+			ci.hasComment = p.nodeDestination
+			for p.ch > 0 && p.ch != '\n' {
+				p.next()
+			}
+		} else if p.ch == '/' && p.peek(0) == '*' {
+			ci.hasComment = p.nodeDestination
+			p.next()
+			p.next()
+			for p.ch > 0 && !(p.ch == '*' && p.peek(0) == '/') {
+				p.next()
+			}
+			if p.ch > 0 {
+				p.next()
+				p.next()
+			}
+		} else {
+			break
+		}
+	}
+
+	// cmEnd is the first char after the comment (i.e. not included in the comment).
+	ci.cmEnd = p.at - 1
+
+	return ci
 }
 
 func (p *hjsonParser) maybeWrapNode(n *Node, v interface{}) (interface{}, error) {
@@ -443,17 +533,15 @@ func getElemTyperType(rv reflect.Value, t reflect.Type) reflect.Type {
 }
 
 func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value interface{}, err error) {
-
-	// Parse an array value.
-	// assuming ch == '['
-
 	var node Node
 	array := make([]interface{}, 0, 1)
 
+	// Skip '['.
 	p.next()
-	p.white()
+	ciBefore := p.white()
 
 	if p.ch == ']' {
+		p.setComment1(&node.Comments.Inside, ciBefore)
 		p.next()
 		return p.maybeWrapNode(&node, array) // empty array
 	}
@@ -471,23 +559,38 @@ func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value inter
 		}
 	}
 
+	var ciExtra commentInfo
+
 	for p.ch > 0 {
+		var elemNode *Node
 		var val interface{}
 		if val, err = p.readValue(reflect.Value{}, elemType); err != nil {
 			return nil, err
 		}
-		array = append(array, val)
-		p.white()
+		if p.nodeDestination {
+			var ok bool
+			if elemNode, ok = val.(*Node); ok {
+				p.setComment2(&elemNode.Comments.Before, ciBefore, ciExtra)
+			}
+		}
+		ciAfter := p.white()
 		// in Hjson the comma is optional and trailing commas are allowed
 		if p.ch == ',' {
 			p.next()
-			p.white()
+			ciExtra = p.white()
 		}
 		if p.ch == ']' {
+			if elemNode != nil {
+				existingAfter := elemNode.Comments.After
+				p.setComment2(&elemNode.Comments.After, ciAfter, ciExtra)
+				elemNode.Comments.After = existingAfter + elemNode.Comments.After
+			}
+			array = append(array, val)
 			p.next()
 			return p.maybeWrapNode(&node, array)
 		}
-		p.white()
+		array = append(array, val)
+		ciBefore = ciAfter
 	}
 
 	return nil, p.errAt("End of input while parsing an array (did you forget a closing ']'?)")
@@ -501,6 +604,7 @@ func (p *hjsonParser) readObject(
 	// Parse an object value.
 
 	var node Node
+	var elemNode *Node
 	object := NewOrderedMap()
 
 	if !withoutBraces {
@@ -508,12 +612,15 @@ func (p *hjsonParser) readObject(
 		p.next()
 	}
 
-	p.white()
+	ciBefore := p.white()
+
 	if p.ch == '}' && !withoutBraces {
+		p.setComment1(&node.Comments.Inside, ciBefore)
 		p.next()
 		return p.maybeWrapNode(&node, object) // empty object
 	}
 
+	var ciExtra commentInfo
 	var stm structFieldMap
 
 	var elemType reflect.Type
@@ -548,7 +655,7 @@ func (p *hjsonParser) readObject(
 		if key, err = p.readKeyname(); err != nil {
 			return nil, err
 		}
-		p.white()
+		ciKey := p.white()
 		if p.ch != ':' {
 			return nil, p.errAt("Expected ':' instead of '" + string(p.ch) + "'")
 		}
@@ -590,21 +697,43 @@ func (p *hjsonParser) readObject(
 		if val, err = p.readValue(newDest, elemType); err != nil {
 			return nil, err
 		}
-		object.Set(key, val)
-		p.white()
+		if p.nodeDestination {
+			var ok bool
+			if elemNode, ok = val.(*Node); ok {
+				p.setComment1(&elemNode.Comments.Key, ciKey)
+				elemNode.Comments.Key += elemNode.Comments.Before
+				elemNode.Comments.Before = ""
+			}
+		}
+		ciAfter := p.white()
 		// in Hjson the comma is optional and trailing commas are allowed
 		if p.ch == ',' {
 			p.next()
-			p.white()
+			ciExtra = p.white()
+		} else {
+			ciExtra = commentInfo{}
 		}
 		if p.ch == '}' && !withoutBraces {
+			if elemNode != nil {
+				existingAfter := elemNode.Comments.After
+				p.setComment2(&elemNode.Comments.After, ciAfter, ciExtra)
+				elemNode.Comments.After = existingAfter + elemNode.Comments.After
+			}
+			object.Set(key, val)
 			p.next()
 			return p.maybeWrapNode(&node, object)
 		}
-		p.white()
+		object.Set(key, val)
+		ciBefore = ciAfter
 	}
 
 	if withoutBraces {
+		if object.Len() == 0 {
+			p.setComment1(&node.Comments.Inside, ciBefore)
+		} else if elemNode != nil {
+			// Set Comments.After on the last element.
+			p.setComment2(&elemNode.Comments.After, ciBefore, ciExtra)
+		}
 		return p.maybeWrapNode(&node, object)
 	}
 	return nil, p.errAt("End of input while parsing an object (did you forget a closing '}'?)")

@@ -2,14 +2,16 @@ package hjson
 
 import "encoding/json"
 
+type Comments struct {
+	Before string
+	Key    string
+	Inside string
+	After  string
+}
+
 type Node struct {
-	Value    interface{}
-	Comments struct {
-		Before string
-		Key    string
-		Inside string
-		After  string
-	}
+	Comments
+	Value interface{}
 }
 
 func (c Node) MarshalJSON() ([]byte, error) {

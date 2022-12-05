@@ -716,6 +716,14 @@ func (p *hjsonParser) readObject(
 		if p.ch == '}' && !withoutBraces {
 			if elemNode != nil {
 				existingAfter := elemNode.Cm.After
+				elemNode.Cm.After = ""
+				if existingAfter != "" {
+					// If whitespaceAsComments == false and we have existingAfter, then
+					// we want to add any trailing whitespace to the comment after the
+					// last element, otherwise } will end up in the comment when encoding.
+					ciAfter.hasComment = (ciAfter.cmEnd > ciAfter.cmStart)
+					ciExtra.hasComment = (ciExtra.cmEnd > ciExtra.cmStart)
+				}
 				p.setComment2(&elemNode.Cm.After, ciAfter, ciExtra)
 				elemNode.Cm.After = existingAfter + elemNode.Cm.After
 			}

@@ -81,7 +81,7 @@ func (p *hjsonParser) setComment2(pCm *string, ciA, ciB commentInfo) {
 
 func (p *hjsonParser) resetAt() {
 	p.at = 0
-	p.ch = ' '
+	p.next()
 }
 
 func isPunctuatorChar(c byte) bool {
@@ -703,6 +703,7 @@ func (p *hjsonParser) readObject(
 				elemNode.Cm.Key += elemNode.Cm.Before
 				elemNode.Cm.Before = ""
 			}
+			p.setComment2(&elemNode.Cm.Before, ciBefore, ciExtra)
 		}
 		ciAfter := p.white()
 		// in Hjson the comma is optional and trailing commas are allowed

@@ -270,7 +270,6 @@ func (e *hjsonEncoder) writeFields(
 	cmAfter := cm.Inside
 	for i, fi := range fis {
 		elem, elemCm := e.unpackNode(fi.field, Comments{})
-
 		if len(fi.comment) > 0 {
 			for _, line := range strings.Split(fi.comment, e.Eol) {
 				if i > 0 || !isRootObject || e.EmitRootBraces {

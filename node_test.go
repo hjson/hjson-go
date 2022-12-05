@@ -26,3 +26,16 @@ a: 2`
 
 	verifyNodeContent(t, node, txt)
 }
+
+func TestNode2(t *testing.T) {
+	txt := `# comment before
+b: 1  # comment after
+// Comment B4
+a: 2
+/* Last comment */`
+
+	var node *Node
+	Unmarshal([]byte(txt), &node)
+
+	verifyNodeContent(t, node, txt)
+}

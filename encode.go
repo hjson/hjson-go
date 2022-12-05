@@ -31,6 +31,8 @@ type EncoderOptions struct {
 	IndentBy string
 	// Base indentation string
 	BaseIndentation string
+	// Write comments, if any are found in hjson.Node structs.
+	Comments bool
 }
 
 // DefaultOptions returns the default encoding options.
@@ -41,6 +43,7 @@ type EncoderOptions struct {
 // QuoteAmbiguousStrings = true
 // IndentBy = "  "
 // BaseIndentation = ""
+// Comments = true
 func DefaultOptions() EncoderOptions {
 	return EncoderOptions{
 		Eol:                   "\n",
@@ -50,6 +53,7 @@ func DefaultOptions() EncoderOptions {
 		QuoteAmbiguousStrings: true,
 		IndentBy:              "  ",
 		BaseIndentation:       "",
+		Comments:              true,
 	}
 }
 
@@ -104,7 +108,22 @@ func (e *hjsonEncoder) quoteReplace(text string) string {
 	}))
 }
 
-func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool) {
+func (e *hjsonEncoder) quoteForComment(cmStr string) bool {
+	chars := []rune(cmStr)
+	for _, r := range chars {
+		switch r {
+		case '\r', '\n':
+			return false
+		case '/', '#':
+			return true
+		}
+	}
+
+	return false
+}
+
+func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool,
+	hasCommentAfter bool) {
 
 	// Check if we can insert this string without quotes
 	// see hjson syntax (must not parse as true, false, null or number)
@@ -112,8 +131,10 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool) 
 	if len(value) == 0 {
 		e.WriteString(separator + `""`)
 	} else if e.QuoteAlways ||
-		needsQuotes.MatchString(value) || (e.QuoteAmbiguousStrings && (startsWithNumber([]byte(value)) ||
-		startsWithKeyword.MatchString(value))) {
+		hasCommentAfter ||
+		needsQuotes.MatchString(value) ||
+		(e.QuoteAmbiguousStrings && (startsWithNumber([]byte(value)) ||
+			startsWithKeyword.MatchString(value))) {
 
 		// If the string contains no control characters, no quote characters, and no
 		// backslash characters, then we can safely slap some quotes around it.
@@ -176,6 +197,16 @@ func (e *hjsonEncoder) quoteName(name string) string {
 	return name
 }
 
+func (e *hjsonEncoder) bracesIndent(isObjElement, isEmpty bool, cm Comments,
+	separator string) {
+
+	if isObjElement && !e.BracesSameLine && (!isEmpty || cm.Inside != "") && cm.Key == "" {
+		e.writeIndent(e.indent)
+	} else {
+		e.WriteString(separator)
+	}
+}
+
 type sortAlpha []reflect.Value
 
 func (s sortAlpha) Len() int {
@@ -200,7 +231,8 @@ func (e *hjsonEncoder) useMarshalerJSON(
 	value reflect.Value,
 	noIndent bool,
 	separator string,
-	isRootObject bool,
+	isRootObject,
+	isObjElement bool,
 ) error {
 	b, err := value.Interface().(json.Marshaler).MarshalJSON()
 	if err != nil {
@@ -216,15 +248,55 @@ func (e *hjsonEncoder) useMarshalerJSON(
 	}
 
 	// Output Hjson with our current options, instead of JSON.
-	return e.str(reflect.ValueOf(jsonRoot), noIndent, separator, isRootObject)
+	return e.str(reflect.ValueOf(jsonRoot), noIndent, separator, isRootObject,
+		isObjElement, Comments{})
 }
 
 var marshalerJSON = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
 var marshalerText = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 
-func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string, isRootObject bool) error {
+func (e *hjsonEncoder) unpackNode(value reflect.Value, cm Comments) (reflect.Value, Comments) {
+	if value.IsValid() {
+		if node, ok := value.Interface().(Node); ok {
+			value = reflect.ValueOf(node.Value)
+			if e.Comments {
+				cm = node.Cm
+			}
+		} else if pNode, ok := value.Interface().(*Node); ok {
+			value = reflect.ValueOf(pNode.Value)
+			if e.Comments {
+				cm = pNode.Cm
+			}
+		}
+	}
+
+	return value, cm
+}
+
+func (e *hjsonEncoder) str(
+	value reflect.Value,
+	noIndent bool,
+	separator string,
+	isRootObject,
+	isObjElement bool,
+	cm Comments,
+) (err error) {
 
 	// Produce a string from value.
+
+	// Unpack *Node, possibly overwrite cm.
+	value, cm = e.unpackNode(value, cm)
+
+	if cm.Key != "" {
+		separator = ""
+	}
+
+	if isRootObject {
+		e.WriteString(cm.Before)
+		cm.Before = ""
+	}
+	e.WriteString(cm.Key)
+	cm.Key = ""
 
 	kind := value.Kind()
 
@@ -247,16 +319,16 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 	if !value.IsValid() {
 		e.WriteString(separator)
 		e.WriteString("null")
-		return nil
+		goto FINISH
 	}
 
 	if kind == reflect.Interface || kind == reflect.Ptr {
 		if value.IsNil() {
 			e.WriteString(separator)
 			e.WriteString("null")
-			return nil
+			goto FINISH
 		}
-		return e.str(value.Elem(), noIndent, separator, isRootObject)
+		return e.str(value.Elem(), noIndent, separator, isRootObject, isObjElement, cm)
 	}
 
 	// Our internal orderedMap implements marshalerJSON. We must therefore place
@@ -270,11 +342,13 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 				name:  key,
 			})
 		}
-		return e.writeFields(fis, noIndent, separator, isRootObject)
+		err = e.writeFields(fis, noIndent, separator, isRootObject, isObjElement, cm)
+		goto FINISH
 	}
 
 	if value.Type().Implements(marshalerJSON) {
-		return e.useMarshalerJSON(value, noIndent, separator, isRootObject)
+		err = e.useMarshalerJSON(value, noIndent, separator, isRootObject, isObjElement)
+		goto FINISH
 	}
 
 	if value.Type().Implements(marshalerText) {
@@ -283,7 +357,8 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			return err
 		}
 
-		return e.str(reflect.ValueOf(string(b)), noIndent, separator, isRootObject)
+		return e.str(reflect.ValueOf(string(b)), noIndent, separator, isRootObject,
+			isObjElement, cm)
 	}
 
 	switch kind {
@@ -296,7 +371,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			// without quotes
 			e.WriteString(separator + n)
 		} else {
-			e.quote(value.String(), separator, isRootObject)
+			e.quote(value.String(), separator, isRootObject, e.quoteForComment(cm.After))
 		}
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -335,33 +410,49 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		}
 
 	case reflect.Slice, reflect.Array:
-
-		len := value.Len()
-		if len == 0 {
-			e.WriteString(separator)
-			e.WriteString("[]")
-			break
-		}
+		e.bracesIndent(isObjElement, value.Len() == 0, cm, separator)
+		e.WriteString("[")
 
 		indent1 := e.indent
 		e.indent++
 
-		if !noIndent && !e.BracesSameLine {
-			e.writeIndent(indent1)
-		} else {
-			e.WriteString(separator)
-		}
-		e.WriteString("[")
-
 		// Join all of the element texts together, separated with newlines
-		for i := 0; i < len; i++ {
-			e.writeIndent(e.indent)
-			if err := e.str(value.Index(i), true, "", false); err != nil {
+		cmAfter := cm.Inside
+		for i := 0; i < value.Len(); i++ {
+			elem, elemCm := e.unpackNode(value.Index(i), Comments{})
+			shouldIndent := (elemCm.Key == "")
+
+			if i == 0 {
+				if cmAfter != "" {
+					e.WriteString(cmAfter)
+					// This is the first element, so commentAfterPrevObj is the inner comment
+					// of the parent vector. The inner comment probably expects "]" to come
+					// after it and therefore needs one more level of indentation.
+					e.WriteString(e.IndentBy)
+					shouldIndent = false
+				}
+			} else {
+				e.WriteString(cmAfter)
+			}
+
+			if elemCm.Before != "" {
+				e.WriteString(elemCm.Before)
+			} else if shouldIndent {
+				e.writeIndent(e.indent)
+			}
+
+			if err := e.str(elem, true, "", false, false, elemCm); err != nil {
 				return err
 			}
+
+			cmAfter = elemCm.After
 		}
 
-		e.writeIndent(indent1)
+		if cmAfter != "" {
+			e.WriteString(cmAfter)
+		} else if value.Len() > 0 {
+			e.writeIndent(indent1)
+		}
 		e.WriteString("]")
 
 		e.indent = indent1
@@ -387,7 +478,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 				name:  name,
 			})
 		}
-		return e.writeFields(fis, noIndent, separator, isRootObject)
+		return e.writeFields(fis, noIndent, separator, isRootObject, isObjElement, cm)
 
 	case reflect.Struct:
 		// Struct field info is identical for all instances of the same type.
@@ -426,13 +517,18 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 				comment: sfi.comment,
 			})
 		}
-		return e.writeFields(fis, noIndent, separator, isRootObject)
+		return e.writeFields(fis, noIndent, separator, isRootObject, isObjElement, cm)
 
 	default:
 		return errors.New("Unsupported type " + value.Type().String())
 	}
 
-	return nil
+FINISH:
+	if isRootObject && err == nil {
+		e.WriteString(cm.After)
+	}
+
+	return
 }
 
 func isEmptyValue(v reflect.Value) bool {
@@ -582,7 +678,7 @@ func MarshalWithOptions(v interface{}, options EncoderOptions) ([]byte, error) {
 		structTypeCache: map[reflect.Type][]structFieldInfo{},
 	}
 
-	err := e.str(reflect.ValueOf(v), true, e.BaseIndentation, true)
+	err := e.str(reflect.ValueOf(v), true, e.BaseIndentation, true, false, Comments{})
 	if err != nil {
 		return nil, err
 	}

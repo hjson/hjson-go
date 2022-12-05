@@ -417,7 +417,7 @@ func (p *hjsonParser) getCommentAfter() commentInfo {
 func (p *hjsonParser) maybeWrapNode(n *Node, v interface{}) (interface{}, error) {
 	if p.nodeDestination {
 		n.Value = v
-		return *n, nil
+		return n, nil
 	}
 	return v, nil
 }
@@ -743,7 +743,6 @@ func (p *hjsonParser) readObject(
 // encoding.TextUnmarshaler.
 func (p *hjsonParser) readValue(dest reflect.Value, t reflect.Type) (ret interface{}, err error) {
 	ciBefore := p.white()
-
 	// Parse an Hjson value. It could be an object, an array, a string, a number or a word.
 	switch p.ch {
 	case '{':
@@ -942,8 +941,8 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 		}
 	}
 
-	value, err := orderedUnmarshal(data, v, options, !destinationIsOrderedMap,
-		destinationIsNode)
+	value, err := orderedUnmarshal(data, v, options, !(destinationIsOrderedMap ||
+		destinationIsNode), destinationIsNode)
 	if err != nil {
 		return err
 	}

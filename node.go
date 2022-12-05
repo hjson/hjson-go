@@ -1,6 +1,8 @@
 package hjson
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type Comments struct {
 	Before string

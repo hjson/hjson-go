@@ -22,7 +22,6 @@ failJSON21_test.json
 failJSON22_test.json
 failJSON23_test.json
 failJSON26_test.json
-failJSON28_test.json
 failJSON29_test.json
 failJSON30_test.json
 failJSON31_test.json
@@ -64,7 +63,10 @@ failStr6c_test.hjson
 failStr6d_test.hjson
 failStr7a_test.hjson
 failStr8a_test.hjson
+failStr9a_test.hjson
+failStr10a_test.hjson
 kan_test.hjson
+JSON28_test.json
 keys_test.hjson
 mltabs_test.json
 oa_test.hjson
@@ -76,6 +78,9 @@ passSingle_test.hjson
 stringify1_test.hjson
 strings2_test.hjson
 strings_test.hjson
+strings4_test.hjson
+strings5_test.hjson
+strings6_test.hjson
 trail_test.hjson
 stringify/quotes_all_test.hjson
 stringify/quotes_always_test.hjson

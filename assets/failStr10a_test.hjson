@@ -1,0 +1,5 @@
+{
+  # escaped \n should not cause line continuation in quoteless string
+  key: Look, Mom! \
+No \\n's!
+}

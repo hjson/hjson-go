@@ -27,7 +27,10 @@ func TestNode1(t *testing.T) {
 a: 2`
 
 	var node *Node
-	Unmarshal([]byte(txt), &node)
+	err := Unmarshal([]byte(txt), &node)
+	if err != nil {
+		t.Error(err)
+	}
 
 	verifyNodeContent(t, node, txt)
 }
@@ -40,7 +43,10 @@ a: 2
 /* Last comment */`
 
 	var node *Node
-	Unmarshal([]byte(txt), &node)
+	err := Unmarshal([]byte(txt), &node)
+	if err != nil {
+		t.Error(err)
+	}
 
 	if node.Len() != 2 {
 		t.Errorf("Unexpected map length: %v", node.Len())
@@ -81,6 +87,9 @@ a: 2
 }`)
 
 	bOut, err = json.Marshal(node)
+	if err != nil {
+		t.Error(err)
+	}
 
 	compareStrings(t, bOut, `{"b":1,"a":2}`)
 
@@ -168,7 +177,10 @@ func TestNode3(t *testing.T) {
 		t.Errorf("Unexpected int length: %v", intLen)
 	}
 
-	node.SetIndex(1, "abcdef")
+	err = node.SetIndex(1, "abcdef")
+	if err != nil {
+		t.Error(err)
+	}
 
 	verifyNodeContent(t, node, `# comment before
 [
@@ -207,7 +219,10 @@ a: 2
 /* Last comment */`
 
 	var node *Node
-	Unmarshal([]byte(txt), &node)
+	err := Unmarshal([]byte(txt), &node)
+	if err != nil {
+		t.Error(err)
+	}
 
 	verifyNodeContent(t, node, txt)
 

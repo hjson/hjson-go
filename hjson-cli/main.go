@@ -78,7 +78,14 @@ func main() {
 
 	var value interface{}
 
-	if err := hjson.Unmarshal(data, &value); err != nil {
+	if *preserveKeyOrder {
+		var node *hjson.Node
+		err = hjson.Unmarshal(data, &node)
+		value = node
+	} else {
+		err = hjson.Unmarshal(data, &value)
+	}
+	if err != nil {
 		panic(err)
 	}
 

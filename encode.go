@@ -31,7 +31,8 @@ type EncoderOptions struct {
 	IndentBy string
 	// Base indentation string
 	BaseIndentation string
-	// Write comments, if any are found in hjson.Node structs.
+	// Write comments, if any are found in hjson.Node structs, or as tags on
+	// other structs.
 	Comments bool
 }
 
@@ -511,11 +512,14 @@ func (e *hjsonEncoder) str(
 				continue
 			}
 
-			fis = append(fis, fieldInfo{
-				field:   fv,
-				name:    sfi.name,
-				comment: sfi.comment,
-			})
+			fi := fieldInfo{
+				field: fv,
+				name:  sfi.name,
+			}
+			if e.Comments {
+				fi.comment = sfi.comment
+			}
+			fis = append(fis, fi)
 		}
 		return e.writeFields(fis, noIndent, separator, isRootObject, isObjElement, cm)
 

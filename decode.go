@@ -716,8 +716,8 @@ func (p *hjsonParser) readObject(
 				p.setComment1(&elemNode.Cm.Key, ciKey)
 				elemNode.Cm.Key += elemNode.Cm.Before
 				elemNode.Cm.Before = ""
+				p.setComment2(&elemNode.Cm.Before, ciBefore, ciExtra)
 			}
-			p.setComment2(&elemNode.Cm.Before, ciBefore, ciExtra)
 		}
 		ciAfter := p.white()
 		// in Hjson the comma is optional and trailing commas are allowed

@@ -48,10 +48,10 @@ type DecoderOptions struct {
 	DisallowDuplicateKeys bool
 	// WhitespaceAsComments only has any effect when an hjson.Node struct (or
 	// an *hjson.Node pointer) is used as target for Unmarshal. If
-	// WhitespaceAsComments is set to true, all whitespace and comments are then
-	// stored in the Node structs so that linefeeds and custom indentation is
-	// kept. If WhitespaceAsComments instead is set to false, only actual comments
-	// are stored in Node structs.
+	// WhitespaceAsComments is set to true, all whitespace and comments are stored
+	// in the Node structs so that linefeeds and custom indentation is kept. If
+	// WhitespaceAsComments instead is set to false, only actual comments are
+	// stored as comments in Node structs.
 	WhitespaceAsComments bool
 }
 

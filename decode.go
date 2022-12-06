@@ -41,6 +41,11 @@ type DecoderOptions struct {
 	// is a struct and the input contains object keys which do not match any
 	// non-ignored, exported fields in the destination.
 	DisallowUnknownFields bool
+	// DisallowDuplicateKeys causes an error to be returned if an object (map) in
+	// the Hjson input contains duplicate keys. If DisallowDuplicateKeys is set
+	// to false, later values will silently overwrite previous values for the
+	// same key.
+	DisallowDuplicateKeys bool
 	// When a Node is used as target for Unmarshal and WhitespaceAsComments is
 	// set to true, store all whitespace and comments in the Node objects so
 	// that linefeeds and custom indentation is kept. If WhitespaceAsComments
@@ -53,6 +58,7 @@ func DefaultDecoderOptions() DecoderOptions {
 	return DecoderOptions{
 		UseJSONNumber:         false,
 		DisallowUnknownFields: false,
+		DisallowDuplicateKeys: false,
 		WhitespaceAsComments:  true,
 	}
 }
@@ -733,11 +739,17 @@ func (p *hjsonParser) readObject(
 				p.setComment2(&elemNode.Cm.After, ciAfter, ciExtra)
 				elemNode.Cm.After = existingAfter + elemNode.Cm.After
 			}
-			object.Set(key, val)
+			if !object.Set(key, val) && p.DisallowDuplicateKeys {
+				return nil, p.errAt(fmt.Sprintf("Found duplicate value ('%v') for key '%v'",
+					val, key))
+			}
 			p.next()
 			return p.maybeWrapNode(&node, object)
 		}
-		object.Set(key, val)
+		if !object.Set(key, val) && p.DisallowDuplicateKeys {
+			return nil, p.errAt(fmt.Sprintf("Found duplicate value ('%v') for key '%v'",
+				val, key))
+		}
 		ciBefore = ciAfter
 	}
 

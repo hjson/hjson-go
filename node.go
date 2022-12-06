@@ -18,7 +18,10 @@ type Node struct {
 	Cm    Comments
 }
 
-func (c Node) Len() int {
+func (c *Node) Len() int {
+	if c == nil {
+		return 0
+	}
 	switch cont := c.Value.(type) {
 	case *OrderedMap:
 		return cont.Len()
@@ -30,9 +33,11 @@ func (c Node) Len() int {
 	return 0
 }
 
-func (c Node) GetIndex(index int) (interface{}, error) {
+func (c *Node) AtIndex(index int) (interface{}, error) {
+	if c == nil {
+		return nil, fmt.Errorf("Node is nil")
+	}
 	var elem interface{}
-
 	switch cont := c.Value.(type) {
 	case *OrderedMap:
 		elem = cont.AtIndex(index)
@@ -48,7 +53,10 @@ func (c Node) GetIndex(index int) (interface{}, error) {
 	return node.Value, nil
 }
 
-func (c Node) GetKey(key string) (interface{}, bool, error) {
+func (c *Node) AtKey(key string) (interface{}, bool, error) {
+	if c == nil {
+		return nil, false, nil
+	}
 	om, ok := c.Value.(*OrderedMap)
 	if !ok {
 		return nil, false, fmt.Errorf("Unexpected value type: %v", reflect.ValueOf(c.Value))
@@ -64,9 +72,11 @@ func (c Node) GetKey(key string) (interface{}, bool, error) {
 	return node.Value, true, nil
 }
 
-func (c Node) SetIndex(index int, value interface{}) error {
+func (c *Node) SetIndex(index int, value interface{}) error {
+	if c == nil {
+		return fmt.Errorf("Node is nil")
+	}
 	var elem interface{}
-
 	switch cont := c.Value.(type) {
 	case *OrderedMap:
 		elem = cont.AtIndex(index)
@@ -86,11 +96,13 @@ func (c Node) SetIndex(index int, value interface{}) error {
 			cont[index] = &Node{Value: value}
 		}
 	}
-
 	return nil
 }
 
-func (c Node) SetKey(key string, value interface{}) error {
+func (c *Node) SetKey(key string, value interface{}) error {
+	if c == nil {
+		return fmt.Errorf("Node is nil")
+	}
 	om, ok := c.Value.(*OrderedMap)
 	if !ok {
 		return fmt.Errorf("Unexpected value type: %v", reflect.ValueOf(c.Value))
@@ -105,6 +117,41 @@ func (c Node) SetKey(key string, value interface{}) error {
 	}
 	if !ok {
 		om.Map[key] = &Node{Value: value}
+	}
+	return nil
+}
+
+func (c *Node) NI(index int) *Node {
+	if c == nil {
+		return nil
+	}
+	var elem interface{}
+	switch cont := c.Value.(type) {
+	case *OrderedMap:
+		elem = cont.AtIndex(index)
+	case []interface{}:
+		elem = cont[index]
+	default:
+		return nil
+	}
+	if node, ok := elem.(*Node); ok {
+		return node
+	}
+	return nil
+}
+
+func (c *Node) NK(key string) *Node {
+	if c == nil {
+		return nil
+	}
+	om, ok := c.Value.(*OrderedMap)
+	if !ok {
+		return nil
+	}
+	if elem, ok := om.Map[key]; ok {
+		if node, ok := elem.(*Node); ok {
+			return node
+		}
 	}
 	return nil
 }

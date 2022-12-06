@@ -46,7 +46,7 @@ a: 2
 		t.Errorf("Unexpected map length: %v", node.Len())
 	}
 
-	aVal, ok, err := node.GetKey("a")
+	aVal, ok, err := node.AtKey("a")
 	if err != nil {
 		t.Error(err)
 	}
@@ -54,10 +54,10 @@ a: 2
 	if aVal != 2.0 {
 		t.Errorf("Unexpected value for key 'a': %v", aVal)
 	} else if !ok {
-		t.Errorf("node.GetKey('a') returned false")
+		t.Errorf("node.AtKey('a') returned false")
 	}
 
-	bVal, err := node.GetIndex(0)
+	bVal, err := node.AtIndex(0)
 	if err != nil {
 		t.Error(err)
 	}
@@ -136,7 +136,7 @@ func TestNode3(t *testing.T) {
 		t.Errorf("Unexpected slice length: %v", node.Len())
 	}
 
-	firstVal, err := node.GetIndex(0)
+	firstVal, err := node.AtIndex(0)
 	if err != nil {
 		t.Error(err)
 	}
@@ -210,4 +210,23 @@ a: 2
 	Unmarshal([]byte(txt), &node)
 
 	verifyNodeContent(t, node, txt)
+
+	sub1Val, ok, err := node.NK("b").AtKey("sub1")
+	if err != nil {
+		t.Error(err)
+	}
+	// The value will be a float64 even though it was written without decimals.
+	if sub1Val != 1.0 {
+		t.Errorf("Unexpected value for sub1: %v", sub1Val)
+	} else if !ok {
+		t.Errorf("AtKey('sub1') returned false")
+	}
+
+	sub1Val, ok, err = node.NK("Z").AtKey("sub1")
+	if err != nil {
+		t.Error(err)
+	}
+	if ok {
+		t.Errorf("Should have returned false when calling AtKey() on nil")
+	}
 }

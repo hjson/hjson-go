@@ -116,7 +116,7 @@ func (c *Node) SetKey(key string, value interface{}) error {
 		}
 	}
 	if !ok {
-		om.Append(key, &Node{Value: value})
+		om.Set(key, &Node{Value: value})
 	}
 	return nil
 }

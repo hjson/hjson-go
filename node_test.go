@@ -306,3 +306,30 @@ c: 4`)
 		t.Errorf("Should have returned error because of duplicate keys.")
 	}
 }
+
+func TestWhitespaceAsComments(t *testing.T) {
+	txt := `
+
+a: 2
+   b: 3
+
+`
+
+	var node *Node
+	err := Unmarshal([]byte(txt), &node)
+	if err != nil {
+		t.Error(err)
+	}
+
+	verifyNodeContent(t, node, txt)
+
+	decOpt := DefaultDecoderOptions()
+	decOpt.WhitespaceAsComments = false
+	err = UnmarshalWithOptions([]byte(txt), &node, decOpt)
+	if err != nil {
+		t.Error(err)
+	}
+
+	verifyNodeContent(t, node, `a: 2
+b: 3`)
+}

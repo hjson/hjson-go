@@ -222,11 +222,47 @@ a: 2
 		t.Errorf("AtKey('sub1') returned false")
 	}
 
-	sub1Val, ok, err = node.NK("Z").AtKey("sub1")
+	sub1Val, ok, err = node.NK("Z").AtKey("sub2")
 	if err != nil {
 		t.Error(err)
 	}
 	if ok {
 		t.Errorf("Should have returned false when calling AtKey() on nil")
 	}
+
+	err = node.NK("Z").SetKey("sub2", 3)
+	if err == nil {
+		t.Errorf("Should have returned an error calling SetKey() on nil")
+	}
+
+	err = node.NKC("Z").SetKey("sub2", 3)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = node.NKC("Z").SetKey("sub2", 4)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = node.NKC("X").NKC("Y").SetKey("sub3", 5)
+	if err != nil {
+		t.Error(err)
+	}
+
+	verifyNodeContent(t, node, `# comment before
+b: /* key comment */ {
+  sub1: 1  # comment after
+} # cm after obj
+// Comment B4
+a: 2
+/* Last comment */
+Z: {
+  sub2: 4
+}
+X: {
+  Y: {
+    sub3: 5
+  }
+}`)
 }

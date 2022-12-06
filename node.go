@@ -44,11 +44,11 @@ func (c *Node) AtIndex(index int) (interface{}, error) {
 	case []interface{}:
 		elem = cont[index]
 	default:
-		return nil, fmt.Errorf("Unexpected value type: %v", reflect.ValueOf(c.Value))
+		return nil, fmt.Errorf("Unexpected value type: %#v", reflect.ValueOf(c.Value))
 	}
 	node, ok := elem.(*Node)
 	if !ok {
-		return nil, fmt.Errorf("Unexpected element type: %v", reflect.ValueOf(elem))
+		return nil, fmt.Errorf("Unexpected element type: %#v", reflect.ValueOf(elem))
 	}
 	return node.Value, nil
 }
@@ -59,7 +59,7 @@ func (c *Node) AtKey(key string) (interface{}, bool, error) {
 	}
 	om, ok := c.Value.(*OrderedMap)
 	if !ok {
-		return nil, false, fmt.Errorf("Unexpected value type: %v", reflect.ValueOf(c.Value))
+		return nil, false, fmt.Errorf("Unexpected value type: %#v", reflect.ValueOf(c.Value))
 	}
 	elem, ok := om.Map[key]
 	if !ok {
@@ -67,7 +67,7 @@ func (c *Node) AtKey(key string) (interface{}, bool, error) {
 	}
 	node, ok := elem.(*Node)
 	if !ok {
-		return nil, false, fmt.Errorf("Unexpected element type: %v", reflect.ValueOf(elem))
+		return nil, false, fmt.Errorf("Unexpected element type: %#v", reflect.ValueOf(elem))
 	}
 	return node.Value, true, nil
 }
@@ -83,7 +83,7 @@ func (c *Node) SetIndex(index int, value interface{}) error {
 	case []interface{}:
 		elem = cont[index]
 	default:
-		return fmt.Errorf("Unexpected value type: %v", reflect.ValueOf(c.Value))
+		return fmt.Errorf("Unexpected value type: %#v", reflect.ValueOf(c.Value))
 	}
 	node, ok := elem.(*Node)
 	if ok {
@@ -103,9 +103,16 @@ func (c *Node) SetKey(key string, value interface{}) error {
 	if c == nil {
 		return fmt.Errorf("Node is nil")
 	}
-	om, ok := c.Value.(*OrderedMap)
-	if !ok {
-		return fmt.Errorf("Unexpected value type: %v", reflect.ValueOf(c.Value))
+	var om *OrderedMap
+	if c.Value == nil {
+		om = NewOrderedMap()
+		c.Value = om
+	} else {
+		var ok bool
+		om, ok = c.Value.(*OrderedMap)
+		if !ok {
+			return fmt.Errorf("Unexpected value type: %#v", reflect.ValueOf(c.Value))
+		}
 	}
 	elem, ok := om.Map[key]
 	if ok {
@@ -152,6 +159,33 @@ func (c *Node) NK(key string) *Node {
 		if node, ok := elem.(*Node); ok {
 			return node
 		}
+	}
+	return nil
+}
+
+func (c *Node) NKC(key string) *Node {
+	if c == nil {
+		return nil
+	}
+	var om *OrderedMap
+	if c.Value == nil {
+		om = NewOrderedMap()
+		c.Value = om
+	} else {
+		var ok bool
+		om, ok = c.Value.(*OrderedMap)
+		if !ok {
+			return nil
+		}
+	}
+	if elem, ok := om.Map[key]; ok {
+		if node, ok := elem.(*Node); ok {
+			return node
+		}
+	} else {
+		node := &Node{}
+		om.Set(key, node)
+		return node
 	}
 	return nil
 }

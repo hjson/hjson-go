@@ -266,3 +266,28 @@ X: {
   }
 }`)
 }
+
+func TestDisallowDuplicateKeys(t *testing.T) {
+	txt := `a: 1
+a: 2
+b: 3
+c: 4
+b: 5`
+
+	var node *Node
+	err := Unmarshal([]byte(txt), &node)
+	if err != nil {
+		t.Error(err)
+	}
+
+	verifyNodeContent(t, node, `a: 2
+b: 5
+c: 4`)
+
+	decOpt := DefaultDecoderOptions()
+	decOpt.DisallowDuplicateKeys = true
+	err = UnmarshalWithOptions([]byte(txt), &node, decOpt)
+	if err == nil {
+		t.Errorf("Should have returned error because of duplicate keys.")
+	}
+}

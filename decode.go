@@ -742,14 +742,14 @@ func (p *hjsonParser) readObject(
 				elemNode.Cm.After = existingAfter + elemNode.Cm.After
 			}
 			if !object.Set(key, val) && p.DisallowDuplicateKeys {
-				return nil, p.errAt(fmt.Sprintf("Found duplicate value ('%v') for key '%v'",
+				return nil, p.errAt(fmt.Sprintf("Found duplicate value ('%#v') for key '%v'",
 					val, key))
 			}
 			p.next()
 			return p.maybeWrapNode(&node, object)
 		}
 		if !object.Set(key, val) && p.DisallowDuplicateKeys {
-			return nil, p.errAt(fmt.Sprintf("Found duplicate value ('%v') for key '%v'",
+			return nil, p.errAt(fmt.Sprintf("Found duplicate value ('%#v') for key '%v'",
 				val, key))
 		}
 		ciBefore = ciAfter

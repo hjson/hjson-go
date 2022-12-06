@@ -41,6 +41,11 @@ type DecoderOptions struct {
 	// is a struct and the input contains object keys which do not match any
 	// non-ignored, exported fields in the destination.
 	DisallowUnknownFields bool
+	// When a Node is used as target for Unmarshal and WhitespaceAsComments is
+	// set to true, store all whitespace and comments in the Node objects so
+	// that linefeeds and custom indentation is kept. If WhitespaceAsComments
+	// instead is set to false, only actual comments are stored in Node objects.
+	WhitespaceAsComments bool
 }
 
 // DefaultDecoderOptions returns the default decoding options.
@@ -48,6 +53,7 @@ func DefaultDecoderOptions() DecoderOptions {
 	return DecoderOptions{
 		UseJSONNumber:         false,
 		DisallowUnknownFields: false,
+		WhitespaceAsComments:  true,
 	}
 }
 
@@ -336,7 +342,7 @@ func (p *hjsonParser) readKeyname() (string, error) {
 
 func (p *hjsonParser) white() commentInfo {
 	ci := commentInfo{
-		false,
+		p.WhitespaceAsComments,
 		p.at - 1,
 		0,
 	}

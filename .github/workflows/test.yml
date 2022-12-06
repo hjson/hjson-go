@@ -13,4 +13,4 @@ jobs:
       - run: go test -v
       - run: |
           cd hjson-cli
-          go install -i
+          go install

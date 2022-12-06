@@ -8,14 +8,20 @@ import (
 // OrderedMap wraps a map and a slice containing all of the keys from the map,
 // so that the order of the keys can be specified. The Keys slice can be sorted
 // or rearranged like any other slice, but do not add or remove keys manually
-// on it. Use OrderedMap.Insert(), OrderedMap.Append(),
-// OrderedMap.DeleteIndex() or OrderedMap.DeleteKey() instead.
+// on it. Use OrderedMap.Insert(), OrderedMap.Set(), OrderedMap.DeleteIndex() or
+// OrderedMap.DeleteKey() instead.
 //
 // Example of how to iterate through the elements of an OrderedMap in order:
 //
 //	for _, key := range om.Keys {
 //	  fmt.Printf("%v\n", om.Map[key])
 //	}
+//
+// Always use the functions Insert() or Set() instead of setting values
+// directly on OrderedMap.Map, because any new keys must also be added to
+// OrderedMap.Keys. Otherwise those keys will be ignored when iterating through
+// the elements of the OrderedMap in order, as for example happens in the
+// function hjson.Marshal().
 type OrderedMap struct {
 	Keys []string
 	Map  map[string]interface{}
@@ -47,7 +53,7 @@ func NewOrderedMap() *OrderedMap {
 func NewOrderedMapFromSlice(args []KeyValue) *OrderedMap {
 	c := NewOrderedMap()
 	for _, elem := range args {
-		c.Append(elem.Key, elem.Value)
+		c.Set(elem.Key, elem.Value)
 	}
 	return c
 }
@@ -66,7 +72,8 @@ func (c *OrderedMap) AtIndex(index int) interface{} {
 // Insert inserts a new key/value pair at the specified index. Panics if
 // index < 0 or index > c.Len(). If the key already exists in the OrderedMap,
 // the new value is set but the position of the key is not changed. Returns
-// false if the key already existed in the OrderedMap.
+// true if the length of the OrderedMap was increased, false if the key
+// already existed in the OrderedMap.
 func (c *OrderedMap) Insert(index int, key string, value interface{}) bool {
 	c.Map[key] = value
 	if len(c.Map) == len(c.Keys) {
@@ -81,11 +88,12 @@ func (c *OrderedMap) Insert(index int, key string, value interface{}) bool {
 	return true
 }
 
-// Append adds a new key/value pair at the end of the OrderedMap. If the key
-// already exists in the OrderedMap, the new value is set but the position of
-// the key is not changed. Returns false if the key already existed in the
-// OrderedMap.
-func (c *OrderedMap) Append(key string, value interface{}) bool {
+// Set sets the specified value for the specified key. If the key does not
+// already exist in the OrderedMap it is appended to the end of the OrderedMap.
+// If the key already exists in the OrderedMap, the new value is set but the
+// position of the key is not changed. Returns true if the length of the
+// OrderedMap was increased, false if the key already existed in the OrderedMap.
+func (c *OrderedMap) Set(key string, value interface{}) bool {
 	return c.Insert(len(c.Keys), key, value)
 }
 
@@ -97,7 +105,8 @@ func (c *OrderedMap) DeleteIndex(index int) {
 }
 
 // DeleteKey deletes the key/value pair with the specified key, if found.
-// Returns true if the key was found.
+// Returns true if the key was found and the length of the OrderedMap was
+// reduced by one.
 func (c *OrderedMap) DeleteKey(key string) bool {
 	for index, ck := range c.Keys {
 		if ck == key {

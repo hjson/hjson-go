@@ -567,7 +567,7 @@ func (p *hjsonParser) readObject(
 		if val, err = p.readValue(newDest, elemType); err != nil {
 			return nil, err
 		}
-		object.Append(key, val)
+		object.Set(key, val)
 		p.white()
 		// in Hjson the comma is optional and trailing commas are allowed
 		if p.ch == ',' {

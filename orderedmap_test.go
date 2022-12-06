@@ -19,8 +19,8 @@ func verifyContent(t *testing.T, om *OrderedMap, txtExpected string) {
 
 func TestAppend(t *testing.T) {
 	om := NewOrderedMap()
-	om.Append("B", "first")
-	om.Append("A", 2)
+	om.Set("B", "first")
+	om.Set("A", 2)
 
 	verifyContent(t, om, `{"B":"first","A":2}`)
 }

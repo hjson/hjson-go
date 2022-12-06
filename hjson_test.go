@@ -234,7 +234,7 @@ func (c *testOrderedMapA) UnmarshalJSON(in []byte) error {
 		i4 += index
 		index = i4 + 1
 
-		c.OrderedMap.Append(
+		c.OrderedMap.Set(
 			string(in[i1+1:i2]),
 			string(in[i3+1:i4]),
 		)
@@ -283,7 +283,7 @@ func (c *testOrderedMapB) UnmarshalJSON(in []byte) error {
 		i4 += index
 		index = i4 + 1
 
-		c.OrderedMap.Append(
+		c.OrderedMap.Set(
 			string(in[i1+1:i2]),
 			string(in[i3+1:i4]),
 		)

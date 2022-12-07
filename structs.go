@@ -317,6 +317,10 @@ func (e *hjsonEncoder) writeFields(
 	}
 
 	if !isRootObject || e.EmitRootBraces || len(fis) == 0 {
+		if isRootObject && cmAfter != "" && cmAfter[len(cmAfter)-1] != '\n' {
+			// Avoid having the } commented out
+			e.writeIndent(indent1)
+		}
 		e.WriteString("}")
 	}
 

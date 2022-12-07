@@ -406,3 +406,27 @@ func TestDeclareNodeSlice(t *testing.T) {
 		t.Errorf("Should have returned error when trying to set by key on a slice")
 	}
 }
+
+func TestNodeNoPointer(t *testing.T) {
+	txt := `setting1: null  # nada
+setting2: true  // yes`
+
+	var node Node
+	err := Unmarshal([]byte(txt), &node)
+	if err != nil {
+		t.Error(err)
+	}
+	err = node.SetKey("setting1", 3)
+	if err != nil {
+		t.Error(err)
+	}
+	output, err := Marshal(node)
+	if err != nil {
+		t.Error(err)
+	}
+
+	compareStrings(t, output, `{
+  setting1: 3  # nada
+setting2: true  // yes
+}`)
+}

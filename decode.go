@@ -350,7 +350,7 @@ func (p *hjsonParser) readKeyname() (string, error) {
 
 func (p *hjsonParser) white() commentInfo {
 	ci := commentInfo{
-		p.WhitespaceAsComments,
+		false,
 		p.at - 1,
 		0,
 	}
@@ -384,6 +384,8 @@ func (p *hjsonParser) white() commentInfo {
 
 	// cmEnd is the first char after the comment (i.e. not included in the comment).
 	ci.cmEnd = p.at - 1
+
+	ci.hasComment = (ci.hasComment || (p.WhitespaceAsComments && (ci.cmEnd > ci.cmStart)))
 
 	return ci
 }
@@ -796,7 +798,6 @@ func (p *hjsonParser) readValue(dest reflect.Value, t reflect.Type) (ret interfa
 
 	if p.nodeDestination {
 		ciAfter := p.getCommentAfter()
-
 		if node, ok := ret.(*Node); ok {
 			p.setComment1(&node.Cm.Before, ciBefore)
 			p.setComment1(&node.Cm.After, ciAfter)

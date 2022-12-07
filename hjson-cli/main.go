@@ -108,15 +108,10 @@ func main() {
 		opt.BracesSameLine = *bracesSameLine
 		opt.EmitRootBraces = !*omitRootBraces
 		opt.QuoteAlways = *quoteAlways
+		opt.Comments = false
 		out, err = hjson.MarshalWithOptions(value, opt)
 		if err != nil {
 			panic(err)
-		}
-		if len(out) > 0 && out[len(out)-1] == '\n' {
-			out = out[:len(out)-1]
-			if len(out) > 0 && out[len(out)-1] == '\r' {
-				out = out[:len(out)-1]
-			}
 		}
 	}
 

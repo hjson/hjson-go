@@ -32,14 +32,14 @@ func TestInsert(t *testing.T) {
 	})
 
 	ok := om.Insert(1, "C", 1)
-	if !ok {
-		t.Error("Insert returned false for non-existing key")
+	if ok {
+		t.Error("Insert returned true for non-existing key")
 	}
 	verifyContent(t, om, `{"B":"first","C":1,"A":2}`)
 
 	ok = om.Insert(3, "C", 3)
-	if ok {
-		t.Error("Insert returned true for existing key")
+	if !ok {
+		t.Error("Insert returned false for existing key")
 	}
 	verifyContent(t, om, `{"B":"first","C":3,"A":2}`)
 

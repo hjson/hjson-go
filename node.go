@@ -210,6 +210,10 @@ func (c *Node) SetKey(key string, value interface{}) (bool, error) {
 	return foundKey, nil
 }
 
+// NI is an acronym formed from "get Node pointer by Index". Returns the *Node
+// element found at the specified index, if this Node contains a value of type
+// *hjson.OrderedMap or []interface{}. Returns nil otherwise. Panics if
+// index < 0 or index >= Len(). Does not create or alter any value.
 func (c *Node) NI(index int) *Node {
 	if c == nil {
 		return nil
@@ -229,6 +233,9 @@ func (c *Node) NI(index int) *Node {
 	return nil
 }
 
+// NK is an acronym formed from "get Node pointer by Key". Returns the *Node
+// element found for the specified key, if this Node contains a value of type
+// *hjson.OrderedMap. Returns nil otherwise. Does not create or alter anything.
 func (c *Node) NK(key string) *Node {
 	if c == nil {
 		return nil
@@ -245,6 +252,16 @@ func (c *Node) NK(key string) *Node {
 	return nil
 }
 
+// NKC is an acronym formed from "get Node pointer by Key, Create if not found".
+// Returns the *Node element found for the specified key, if this Node contains
+// a value of type *hjson.OrderedMap. If this Node contains nil without a type,
+// an empty *hjson.OrderedMap is first created. If this Node contains a value of
+// any other type or if the element idendified by the specified key is not of
+// type *Node, an error is returned. If the key cannot be found in the
+// OrderedMap, a new Node is created for the specified key. Example usage:
+//
+//	var node hjson.Node
+//	node.NKC("rootKey1").NKC("subKey1").SetKey("valKey1", "my value")
 func (c *Node) NKC(key string) *Node {
 	if c == nil {
 		return nil
@@ -272,10 +289,14 @@ func (c *Node) NKC(key string) *Node {
 	return nil
 }
 
+// MarshalJSON is an implementation of the json.Marshaler interface, enabling
+// hjson.Node trees to be used as input for json.Marshal().
 func (c Node) MarshalJSON() ([]byte, error) {
 	return json.Marshal(c.Value)
 }
 
+// UnmarshalJSON is an implementation of the json.Unmarshaler interface,
+// enabling hjson.Node to be used as destination for json.Unmarshal().
 func (c *Node) UnmarshalJSON(b []byte) error {
 	return Unmarshal(b, c)
 }

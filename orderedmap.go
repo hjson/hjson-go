@@ -72,12 +72,11 @@ func (c *OrderedMap) AtIndex(index int) interface{} {
 // Insert inserts a new key/value pair at the specified index. Panics if
 // index < 0 or index > c.Len(). If the key already exists in the OrderedMap,
 // the new value is set but the position of the key is not changed. Returns
-// true if the length of the OrderedMap was increased, false if the key
-// already existed in the OrderedMap.
+// true if the key already exists in this OrderedMap, false otherwise.
 func (c *OrderedMap) Insert(index int, key string, value interface{}) bool {
 	c.Map[key] = value
 	if len(c.Map) == len(c.Keys) {
-		return false
+		return true
 	}
 	if index == len(c.Keys) {
 		c.Keys = append(c.Keys, key)
@@ -85,14 +84,14 @@ func (c *OrderedMap) Insert(index int, key string, value interface{}) bool {
 		c.Keys = append(c.Keys[:index+1], c.Keys[index:]...)
 		c.Keys[index] = key
 	}
-	return true
+	return false
 }
 
 // Set sets the specified value for the specified key. If the key does not
 // already exist in the OrderedMap it is appended to the end of the OrderedMap.
 // If the key already exists in the OrderedMap, the new value is set but the
-// position of the key is not changed. Returns true if the length of the
-// OrderedMap was increased, false if the key already existed in the OrderedMap.
+// position of the key is not changed. Returns true if the key already exists
+// in the OrderedMap, false otherwise
 func (c *OrderedMap) Set(key string, value interface{}) bool {
 	return c.Insert(len(c.Keys), key, value)
 }

@@ -333,3 +333,34 @@ a: 2
 	verifyNodeContent(t, node, `a: 2
 b: 3`)
 }
+
+func TestDeclareNode(t *testing.T) {
+	var node Node
+
+	node2 := node.NK("a")
+	if node2 != nil {
+		t.Errorf("node.NK() created a node")
+	}
+
+	err := node.NKC("a").NKC("aa").NKC("aaa").SetKey("aaaa", "a string")
+	if err != nil {
+		t.Error(err)
+	}
+	err = node.SetKey("b", 2)
+	if err != nil {
+		t.Error(err)
+	}
+	err = node.SetIndex(1, 3.0)
+	if err != nil {
+		t.Error(err)
+	}
+
+	verifyNodeContent(t, &node, `a: {
+  aa: {
+    aaa: {
+      aaaa: a string
+    }
+  }
+}
+b: 3`)
+}

@@ -27,6 +27,7 @@ type OrderedMap struct {
 	Map  map[string]interface{}
 }
 
+// KeyValue is only used as input to NewOrderedMapFromSlice().
 type KeyValue struct {
 	Key   string
 	Value interface{}

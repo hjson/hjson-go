@@ -948,6 +948,9 @@ func orderedUnmarshal(
 //	*hjson.Node
 //	**hjson.Node
 //
+// Comments can be read from the Hjson-encoded data, but only if the input
+// argument v is of type *hjson.Node or **hjson.Node.
+//
 // For more details about the output from this function, see the documentation
 // for json.Unmarshal().
 func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) error {

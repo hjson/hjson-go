@@ -112,6 +112,12 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		if len(out) > 0 && out[len(out)-1] == '\n' {
+			out = out[:len(out)-1]
+			if len(out) > 0 && out[len(out)-1] == '\r' {
+				out = out[:len(out)-1]
+			}
+		}
 	}
 
 	fmt.Println(string(out))

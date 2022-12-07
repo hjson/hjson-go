@@ -13,11 +13,49 @@ type Comments struct {
 	After  string
 }
 
+// Node must be used as destination for Unmarshal() or UnmarshalWithOptions()
+// whenever comments should be read from the input. The struct is simply a
+// wrapper for the actual values and a helper struct containing any comments.
+// The Value in the destination Node will be overwritten in the call to
+// Unmarshal() or UnmarshalWithOptions(), i.e. node trees are not merged.
+// After the unmarshal, Node.Value will contain any of these types:
+//
+//	nil (no type)
+//	float
+//	json.Number
+//	string
+//	bool
+//	[]interface{}
+//	*hjson.OrderedMap
+//
+// All elements in an []interface{} or *hjson.OrderedMap will be of the type
+// *hjson.Node, so that they can contain comments.
+//
+// This example shows unmarshalling input with comments, changing the value on
+// a single key (the input is assumed to have an object/map as root) and then
+// marshalling the node tree again, including comments and with preserved key
+// order in the object/map.
+//
+//	var node hjson.Node
+//	err := hjson.Unmarshal(input, &node)
+//	if err != nil {
+//	  return err
+//	}
+//	_, err = node.SetKey("setting1", 3)
+//	if err != nil {
+//	  return err
+//	}
+//	output, err := hjson.Marshal(node)
+//	if err != nil {
+//	  return err
+//	}
 type Node struct {
 	Value interface{}
 	Cm    Comments
 }
 
+// Len returns the length of the value wrapped by this Node, if the value is of
+// type *hjson.OrderedMap, []interface{} or string. Otherwise 0 is returned.
 func (c *Node) Len() int {
 	if c == nil {
 		return 0
@@ -33,6 +71,10 @@ func (c *Node) Len() int {
 	return 0
 }
 
+// AtIndex returns the value (unwrapped from its Node) found at the specified
+// index, if this Node contains a value of type *hjson.OrderedMap or
+// []interface{}. Returns an error for unexpected types. Panics if index < 0
+// or index >= Len().
 func (c *Node) AtIndex(index int) (interface{}, error) {
 	if c == nil {
 		return nil, fmt.Errorf("Node is nil")
@@ -53,6 +95,10 @@ func (c *Node) AtIndex(index int) (interface{}, error) {
 	return node.Value, nil
 }
 
+// AtKey returns the value (unwrapped from its Node) found for the specified
+// key, if this Node contains a value of type *hjson.OrderedMap. An error is
+// returned for unexpected types. The second returned value is true if the key
+// was found, false otherwise.
 func (c *Node) AtKey(key string) (interface{}, bool, error) {
 	if c == nil {
 		return nil, false, nil
@@ -72,6 +118,10 @@ func (c *Node) AtKey(key string) (interface{}, bool, error) {
 	return node.Value, true, nil
 }
 
+// Append adds the input value to the end of the []interface{} wrapped by this
+// Node. If this Node contains nil without a type, an empty []interface{} is
+// first created. If this Node contains a value of any other type, an error is
+// returned.
 func (c *Node) Append(value interface{}) error {
 	if c == nil {
 		return fmt.Errorf("Node is nil")
@@ -90,6 +140,10 @@ func (c *Node) Append(value interface{}) error {
 	return nil
 }
 
+// SetIndex assigns the specified value to the child Node found at the specified
+// index, if this Node contains a value of type *hjson.OrderedMap or
+// []interface{}. Returns an error for unexpected types. Panics if index < 0
+// or index >= Len().
 func (c *Node) SetIndex(index int, value interface{}) error {
 	if c == nil {
 		return fmt.Errorf("Node is nil")
@@ -117,9 +171,18 @@ func (c *Node) SetIndex(index int, value interface{}) error {
 	return nil
 }
 
-func (c *Node) SetKey(key string, value interface{}) error {
+// SetKey assigns the specified value to the child Node identified by the
+// specified key, if this Node contains a value of the type *hjson.OrderedMap.
+// If this Node contains nil without a type, an empty *hjson.OrderedMap is
+// first created. If this Node contains a value of any other type or if the
+// element idendified by the specified key is not of type *Node, an error is
+// returned. If the key cannot be found in the OrderedMap, a new Node is
+// created for the specified key, wrapping the specified value. The first
+// return value is true if the key already existed in the OrderedMap, false
+// otherwise.
+func (c *Node) SetKey(key string, value interface{}) (bool, error) {
 	if c == nil {
-		return fmt.Errorf("Node is nil")
+		return false, fmt.Errorf("Node is nil")
 	}
 	var om *OrderedMap
 	if c.Value == nil {
@@ -129,7 +192,7 @@ func (c *Node) SetKey(key string, value interface{}) error {
 		var ok bool
 		om, ok = c.Value.(*OrderedMap)
 		if !ok {
-			return fmt.Errorf("Unexpected value type: %v", reflect.TypeOf(c.Value))
+			return false, fmt.Errorf("Unexpected value type: %v", reflect.TypeOf(c.Value))
 		}
 	}
 	elem, ok := om.Map[key]
@@ -140,10 +203,11 @@ func (c *Node) SetKey(key string, value interface{}) error {
 			node.Value = value
 		}
 	}
+	foundKey := true
 	if !ok {
-		om.Set(key, &Node{Value: value})
+		foundKey = om.Set(key, &Node{Value: value})
 	}
-	return nil
+	return foundKey, nil
 }
 
 func (c *Node) NI(index int) *Node {

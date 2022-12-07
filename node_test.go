@@ -106,7 +106,13 @@ b: 3  # comment after
 a: 2
 /* Last comment */`)
 
-	node.SetKey("b", "abcdef")
+	found, err := node.SetKey("b", "abcdef")
+	if err != nil {
+		t.Error(err)
+	}
+	if !found {
+		t.Errorf("Should have returned true, the key should already exist.")
+	}
 
 	verifyNodeContent(t, node, `# comment before
 b: "abcdef"  # comment after
@@ -245,24 +251,33 @@ a: 2
 		t.Errorf("Should have returned false when calling AtKey() on nil")
 	}
 
-	err = node.NK("Z").SetKey("sub2", 3)
+	found, err := node.NK("Z").SetKey("sub2", 3)
 	if err == nil {
 		t.Errorf("Should have returned an error calling SetKey() on nil")
 	}
 
-	err = node.NKC("Z").SetKey("sub2", 3)
+	found, err = node.NKC("Z").SetKey("sub2", 3)
 	if err != nil {
 		t.Error(err)
 	}
+	if found {
+		t.Errorf("Should have returned false, the key should not already exist.")
+	}
 
-	err = node.NKC("Z").SetKey("sub2", 4)
+	found, err = node.NKC("Z").SetKey("sub2", 4)
 	if err != nil {
 		t.Error(err)
 	}
+	if !found {
+		t.Errorf("Should have returned true, the key should already exist.")
+	}
 
-	err = node.NKC("X").NKC("Y").SetKey("sub3", 5)
+	found, err = node.NKC("X").NKC("Y").SetKey("sub3", 5)
 	if err != nil {
 		t.Error(err)
+	}
+	if found {
+		t.Errorf("Should have returned false, the key should not already exist.")
 	}
 
 	verifyNodeContent(t, node, `# comment before
@@ -342,13 +357,19 @@ func TestDeclareNodeMap(t *testing.T) {
 		t.Errorf("node.NK() created a node")
 	}
 
-	err := node.NKC("a").NKC("aa").NKC("aaa").SetKey("aaaa", "a string")
+	found, err := node.NKC("a").NKC("aa").NKC("aaa").SetKey("aaaa", "a string")
 	if err != nil {
 		t.Error(err)
 	}
-	err = node.SetKey("b", 2)
+	if found {
+		t.Errorf("Should have returned false, the key should not already exist.")
+	}
+	found, err = node.SetKey("b", 2)
 	if err != nil {
 		t.Error(err)
+	}
+	if found {
+		t.Errorf("Should have returned false, the key should not already exist.")
 	}
 	err = node.SetIndex(1, 3.0)
 	if err != nil {
@@ -401,7 +422,7 @@ func TestDeclareNodeSlice(t *testing.T) {
 		t.Errorf("Should not have been able to create a node by key in a slice")
 	}
 
-	err = node.SetKey("a", 4)
+	_, err = node.SetKey("a", 4)
 	if err == nil {
 		t.Errorf("Should have returned error when trying to set by key on a slice")
 	}
@@ -416,9 +437,12 @@ setting2: true  // yes`
 	if err != nil {
 		t.Error(err)
 	}
-	err = node.SetKey("setting1", 3)
+	found, err := node.SetKey("setting1", 3)
 	if err != nil {
 		t.Error(err)
+	}
+	if !found {
+		t.Errorf("Should have returned true, the key should already exist")
 	}
 	output, err := Marshal(node)
 	if err != nil {

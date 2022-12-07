@@ -116,6 +116,8 @@ func (c *OrderedMap) DeleteKey(key string) bool {
 	return false
 }
 
+// MarshalJSON is an implementation of the json.Marshaler interface, enabling
+// hjson.OrderedMap to be used as input for json.Marshal().
 func (c *OrderedMap) MarshalJSON() ([]byte, error) {
 	var b bytes.Buffer
 
@@ -143,6 +145,8 @@ func (c *OrderedMap) MarshalJSON() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
+// UnmarshalJSON is an implementation of the json.Unmarshaler interface,
+// enabling hjson.OrderedMap to be used as destination for json.Unmarshal().
 func (c *OrderedMap) UnmarshalJSON(b []byte) error {
 	c.Keys = nil
 	c.Map = map[string]interface{}{}

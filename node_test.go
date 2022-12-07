@@ -334,7 +334,7 @@ a: 2
 b: 3`)
 }
 
-func TestDeclareNode(t *testing.T) {
+func TestDeclareNodeMap(t *testing.T) {
 	var node Node
 
 	node2 := node.NK("a")
@@ -363,4 +363,46 @@ func TestDeclareNode(t *testing.T) {
   }
 }
 b: 3`)
+
+	err = node.Append(4)
+	if err == nil {
+		t.Errorf("Should have returned error when trying to append to a map")
+	}
+}
+
+func TestDeclareNodeSlice(t *testing.T) {
+	var node Node
+
+	node2 := node.NI(0)
+	if node2 != nil {
+		t.Errorf("node.NI() created a node")
+	}
+
+	err := node.Append(13)
+	if err != nil {
+		t.Error(err)
+	}
+	err = node.Append("b")
+	if err != nil {
+		t.Error(err)
+	}
+	err = node.SetIndex(1, false)
+	if err != nil {
+		t.Error(err)
+	}
+
+	verifyNodeContent(t, &node, `[
+  13
+  false
+]`)
+
+	node2 = node.NKC("sub")
+	if node2 != nil {
+		t.Errorf("Should not have been able to create a node by key in a slice")
+	}
+
+	err = node.SetKey("a", 4)
+	if err == nil {
+		t.Errorf("Should have returned error when trying to set by key on a slice")
+	}
 }

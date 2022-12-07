@@ -72,6 +72,24 @@ func (c *Node) AtKey(key string) (interface{}, bool, error) {
 	return node.Value, true, nil
 }
 
+func (c *Node) Append(value interface{}) error {
+	if c == nil {
+		return fmt.Errorf("Node is nil")
+	}
+	var arr []interface{}
+	if c.Value == nil {
+		arr = []interface{}{}
+	} else {
+		var ok bool
+		arr, ok = c.Value.([]interface{})
+		if !ok {
+			return fmt.Errorf("Unexpected value type: %v", reflect.TypeOf(c.Value))
+		}
+	}
+	c.Value = append(arr, &Node{Value: value})
+	return nil
+}
+
 func (c *Node) SetIndex(index int, value interface{}) error {
 	if c == nil {
 		return fmt.Errorf("Node is nil")

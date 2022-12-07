@@ -31,7 +31,7 @@ type EncoderOptions struct {
 	IndentBy string
 	// Base indentation string
 	BaseIndentation string
-	// Write comments, if any are found in hjson.Node structs, or as tags on
+	// Write comments, if any are found in hjson.Node structs or as tags on
 	// other structs.
 	Comments bool
 }

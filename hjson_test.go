@@ -71,6 +71,7 @@ func run(t *testing.T, file string) {
 	actualHjson, _ := Marshal(data)
 	actualHjson = append(actualHjson, '\n')
 	actualJSON, _ := json.MarshalIndent(data, "", "  ")
+	actualJSON = append(actualJSON, '\n')
 	actualJSON = fixJSON(actualJSON)
 
 	// add fixes where go's json differs from javascript

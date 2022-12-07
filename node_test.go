@@ -310,7 +310,8 @@ b: 5`
 		t.Error(err)
 	}
 
-	verifyNodeContent(t, node, `a: 2
+	verifyNodeContent(t, node, `
+a: 2
 b: 5
 c: 4`)
 

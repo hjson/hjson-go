@@ -62,6 +62,8 @@ Options:
   -j  Output as formatted JSON.
   -omitRootBraces
       Omit braces at the root.
+  -preserveKeyOrder
+      Preserve key order in objects/maps.
   -quoteAlways
       Always quote string values.
   -v
@@ -184,7 +186,7 @@ func main() {
 
 ## Comments on struct fields
 
-By using key `comment` in struct field tags you can specify comments to be written on one or more lines preceding the struct field in the Hjson output.
+By using key `comment` in struct field tags you can specify comments to be written on one or more lines preceding the struct field in the Hjson output. Another way to output comments is to use *hjson.Node* structs, more on than later.
 
 ```go
 
@@ -228,6 +230,89 @@ Output:
   D: 5
 }
 ```
+
+## Read and write comments
+
+The only way to read comments from Hjson input is to use a destination variable of type *hjson.Node* or *&ast;hjson.Node*. The *hjson.Node* must be the root destination, it won't work if you create a field of type *hjson.Node* in some other struct and use that struct as destination. An *hjson.Node* struct is simply a wrapper for a value and comments stored in an *hjson.Comments* struct. It also has several convenience functions, for example *AtIndex()* or *SetKey()* that can be used when you know that the node contains a value of type *[]interface{}* or *&ast;hjson.OrderedMap*. All of the elements in *[]interface{}* or *&ast;hjson.OrderedMap* will be of type *&ast;hjson.Node* in trees created by *hjson.Unmarshal*, but the *hjson.Node* convenience functions unpacks the actual values from them.
+
+When *hjson.Node* or *&ast;hjson.Node* is used as destination for Hjson unmarshal the output will be a tree of *&ast;hjson.Node* where all of the values contained in tree nodes will be of these types:
+
+*	nil (no type)
+*	float
+*	json.Number
+*	string
+*	bool
+*	[]interface{}
+*	*hjson.OrderedMap
+
+These are just the types used by Hjson unmarshal and the convenience functions, you are free to assign any type of values to nodes in your own code.
+
+The comments will contain all whitespace chars too (including line feeds) so that an Hjson document can be read and written without altering the layout. This can be disabled by setting the decoding option *WhitespaceAsComments* to `false`.
+
+```go
+
+package main
+
+import (
+    "github.com/hjson/hjson-go/v4"
+    "fmt"
+)
+
+func main() {
+    // Now let's look at decoding Hjson data into hjson.Node.
+    sampleText := []byte(`
+    {
+        # specify rate in requests/second
+        rate: 1000
+        array:
+        [
+            foo
+            bar
+        ]
+    }`)
+
+    var node hjson.Node
+    if err := hjson.Unmarshal(sampleText, &node); err != nil {
+        panic(err)
+    }
+
+    node.NK("array").Cm.Before = `
+        # please specify an array
+        `
+
+    if _, _, err := node.NKC("subMap").SetKey("subVal", 1); err != nil {
+        panic(err)
+    }
+
+    outBytes, err := hjson.Marshal(node)
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Println(string(outBytes))
+}
+```
+
+Output:
+
+```
+
+    {
+        # specify rate in requests/second
+        rate: 1000
+        # please specify an array
+        array:
+        [
+            foo
+            bar
+        ]
+
+  subMap: {
+    subVal: 1
+  }
+}
+```
+
 
 ## Type ambiguity
 

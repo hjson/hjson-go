@@ -63,9 +63,12 @@ a: 2
 		t.Errorf("node.AtKey('a') returned false")
 	}
 
-	bVal, err := node.AtIndex(0)
+	bKey, bVal, err := node.AtIndex(0)
 	if err != nil {
 		t.Error(err)
+	}
+	if bKey != "b" {
+		t.Errorf("Expected key 'b', got: %v", bKey)
 	}
 	// The value will be a float64 even though it was written without decimals.
 	if bVal != 1.0 {
@@ -106,12 +109,15 @@ b: 3  # comment after
 a: 2
 /* Last comment */`)
 
-	found, err := node.SetKey("b", "abcdef")
+	oldVal, found, err := node.SetKey("b", "abcdef")
 	if err != nil {
 		t.Error(err)
 	}
 	if !found {
 		t.Errorf("Should have returned true, the key should already exist.")
+	}
+	if oldVal != 3 {
+		t.Errorf("Expected old value 3, got: '%v'", oldVal)
 	}
 
 	verifyNodeContent(t, node, `# comment before
@@ -151,9 +157,12 @@ func TestNode3(t *testing.T) {
 		t.Errorf("Unexpected slice length: %v", node.Len())
 	}
 
-	firstVal, err := node.AtIndex(0)
+	firstKey, firstVal, err := node.AtIndex(0)
 	if err != nil {
 		t.Error(err)
+	}
+	if firstKey != "" {
+		t.Errorf("Expected empty key, got: %v", firstKey)
 	}
 	// The value will be a float64 even though it was written without decimals.
 	if firstVal != 1.0 {
@@ -183,9 +192,15 @@ func TestNode3(t *testing.T) {
 		t.Errorf("Unexpected int length: %v", intLen)
 	}
 
-	err = node.SetIndex(1, "abcdef")
+	key, oldVal, err := node.SetIndex(1, "abcdef")
 	if err != nil {
 		t.Error(err)
+	}
+	if key != "" {
+		t.Errorf("Expected empty key, got: '%v'", key)
+	}
+	if oldVal != 2.0 {
+		t.Errorf("Expected old value 2.0, got: '%v'", oldVal)
 	}
 
 	verifyNodeContent(t, node, `# comment before
@@ -251,12 +266,12 @@ a: 2
 		t.Errorf("Should have returned false when calling AtKey() on nil")
 	}
 
-	found, err := node.NK("Z").SetKey("sub2", 3)
+	oldVal, found, err := node.NK("Z").SetKey("sub2", 3)
 	if err == nil {
 		t.Errorf("Should have returned an error calling SetKey() on nil")
 	}
 
-	found, err = node.NKC("Z").SetKey("sub2", 3)
+	oldVal, found, err = node.NKC("Z").SetKey("sub2", 3)
 	if err != nil {
 		t.Error(err)
 	}
@@ -264,15 +279,18 @@ a: 2
 		t.Errorf("Should have returned false, the key should not already exist.")
 	}
 
-	found, err = node.NKC("Z").SetKey("sub2", 4)
+	oldVal, found, err = node.NKC("Z").SetKey("sub2", 4)
 	if err != nil {
 		t.Error(err)
 	}
 	if !found {
 		t.Errorf("Should have returned true, the key should already exist.")
 	}
+	if oldVal != 3 {
+		t.Errorf("Expected old value 3, got: '%v'", oldVal)
+	}
 
-	found, err = node.NKC("X").NKC("Y").SetKey("sub3", 5)
+	oldVal, found, err = node.NKC("X").NKC("Y").SetKey("sub3", 5)
 	if err != nil {
 		t.Error(err)
 	}
@@ -358,23 +376,29 @@ func TestDeclareNodeMap(t *testing.T) {
 		t.Errorf("node.NK() created a node")
 	}
 
-	found, err := node.NKC("a").NKC("aa").NKC("aaa").SetKey("aaaa", "a string")
+	oldVal, found, err := node.NKC("a").NKC("aa").NKC("aaa").SetKey("aaaa", "a string")
 	if err != nil {
 		t.Error(err)
 	}
 	if found {
 		t.Errorf("Should have returned false, the key should not already exist.")
 	}
-	found, err = node.SetKey("b", 2)
+	oldVal, found, err = node.SetKey("b", 2)
 	if err != nil {
 		t.Error(err)
 	}
 	if found {
 		t.Errorf("Should have returned false, the key should not already exist.")
 	}
-	err = node.SetIndex(1, 3.0)
+	key, oldVal, err := node.SetIndex(1, 3.0)
 	if err != nil {
 		t.Error(err)
+	}
+	if key != "b" {
+		t.Errorf("Expected key 'b', got: '%v'", key)
+	}
+	if oldVal != 2 {
+		t.Errorf("Expected old value 2, got: '%v'", oldVal)
 	}
 
 	verifyNodeContent(t, &node, `a: {
@@ -408,9 +432,15 @@ func TestDeclareNodeSlice(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = node.SetIndex(1, false)
+	key, oldVal, err := node.SetIndex(1, false)
 	if err != nil {
 		t.Error(err)
+	}
+	if key != "" {
+		t.Errorf("Expected empty key, got: '%v'", key)
+	}
+	if oldVal != "b" {
+		t.Errorf("Expected old value 'b', got: '%v'", oldVal)
 	}
 
 	verifyNodeContent(t, &node, `[
@@ -423,7 +453,7 @@ func TestDeclareNodeSlice(t *testing.T) {
 		t.Errorf("Should not have been able to create a node by key in a slice")
 	}
 
-	_, err = node.SetKey("a", 4)
+	_, _, err = node.SetKey("a", 4)
 	if err == nil {
 		t.Errorf("Should have returned error when trying to set by key on a slice")
 	}
@@ -438,12 +468,15 @@ setting2: true  // yes`
 	if err != nil {
 		t.Error(err)
 	}
-	found, err := node.SetKey("setting1", 3)
+	oldVal, found, err := node.SetKey("setting1", 3)
 	if err != nil {
 		t.Error(err)
 	}
 	if !found {
 		t.Errorf("Should have returned true, the key should already exist")
+	}
+	if oldVal != nil {
+		t.Errorf("Expected old value nil, got: '%v'", oldVal)
 	}
 	output, err := Marshal(node)
 	if err != nil {
@@ -454,4 +487,104 @@ setting2: true  // yes`
   setting1: 3  # nada
 setting2: true  // yes
 }`)
+}
+
+func TestNodeOrderedMapInsertDelete(t *testing.T) {
+	txt := `a: 1
+b: 2`
+
+	var node Node
+	err := Unmarshal([]byte(txt), &node)
+	if err != nil {
+		t.Error(err)
+	}
+
+	key, val, err := node.DeleteIndex(0)
+	if err != nil {
+		t.Error(err)
+	}
+	if key != "a" {
+		t.Errorf("Expected key 'a', got: '%v'", key)
+	}
+	if val != 1.0 {
+		t.Errorf("Expected old value 1.0, got: '%#v'", val)
+	}
+
+	val, found, err := node.Insert(1, key, val)
+	if err != nil {
+		t.Error(err)
+	}
+	if found {
+		t.Errorf("Found key '%v' that should not have been found", key)
+	}
+
+	val, found, err = node.DeleteKey("a")
+	if err != nil {
+		t.Error(err)
+	}
+	if !found {
+		t.Errorf("Expected to find key 'a' but did not")
+	}
+	if val != 1.0 {
+		t.Errorf("Expected deleted value 1.0, got: '%#v'", val)
+	}
+
+	val, found, err = node.Insert(0, "c", 3)
+	if err != nil {
+		t.Error(err)
+	}
+	if found {
+		t.Error("Found key c that should not have been found")
+	}
+
+	verifyNodeContent(t, &node, `c: 3
+b: 2`)
+}
+
+func TestNodeSliceInsertDelete(t *testing.T) {
+	txt := `[
+  1
+  2
+]`
+
+	var node Node
+	err := Unmarshal([]byte(txt), &node)
+	if err != nil {
+		t.Error(err)
+	}
+
+	key, val, err := node.DeleteIndex(0)
+	if err != nil {
+		t.Error(err)
+	}
+	if key != "" {
+		t.Errorf("Expected empty key, got: '%v'", key)
+	}
+	if val != 1.0 {
+		t.Errorf("Expected old value 1.0, got: '%#v'", val)
+	}
+
+	val, found, err := node.Insert(1, key, val)
+	if err != nil {
+		t.Error(err)
+	}
+	if found {
+		t.Errorf("Found key '%v' that should not have been found", key)
+	}
+
+	val, found, err = node.Insert(0, "c", 3)
+	if err != nil {
+		t.Error(err)
+	}
+	if found {
+		t.Error("Found key c that should not have been found")
+	}
+
+	// The value '2' has a line break as Cm.After
+	verifyNodeContent(t, &node, `[
+  3
+  2
+
+  1
+]`)
 }

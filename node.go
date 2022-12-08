@@ -71,28 +71,30 @@ func (c *Node) Len() int {
 	return 0
 }
 
-// AtIndex returns the value (unwrapped from its Node) found at the specified
-// index, if this Node contains a value of type *hjson.OrderedMap or
-// []interface{}. Returns an error for unexpected types. Panics if index < 0
-// or index >= Len().
-func (c *Node) AtIndex(index int) (interface{}, error) {
+// AtIndex returns the key (if any) and value (unwrapped from its Node) found
+// at the specified index, if this Node contains a value of type
+// *hjson.OrderedMap or []interface{}. Returns an error for unexpected types.
+// Panics if index < 0 or index >= Len().
+func (c *Node) AtIndex(index int) (string, interface{}, error) {
 	if c == nil {
-		return nil, fmt.Errorf("Node is nil")
+		return "", nil, fmt.Errorf("Node is nil")
 	}
+	var key string
 	var elem interface{}
 	switch cont := c.Value.(type) {
 	case *OrderedMap:
-		elem = cont.AtIndex(index)
+		key = cont.Keys[index]
+		elem = cont.Map[key]
 	case []interface{}:
 		elem = cont[index]
 	default:
-		return nil, fmt.Errorf("Unexpected value type: %v", reflect.TypeOf(c.Value))
+		return "", nil, fmt.Errorf("Unexpected value type: %v", reflect.TypeOf(c.Value))
 	}
 	node, ok := elem.(*Node)
 	if !ok {
-		return nil, fmt.Errorf("Unexpected element type: %v", reflect.TypeOf(elem))
+		return "", nil, fmt.Errorf("Unexpected element type: %v", reflect.TypeOf(elem))
 	}
-	return node.Value, nil
+	return key, node.Value, nil
 }
 
 // AtKey returns the value (unwrapped from its Node) found for the specified
@@ -140,49 +142,96 @@ func (c *Node) Append(value interface{}) error {
 	return nil
 }
 
+// Insert inserts a new key/value pair at the specified index, if this Node
+// contains a value of type *hjson.OrderedMap or []interface{}.  Returns an error
+// for unexpected types. Panics if index < 0 or index > c.Len(). If the key
+// already exists in the OrderedMap, the new value is set but the position of
+// the key is not changed. Otherwise the value to insert is wrapped in a new
+// Node. If this Node contains []interface{}, the key is ignored. Returns the
+// old value and true if the key already exists in the/ OrderedMap, nil and
+// false otherwise.
+func (c *Node) Insert(index int, key string, value interface{}) (interface{}, bool, error) {
+	if c == nil {
+		return nil, false, fmt.Errorf("Node is nil")
+	}
+	var oldVal interface{}
+	var found bool
+	switch cont := c.Value.(type) {
+	case *OrderedMap:
+		oldVal, found := cont.Map[key]
+		if found {
+			if node, ok := oldVal.(*Node); ok {
+				oldVal = node.Value
+				node.Value = value
+			} else {
+				cont.Map[key] = &Node{Value: value}
+			}
+		} else {
+			oldVal, found = cont.Insert(index, key, &Node{Value: value})
+		}
+	case []interface{}:
+		value = &Node{Value: value}
+		if index == len(cont) {
+			c.Value = append(cont, value)
+		} else {
+			cont = append(cont[:index+1], cont[index:]...)
+			cont[index] = value
+			c.Value = cont
+		}
+	default:
+		return nil, false, fmt.Errorf("Unexpected value type: %v", reflect.TypeOf(c.Value))
+	}
+	return oldVal, found, nil
+}
+
 // SetIndex assigns the specified value to the child Node found at the specified
 // index, if this Node contains a value of type *hjson.OrderedMap or
-// []interface{}. Returns an error for unexpected types. Panics if index < 0
+// []interface{}. Returns an error for unexpected types. Returns the key (if
+// any) and value previously found at the specified index. Panics if index < 0
 // or index >= Len().
-func (c *Node) SetIndex(index int, value interface{}) error {
+func (c *Node) SetIndex(index int, value interface{}) (string, interface{}, error) {
 	if c == nil {
-		return fmt.Errorf("Node is nil")
+		return "", nil, fmt.Errorf("Node is nil")
 	}
+	var key string
 	var elem interface{}
 	switch cont := c.Value.(type) {
 	case *OrderedMap:
-		elem = cont.AtIndex(index)
+		key = cont.Keys[index]
+		elem = cont.Map[key]
 	case []interface{}:
 		elem = cont[index]
 	default:
-		return fmt.Errorf("Unexpected value type: %v", reflect.TypeOf(c.Value))
+		return "", nil, fmt.Errorf("Unexpected value type: %v", reflect.TypeOf(c.Value))
 	}
+	var oldVal interface{}
 	node, ok := elem.(*Node)
 	if ok {
+		oldVal = node.Value
 		node.Value = value
 	} else {
+		oldVal = elem
 		switch cont := c.Value.(type) {
 		case *OrderedMap:
-			cont.Map[cont.Keys[index]] = &Node{Value: value}
+			cont.Map[key] = &Node{Value: value}
 		case []interface{}:
 			cont[index] = &Node{Value: value}
 		}
 	}
-	return nil
+	return key, oldVal, nil
 }
 
 // SetKey assigns the specified value to the child Node identified by the
 // specified key, if this Node contains a value of the type *hjson.OrderedMap.
 // If this Node contains nil without a type, an empty *hjson.OrderedMap is
-// first created. If this Node contains a value of any other type or if the
-// element idendified by the specified key is not of type *Node, an error is
+// first created. If this Node contains a value of any other type an error is
 // returned. If the key cannot be found in the OrderedMap, a new Node is
-// created for the specified key, wrapping the specified value. The first
-// return value is true if the key already existed in the OrderedMap, false
-// otherwise.
-func (c *Node) SetKey(key string, value interface{}) (bool, error) {
+// created, wrapping the specified value, and appended to the end of the
+// OrderedMap. Returns the old value and true if the key already existed in
+// the OrderedMap, nil and false otherwise.
+func (c *Node) SetKey(key string, value interface{}) (interface{}, bool, error) {
 	if c == nil {
-		return false, fmt.Errorf("Node is nil")
+		return nil, false, fmt.Errorf("Node is nil")
 	}
 	var om *OrderedMap
 	if c.Value == nil {
@@ -192,22 +241,68 @@ func (c *Node) SetKey(key string, value interface{}) (bool, error) {
 		var ok bool
 		om, ok = c.Value.(*OrderedMap)
 		if !ok {
-			return false, fmt.Errorf("Unexpected value type: %v", reflect.TypeOf(c.Value))
+			return nil, false, fmt.Errorf("Unexpected value type: %v", reflect.TypeOf(c.Value))
 		}
 	}
+	var oldVal interface{}
 	elem, ok := om.Map[key]
 	if ok {
 		var node *Node
 		node, ok = elem.(*Node)
 		if ok {
+			oldVal = node.Value
 			node.Value = value
 		}
 	}
 	foundKey := true
 	if !ok {
-		foundKey = om.Set(key, &Node{Value: value})
+		oldVal, foundKey = om.Set(key, &Node{Value: value})
 	}
-	return foundKey, nil
+	return oldVal, foundKey, nil
+}
+
+// DeleteIndex deletes the value or key/value pair found at the specified index,
+// if this Node contains a value of type *hjson.OrderedMap or []interface{}.
+// Returns an error for unexpected types. Panics if index < 0 or
+// index >= c.Len(). Returns the deleted key (if any) and value.
+func (c *Node) DeleteIndex(index int) (string, interface{}, error) {
+	if c == nil {
+		return "", nil, fmt.Errorf("Node is nil")
+	}
+	var key string
+	var value interface{}
+	switch cont := c.Value.(type) {
+	case *OrderedMap:
+		key, value = cont.DeleteIndex(index)
+	case []interface{}:
+		value = cont[index]
+		cont = append(cont[:index], cont[index+1:]...)
+		c.Value = cont
+	default:
+		return "", nil, fmt.Errorf("Unexpected value type: %v", reflect.TypeOf(c.Value))
+	}
+	if node, ok := value.(*Node); ok {
+		value = node.Value
+	}
+	return key, value, nil
+}
+
+// DeleteKey deletes the key/value pair with the specified key, if found and if
+// this Node contains a value of type *hjson.OrderedMap. Returns an error for
+// unexpected types. Returns the deleted value and true if the key was found,
+// nil and false otherwise.
+func (c *Node) DeleteKey(key string) (interface{}, bool, error) {
+	if c == nil {
+		return nil, false, fmt.Errorf("Node is nil")
+	}
+	if om, ok := c.Value.(*OrderedMap); ok {
+		oldValue, found := om.DeleteKey(key)
+		if node, ok := oldValue.(*Node); ok {
+			oldValue = node.Value
+		}
+		return oldValue, found, nil
+	}
+	return nil, false, fmt.Errorf("Unexpected value type: %v", reflect.TypeOf(c.Value))
 }
 
 // NI is an acronym formed from "get Node pointer by Index". Returns the *Node

@@ -743,16 +743,18 @@ func (p *hjsonParser) readObject(
 				p.setComment2(&elemNode.Cm.After, ciAfter, ciExtra)
 				elemNode.Cm.After = existingAfter + elemNode.Cm.After
 			}
-			if !object.Set(key, val) && p.DisallowDuplicateKeys {
-				return nil, p.errAt(fmt.Sprintf("Found duplicate value ('%#v') for key '%v'",
-					val, key))
+			oldValue, isDuplicate := object.Set(key, val)
+			if isDuplicate && p.DisallowDuplicateKeys {
+				return nil, p.errAt(fmt.Sprintf("Found duplicate values ('%#v' and '%#v') for key '%v'",
+					oldValue, val, key))
 			}
 			p.next()
 			return p.maybeWrapNode(&node, object)
 		}
-		if !object.Set(key, val) && p.DisallowDuplicateKeys {
-			return nil, p.errAt(fmt.Sprintf("Found duplicate value ('%#v') for key '%v'",
-				val, key))
+		oldValue, isDuplicate := object.Set(key, val)
+		if isDuplicate && p.DisallowDuplicateKeys {
+			return nil, p.errAt(fmt.Sprintf("Found duplicate values ('%#v' and '%#v') for key '%v'",
+				oldValue, val, key))
 		}
 		ciBefore = ciAfter
 	}

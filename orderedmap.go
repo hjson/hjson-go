@@ -69,14 +69,23 @@ func (c *OrderedMap) AtIndex(index int) interface{} {
 	return c.Map[c.Keys[index]]
 }
 
+// AtKey returns the value found for the specified key, and true if the value
+// was found. Returns nil and false if the value was not found.
+func (c *OrderedMap) AtKey(key string) (interface{}, bool) {
+	ret, ok := c.Map[key]
+	return ret, ok
+}
+
 // Insert inserts a new key/value pair at the specified index. Panics if
 // index < 0 or index > c.Len(). If the key already exists in the OrderedMap,
 // the new value is set but the position of the key is not changed. Returns
-// true if the key already exists in this OrderedMap, false otherwise.
-func (c *OrderedMap) Insert(index int, key string, value interface{}) bool {
+// the old value and true if the key already exists in the OrderedMap, nil and
+// false otherwise.
+func (c *OrderedMap) Insert(index int, key string, value interface{}) (interface{}, bool) {
+	oldValue, exists := c.Map[key]
 	c.Map[key] = value
-	if len(c.Map) == len(c.Keys) {
-		return true
+	if exists {
+		return oldValue, true
 	}
 	if index == len(c.Keys) {
 		c.Keys = append(c.Keys, key)
@@ -84,36 +93,39 @@ func (c *OrderedMap) Insert(index int, key string, value interface{}) bool {
 		c.Keys = append(c.Keys[:index+1], c.Keys[index:]...)
 		c.Keys[index] = key
 	}
-	return false
+	return nil, false
 }
 
 // Set sets the specified value for the specified key. If the key does not
 // already exist in the OrderedMap it is appended to the end of the OrderedMap.
 // If the key already exists in the OrderedMap, the new value is set but the
-// position of the key is not changed. Returns true if the key already exists
-// in the OrderedMap, false otherwise
-func (c *OrderedMap) Set(key string, value interface{}) bool {
+// position of the key is not changed. Returns the old value and true if the
+// key already exists in the OrderedMap, nil and false otherwise.
+func (c *OrderedMap) Set(key string, value interface{}) (interface{}, bool) {
 	return c.Insert(len(c.Keys), key, value)
 }
 
 // DeleteIndex deletes the key/value pair found at the specified index.
-// Panics if index < 0 or index >= c.Len().
-func (c *OrderedMap) DeleteIndex(index int) {
-	delete(c.Map, c.Keys[index])
+// Returns the deleted key and value. Panics if index < 0 or index >= c.Len().
+func (c *OrderedMap) DeleteIndex(index int) (string, interface{}) {
+	key := c.Keys[index]
+	value := c.Map[key]
+	delete(c.Map, key)
 	c.Keys = append(c.Keys[:index], c.Keys[index+1:]...)
+	return key, value
 }
 
 // DeleteKey deletes the key/value pair with the specified key, if found.
-// Returns true if the key was found and the length of the OrderedMap was
-// reduced by one.
-func (c *OrderedMap) DeleteKey(key string) bool {
+// Returns the deleted value and true if the key was found, nil and false
+// otherwise.
+func (c *OrderedMap) DeleteKey(key string) (interface{}, bool) {
 	for index, ck := range c.Keys {
 		if ck == key {
-			c.DeleteIndex(index)
-			return true
+			_, value := c.DeleteIndex(index)
+			return value, true
 		}
 	}
-	return false
+	return nil, false
 }
 
 // MarshalJSON is an implementation of the json.Marshaler interface, enabling

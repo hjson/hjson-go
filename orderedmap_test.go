@@ -31,15 +31,18 @@ func TestInsert(t *testing.T) {
 		{"A", 2},
 	})
 
-	ok := om.Insert(1, "C", 1)
+	_, ok := om.Insert(1, "C", 1)
 	if ok {
 		t.Error("Insert returned true for non-existing key")
 	}
 	verifyContent(t, om, `{"B":"first","C":1,"A":2}`)
 
-	ok = om.Insert(3, "C", 3)
+	oldVal, ok := om.Insert(3, "C", 3)
 	if !ok {
 		t.Error("Insert returned false for existing key")
+	}
+	if oldVal != 1 {
+		t.Errorf("Expected old value 1, got: '%v'", oldVal)
 	}
 	verifyContent(t, om, `{"B":"first","C":3,"A":2}`)
 
@@ -55,19 +58,36 @@ func TestInsert(t *testing.T) {
 		t.Errorf("Expected value 3 for key C.  Got value: %d\n", om.AtIndex(3))
 	}
 
-	if om.DeleteKey("XYZ") {
+	oldVal, found := om.DeleteKey("XYZ")
+	if found {
 		t.Errorf("DeleteKey returned true for non-existing key.")
 	}
 
-	if !om.DeleteKey("C") {
+	oldVal, found = om.DeleteKey("C")
+	if !found {
 		t.Errorf("DeleteKey returned false for existing key.")
+	}
+	if oldVal != 3 {
+		t.Errorf("Expected old value 3, got: '%v'", oldVal)
 	}
 	verifyContent(t, om, `{"B":"first","A":2}`)
 
-	om.DeleteIndex(1)
+	key, oldVal := om.DeleteIndex(1)
+	if key != "A" {
+		t.Errorf("Expected key 'A', got: '%v'", key)
+	}
+	if oldVal != 2 {
+		t.Errorf("Expected old value 2, got: '%v'", oldVal)
+	}
 	verifyContent(t, om, `{"B":"first"}`)
 
-	om.DeleteIndex(0)
+	key, oldVal = om.DeleteIndex(0)
+	if key != "B" {
+		t.Errorf("Expected key 'B', got: '%v'", key)
+	}
+	if oldVal != "first" {
+		t.Errorf("Expected old value 'first', got: '%v'", oldVal)
+	}
 	verifyContent(t, om, `{}`)
 }
 

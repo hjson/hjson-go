@@ -1,0 +1,8 @@
+# comment before
+b: /* key comment */ {
+  sub1: 3  # comment after
+  sub2: 4  # comment more after
+} # cm after obj
+// Comment B4
+a: 2    
+/* Last comment */

@@ -22,14 +22,6 @@ func fixEOL(data []byte) []byte {
 	return bytes.Replace(data, []byte("\r\n"), []byte("\n"), -1)
 }
 
-func maybeGetContent(file string) []byte {
-	data, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil
-	}
-	return fixEOL(data)
-}
-
 func getContent(file string) []byte {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -46,11 +38,12 @@ func getTestContent(name string) []byte {
 	return getContent(p)
 }
 
-func getResultContent(name string) ([]byte, []byte, []byte) {
+func getResultContent(name string) ([]byte, []byte, []byte, []byte) {
 	p1 := fmt.Sprintf("./assets/sorted/%s_result.json", name)
 	p2 := fmt.Sprintf("./assets/sorted/%s_result.hjson", name)
 	p3 := fmt.Sprintf("./assets/comments2/%s_result.hjson", name)
-	return getContent(p1), getContent(p2), maybeGetContent(p3)
+	p4 := fmt.Sprintf("./assets/comments3/%s_result.hjson", name)
+	return getContent(p1), getContent(p2), getContent(p3), getContent(p4)
 }
 
 func fixJSON(data []byte) []byte {
@@ -79,7 +72,7 @@ func run(t *testing.T, file string) {
 		panic(errors.New(name + " should_fail!"))
 	}
 
-	rjson, rhjson, cm2 := getResultContent(name)
+	rjson, rhjson, cm2, cm3 := getResultContent(name)
 
 	actualHjson, err := Marshal(data)
 	actualHjson = append(actualHjson, '\n')
@@ -87,7 +80,7 @@ func run(t *testing.T, file string) {
 	actualJSON = append(actualJSON, '\n')
 	actualJSON = fixJSON(actualJSON)
 	var actualCm2 []byte
-	if len(cm2) > 0 {
+	{
 		var node Node
 		decOpt := DefaultDecoderOptions()
 		decOpt.WhitespaceAsComments = false
@@ -100,17 +93,17 @@ func run(t *testing.T, file string) {
 		}
 		actualCm2 = append(actualCm2, '\n')
 	}
-	//	var actualCm3 []byte
-	//	if len(cm2) > 0 {
-	//		var node Node
-	//		if err := Unmarshal(testContent, &node); err != nil {
-	//			panic(err)
-	//		}
-	//		actualCm, err = Marshal(node)
-	//		if err != nil {
-	//			panic(err)
-	//		}
-	//	}
+	var actualCm3 []byte
+	{
+		var node Node
+		if err := Unmarshal(testContent, &node); err != nil {
+			panic(err)
+		}
+		actualCm3, err = Marshal(node)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	// add fixes where go's json differs from javascript
 	switch name {
@@ -123,6 +116,7 @@ func run(t *testing.T, file string) {
 	hjsonOK := bytes.Equal(rhjson, actualHjson)
 	jsonOK := bytes.Equal(rjson, actualJSON)
 	cm2OK := bytes.Equal(cm2, actualCm2)
+	cm3OK := bytes.Equal(cm3, actualCm3)
 	if !hjsonOK {
 		t.Logf("%s\n---hjson expected\n%s\n---hjson actual\n%s\n---\n", name, rhjson, actualHjson)
 	}
@@ -130,13 +124,20 @@ func run(t *testing.T, file string) {
 		t.Logf("%s\n---json expected\n%s\n---json actual\n%s\n---\n", name, rjson, actualJSON)
 	}
 	if !cm2OK {
-		t.Logf("%s\n---comments expected\n%s\n---comments actual\n%s\n---\n", name, cm2, actualCm2)
+		t.Logf("%s\n---cm2 expected\n%s\n---cm2 actual\n%s\n---\n", name, cm2, actualCm2)
 		//		err = ioutil.WriteFile(fmt.Sprintf("./assets/comments2/%s_result.hjson", name), actualCm2, 0644)
 		//		if err != nil {
 		//			panic(err)
 		//		}
 	}
-	if !hjsonOK || !jsonOK || !cm2OK {
+	if !cm3OK {
+		t.Logf("%s\n---cm3 expected\n%s\n---cm3 actual\n%s\n---\n", name, cm3, actualCm3)
+		//		err = ioutil.WriteFile(fmt.Sprintf("./assets/comments3/%s_result.hjson", name), actualCm3, 0644)
+		//		if err != nil {
+		//			panic(err)
+		//		}
+	}
+	if !hjsonOK || !jsonOK || !cm2OK || !cm3OK {
 		panic("fail!")
 	}
 }

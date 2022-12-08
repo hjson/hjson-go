@@ -42,6 +42,9 @@
 
     ''' # trailing lf
 
+  multiline4:
+    ←→±≠Я
+
   # escapes/no escape
 
   foo1a: asdf\"'a\s\w
@@ -74,8 +77,7 @@
     yes:         true
     no:          false
     null:        null
-    array:       [ 1 2 3 4 5 6 7 8 9 0 -1 0.5
-    ]
+    array:       [ 1 2 3 4 5 6 7 8 9 0 -1 0.5 ]
   }
 
   # special quoted
@@ -87,5 +89,6 @@
     one: "1"
     two: "2"
     minus: "-3"
+    zero: "0"
   }
 }

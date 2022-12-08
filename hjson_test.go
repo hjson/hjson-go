@@ -92,6 +92,15 @@ func run(t *testing.T, file string) {
 			panic(err)
 		}
 		actualCm2 = append(actualCm2, '\n')
+
+		var roundTrip interface{}
+		err = Unmarshal(actualCm2, &roundTrip)
+		if err != nil {
+			panic(err)
+		}
+		if !reflect.DeepEqual(data, roundTrip) {
+			panic("cm2 roundtrip failed!")
+		}
 	}
 	var actualCm3 []byte
 	{
@@ -102,6 +111,15 @@ func run(t *testing.T, file string) {
 		actualCm3, err = Marshal(node)
 		if err != nil {
 			panic(err)
+		}
+
+		var roundTrip interface{}
+		err = Unmarshal(actualCm3, &roundTrip)
+		if err != nil {
+			panic(err)
+		}
+		if !reflect.DeepEqual(data, roundTrip) {
+			panic("cm3 roundtrip failed!")
 		}
 	}
 

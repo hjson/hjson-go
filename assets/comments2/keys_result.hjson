@@ -6,8 +6,8 @@
   -test: test
   .key: test
   # trailing spaces in key names are ignored
-  trailing: test
-  trailing2: test
+  trailing : test
+  trailing2  : test
   # comment char in key name
   "#c1": test
   "foo#bar": test
@@ -37,7 +37,15 @@
   "]": test
   "foo]bar": test
   # newline
-  nl1: test
-  nl2: test
-  nl3: test
+  nl1:
+    test
+  nl2
+    :
+    test
+
+  nl3
+
+    :
+
+    test
 }

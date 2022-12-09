@@ -27,7 +27,7 @@ styles
   rem3: "/* test */"
 
   num1: 0 # comment
-  num2: 0 // comment
+  num2: 0.0 // comment
   num3: 2 /* comment */
 
   true1: true # comment

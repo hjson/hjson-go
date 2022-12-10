@@ -584,7 +584,6 @@ func TestNodeSliceInsertDelete(t *testing.T) {
 	verifyNodeContent(t, &node, `[
   3
   2
-
   1
 ]`)
 }

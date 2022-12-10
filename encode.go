@@ -124,7 +124,7 @@ func (e *hjsonEncoder) quoteForComment(cmStr string) bool {
 }
 
 func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool,
-	hasCommentAfter bool) {
+	keyComment string, hasCommentAfter bool) {
 
 	// Check if we can insert this string without quotes
 	// see hjson syntax (must not parse as true, false, null or number)
@@ -146,7 +146,7 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool,
 		if !needsEscape.MatchString(value) {
 			e.WriteString(separator + `"` + value + `"`)
 		} else if !needsEscapeML.MatchString(value) && !isRootObject {
-			e.mlString(value, separator)
+			e.mlString(value, separator, keyComment)
 		} else {
 			e.WriteString(separator + `"` + e.quoteReplace(value) + `"`)
 		}
@@ -156,7 +156,7 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool,
 	}
 }
 
-func (e *hjsonEncoder) mlString(value string, separator string) {
+func (e *hjsonEncoder) mlString(value string, separator string, keyComment string) {
 	a := strings.Split(value, "\n")
 
 	if len(a) == 1 {
@@ -166,7 +166,9 @@ func (e *hjsonEncoder) mlString(value string, separator string) {
 		e.WriteString(separator + "'''")
 		e.WriteString(a[0])
 	} else {
-		e.writeIndent(e.indent + 1)
+		if !strings.Contains(keyComment, "\n") {
+			e.writeIndent(e.indent + 1)
+		}
 		e.WriteString("'''")
 		for _, v := range a {
 			indent := e.indent + 1
@@ -201,7 +203,7 @@ func (e *hjsonEncoder) quoteName(name string) string {
 func (e *hjsonEncoder) bracesIndent(isObjElement, isEmpty bool, cm Comments,
 	separator string) {
 
-	if isObjElement && !e.BracesSameLine && (!isEmpty || cm.Inside != "") && cm.Key == "" {
+	if isObjElement && !e.BracesSameLine && (!isEmpty || cm.InsideFirst != "") && cm.Key == "" {
 		e.writeIndent(e.indent)
 	} else {
 		e.WriteString(separator)
@@ -220,12 +222,16 @@ func (s sortAlpha) Less(i, j int) bool {
 	return fmt.Sprintf("%v", s[i]) < fmt.Sprintf("%v", s[j])
 }
 
-func (e *hjsonEncoder) writeIndent(indent int) {
-	e.WriteString(e.Eol)
+func (e *hjsonEncoder) writeIndentNoEOL(indent int) {
 	e.WriteString(e.BaseIndentation)
 	for i := 0; i < indent; i++ {
 		e.WriteString(e.IndentBy)
 	}
+}
+
+func (e *hjsonEncoder) writeIndent(indent int) {
+	e.WriteString(e.Eol)
+	e.writeIndentNoEOL(indent)
 }
 
 func (e *hjsonEncoder) useMarshalerJSON(
@@ -274,6 +280,8 @@ func (e *hjsonEncoder) unpackNode(value reflect.Value, cm Comments) (reflect.Val
 	return value, cm
 }
 
+// This function can often be called from within itself, so do not output
+// anything from the upper half of it.
 func (e *hjsonEncoder) str(
 	value reflect.Value,
 	noIndent bool,
@@ -281,7 +289,7 @@ func (e *hjsonEncoder) str(
 	isRootObject,
 	isObjElement bool,
 	cm Comments,
-) (err error) {
+) error {
 
 	// Produce a string from value.
 
@@ -291,13 +299,6 @@ func (e *hjsonEncoder) str(
 	if cm.Key != "" {
 		separator = ""
 	}
-
-	if isRootObject {
-		e.WriteString(cm.Before)
-		cm.Before = ""
-	}
-	e.WriteString(cm.Key)
-	cm.Key = ""
 
 	kind := value.Kind()
 
@@ -320,14 +321,14 @@ func (e *hjsonEncoder) str(
 	if !value.IsValid() {
 		e.WriteString(separator)
 		e.WriteString("null")
-		goto FINISH
+		return nil
 	}
 
 	if kind == reflect.Interface || kind == reflect.Ptr {
 		if value.IsNil() {
 			e.WriteString(separator)
 			e.WriteString("null")
-			goto FINISH
+			return nil
 		}
 		return e.str(value.Elem(), noIndent, separator, isRootObject, isObjElement, cm)
 	}
@@ -343,13 +344,11 @@ func (e *hjsonEncoder) str(
 				name:  key,
 			})
 		}
-		err = e.writeFields(fis, noIndent, separator, isRootObject, isObjElement, cm)
-		goto FINISH
+		return e.writeFields(fis, noIndent, separator, isRootObject, isObjElement, cm)
 	}
 
 	if value.Type().Implements(marshalerJSON) {
-		err = e.useMarshalerJSON(value, noIndent, separator, isRootObject, isObjElement)
-		goto FINISH
+		return e.useMarshalerJSON(value, noIndent, separator, isRootObject, isObjElement)
 	}
 
 	if value.Type().Implements(marshalerText) {
@@ -372,7 +371,8 @@ func (e *hjsonEncoder) str(
 			// without quotes
 			e.WriteString(separator + n)
 		} else {
-			e.quote(value.String(), separator, isRootObject, e.quoteForComment(cm.After))
+			e.quote(value.String(), separator, isRootObject, cm.Key,
+				e.quoteForComment(cm.After))
 		}
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -413,46 +413,46 @@ func (e *hjsonEncoder) str(
 	case reflect.Slice, reflect.Array:
 		e.bracesIndent(isObjElement, value.Len() == 0, cm, separator)
 		e.WriteString("[")
+		e.WriteString(cm.InsideFirst)
+
+		if value.Len() == 0 {
+			if cm.InsideFirst == "" && cm.InsideLast != "" {
+				e.WriteString(e.Eol)
+			}
+			e.WriteString(cm.InsideLast + "]")
+			return nil
+		} else if cm.InsideFirst == "" {
+			e.WriteString(e.Eol)
+		}
 
 		indent1 := e.indent
 		e.indent++
 
 		// Join all of the element texts together, separated with newlines
-		cmAfter := cm.Inside
 		for i := 0; i < value.Len(); i++ {
 			elem, elemCm := e.unpackNode(value.Index(i), Comments{})
-			shouldIndent := (elemCm.Key == "")
 
-			if i == 0 {
-				if cmAfter != "" {
-					e.WriteString(cmAfter)
-					// This is the first element, so commentAfterPrevObj is the inner comment
-					// of the parent vector. The inner comment probably expects "]" to come
-					// after it and therefore needs one more level of indentation.
-					e.WriteString(e.IndentBy)
-					shouldIndent = false
-				}
+			if elemCm.Before == "" && elemCm.Key == "" {
+				e.writeIndentNoEOL(e.indent)
 			} else {
-				e.WriteString(cmAfter)
-			}
-
-			if elemCm.Before != "" {
-				e.WriteString(elemCm.Before)
-			} else if shouldIndent {
-				e.writeIndent(e.indent)
+				e.WriteString(elemCm.Before + elemCm.Key)
 			}
 
 			if err := e.str(elem, true, "", false, false, elemCm); err != nil {
 				return err
 			}
 
-			cmAfter = elemCm.After
+			if elemCm.After == "" {
+				e.WriteString(e.Eol)
+			} else {
+				e.WriteString(elemCm.After)
+			}
 		}
 
-		if cmAfter != "" {
-			e.WriteString(cmAfter)
-		} else if value.Len() > 0 {
-			e.writeIndent(indent1)
+		if cm.InsideLast != "" {
+			e.WriteString(cm.InsideLast)
+		} else if value.Len() > 0 || cm.InsideFirst != "" {
+			e.writeIndentNoEOL(indent1)
 		}
 		e.WriteString("]")
 
@@ -527,12 +527,7 @@ func (e *hjsonEncoder) str(
 		return errors.New("Unsupported type " + value.Type().String())
 	}
 
-FINISH:
-	if isRootObject && err == nil {
-		e.WriteString(cm.After)
-	}
-
-	return
+	return nil
 }
 
 func isEmptyValue(v reflect.Value) bool {
@@ -552,6 +547,30 @@ func isEmptyValue(v reflect.Value) bool {
 	default:
 		return false
 	}
+}
+
+func investigateComment(txt string) (
+	hasLineFeed,
+	endsInsideComment,
+	endsWithLineFeed bool,
+) {
+	var prev rune
+	for _, rn := range txt {
+		switch rn {
+		case '\n':
+			hasLineFeed = true
+			endsInsideComment = false
+		case '#':
+			endsInsideComment = true
+		case '/':
+			if prev == '/' {
+				endsInsideComment = true
+			}
+		}
+		endsWithLineFeed = (rn == '\n')
+		prev = rn
+	}
+	return
 }
 
 // Marshal returns the Hjson encoding of v using
@@ -682,9 +701,16 @@ func MarshalWithOptions(v interface{}, options EncoderOptions) ([]byte, error) {
 		structTypeCache: map[reflect.Type][]structFieldInfo{},
 	}
 
-	err := e.str(reflect.ValueOf(v), true, e.BaseIndentation, true, false, Comments{})
+	value := reflect.ValueOf(v)
+	_, cm := e.unpackNode(value, Comments{})
+	e.WriteString(cm.Before + cm.Key)
+
+	err := e.str(value, true, e.BaseIndentation, true, false, cm)
 	if err != nil {
 		return nil, err
 	}
+
+	e.WriteString(cm.After)
+
 	return e.Bytes(), nil
 }

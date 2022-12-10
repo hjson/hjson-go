@@ -7,10 +7,23 @@ import (
 )
 
 type Comments struct {
+	// Comment/whitespace on line(s) before the value, and before the value on
+	// the same line.
 	Before string
-	Key    string
-	Inside string
-	After  string
+	// Comment/whitespace between the key and this value, if this value is an
+	// element in a map/object.
+	Key string
+	// Comment/whitespace on the same line as the leading bracket ({ or [) for
+	// this value, if this value is a slice/array or map/object.
+	InsideFirst string
+	// Comment/whitespace from the beginning of the first line after all child
+	// values to this value, until the closing bracket (} or ]), if this value is
+	// a slice/array or map/object.
+	InsideLast string
+	// Comment/whitespace on line(s) after the value, and after the value on the
+	// same line. hjson.Unmarshal() will try to assign comments/whitespace from
+	// lines between values to `Before` on the value after those lines.
+	After string
 }
 
 // Node must be used as destination for Unmarshal() or UnmarshalWithOptions()

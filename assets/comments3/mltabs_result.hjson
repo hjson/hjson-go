@@ -1,3 +1,8 @@
 {
-  "foo": "bar\tjoe\noki\tdoki\n\t\ttwo tabs"
+  foo: 
+    '''
+    bar	joe
+    oki	doki
+    		two tabs
+    '''
 }

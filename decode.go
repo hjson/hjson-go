@@ -874,7 +874,8 @@ func (p *hjsonParser) rootValue(dest reflect.Value) (ret interface{}, err error)
 		if err == nil {
 			if p.nodeDestination {
 				if node, ok := ret.(*Node); ok {
-					p.setComment1(&node.Cm.Before, ciBefore)
+					// ciBefore has been read again and set on the node inside the
+					// function p.readValue().
 					existingAfter := node.Cm.After
 					p.setComment1(&node.Cm.After, ciAfter)
 					if node.Cm.After != "" {

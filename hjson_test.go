@@ -119,9 +119,17 @@ func run(t *testing.T, file string) {
 	cm3OK := bytes.Equal(cm3, actualCm3)
 	if !hjsonOK {
 		t.Logf("%s\n---hjson expected\n%s\n---hjson actual\n%s\n---\n", name, rhjson, actualHjson)
+		//		err = ioutil.WriteFile(fmt.Sprintf("./assets/sorted/%s_result.hjson", name), actualHjson, 0644)
+		//		if err != nil {
+		//			panic(err)
+		//		}
 	}
 	if !jsonOK {
 		t.Logf("%s\n---json expected\n%s\n---json actual\n%s\n---\n", name, rjson, actualJSON)
+		//		err = ioutil.WriteFile(fmt.Sprintf("./assets/sorted/%s_result.json", name), actualJSON, 0644)
+		//		if err != nil {
+		//			panic(err)
+		//		}
 	}
 	if !cm2OK {
 		t.Logf("%s\n---cm2 expected\n%s\n---cm2 actual\n%s\n---\n", name, cm2, actualCm2)
@@ -157,6 +165,7 @@ func run(t *testing.T, file string) {
 			panic("cm3 roundtrip failed!")
 		}
 	}
+
 	if !hjsonOK || !jsonOK || !cm2OK || !cm3OK {
 		panic("fail!")
 	}

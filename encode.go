@@ -203,10 +203,12 @@ func (e *hjsonEncoder) quoteName(name string) string {
 func (e *hjsonEncoder) bracesIndent(isObjElement, isEmpty bool, cm Comments,
 	separator string) {
 
-	if isObjElement && !e.BracesSameLine && (!isEmpty || cm.InsideFirst != "") && cm.Key == "" {
-		e.writeIndent(e.indent)
-	} else {
-		e.WriteString(separator)
+	if !isObjElement || cm.Key == "" {
+		if isObjElement && !e.BracesSameLine && (!isEmpty || cm.InsideFirst != "") {
+			e.writeIndent(e.indent)
+		} else {
+			e.WriteString(separator)
+		}
 	}
 }
 
@@ -412,17 +414,17 @@ func (e *hjsonEncoder) str(
 
 	case reflect.Slice, reflect.Array:
 		e.bracesIndent(isObjElement, value.Len() == 0, cm, separator)
-		e.WriteString("[")
-		e.WriteString(cm.InsideFirst)
+		e.WriteString("[" + cm.InsideFirst)
 
 		if value.Len() == 0 {
-			if cm.InsideFirst == "" && cm.InsideLast != "" {
+			if cm.InsideFirst != "" || cm.InsideLast != "" {
 				e.WriteString(e.Eol)
+				if cm.InsideLast == "" {
+					e.writeIndentNoEOL(e.indent)
+				}
 			}
 			e.WriteString(cm.InsideLast + "]")
 			return nil
-		} else if cm.InsideFirst == "" {
-			e.WriteString(e.Eol)
 		}
 
 		indent1 := e.indent
@@ -433,26 +435,22 @@ func (e *hjsonEncoder) str(
 			elem, elemCm := e.unpackNode(value.Index(i), Comments{})
 
 			if elemCm.Before == "" && elemCm.Key == "" {
-				e.writeIndentNoEOL(e.indent)
+				e.writeIndent(e.indent)
 			} else {
-				e.WriteString(elemCm.Before + elemCm.Key)
+				e.WriteString(e.Eol + elemCm.Before + elemCm.Key)
 			}
 
 			if err := e.str(elem, true, "", false, false, elemCm); err != nil {
 				return err
 			}
 
-			if elemCm.After == "" {
-				e.WriteString(e.Eol)
-			} else {
-				e.WriteString(elemCm.After)
-			}
+			e.WriteString(elemCm.After)
 		}
 
 		if cm.InsideLast != "" {
-			e.WriteString(cm.InsideLast)
-		} else if value.Len() > 0 || cm.InsideFirst != "" {
-			e.writeIndentNoEOL(indent1)
+			e.WriteString(e.Eol + cm.InsideLast)
+		} else {
+			e.writeIndent(indent1)
 		}
 		e.WriteString("]")
 
@@ -550,7 +548,6 @@ func isEmptyValue(v reflect.Value) bool {
 }
 
 func investigateComment(txt string) (
-	hasLineFeed,
 	endsInsideComment,
 	endsWithLineFeed bool,
 ) {
@@ -558,7 +555,6 @@ func investigateComment(txt string) (
 	for _, rn := range txt {
 		switch rn {
 		case '\n':
-			hasLineFeed = true
 			endsInsideComment = false
 		case '#':
 			endsInsideComment = true

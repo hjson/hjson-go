@@ -304,7 +304,6 @@ b: /* key comment */ {
 } # cm after obj
 // Comment B4
 a: 2
-/* Last comment */
 Z: {
   sub2: 4
 }
@@ -312,7 +311,8 @@ X: {
   Y: {
     sub3: 5
   }
-}`)
+}
+/* Last comment */`)
 }
 
 func TestDisallowDuplicateKeys(t *testing.T) {
@@ -328,8 +328,7 @@ b: 5`
 		t.Error(err)
 	}
 
-	verifyNodeContent(t, node, `
-a: 2
+	verifyNodeContent(t, node, `a: 2
 b: 5
 c: 4`)
 
@@ -485,7 +484,7 @@ setting2: true  // yes`
 
 	compareStrings(t, output, `{
   setting1: 3  # nada
-setting2: true  // yes
+  setting2: true  // yes
 }`)
 }
 

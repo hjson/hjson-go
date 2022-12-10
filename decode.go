@@ -362,9 +362,10 @@ func (p *hjsonParser) commonWhite(onlyAfter bool) (commentInfo, bool) {
 			if p.ch == '\n' {
 				hasLineFeed = true
 				if onlyAfter {
-					// Include EOL and finish comment.
+					ci.cmEnd = p.at - 1
+					// Skip EOL.
 					p.next()
-					goto FINISH
+					return ci, hasLineFeed
 				}
 			}
 			p.next()
@@ -391,7 +392,6 @@ func (p *hjsonParser) commonWhite(onlyAfter bool) (commentInfo, bool) {
 		}
 	}
 
-FINISH:
 	// cmEnd is the first char after the comment (i.e. not included in the comment).
 	ci.cmEnd = p.at - 1
 
@@ -877,8 +877,8 @@ func (p *hjsonParser) rootValue(dest reflect.Value) (ret interface{}, err error)
 					p.setComment1(&node.Cm.Before, ciBefore)
 					existingAfter := node.Cm.After
 					p.setComment1(&node.Cm.After, ciAfter)
-					if existingAfter == "" && node.Cm.After != "" {
-						existingAfter = "\n"
+					if node.Cm.After != "" {
+						existingAfter += "\n"
 					}
 					node.Cm.After = existingAfter + node.Cm.After
 				}

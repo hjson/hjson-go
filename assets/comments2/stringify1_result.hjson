@@ -1,6 +1,7 @@
 // test if stringify produces correct output
 {
-  quotes: {
+  quotes:
+  {
     num1: "1,2"
     num2: "-1.1 ,"
     num3: "1e10 ,2"
@@ -30,19 +31,20 @@
     punc6: ":"
     punc6b: ":foo"
   }
-  noquotes: {
-    num0: .1,2
-    num1: 1.1.1,2
-    num2: -.1,
-    num3: 1e10e,2
-    num4: -1e--10,
-    kw1: true1,
-    kw2: false0,
-    kw3: null0,
-    close1: a}
-    close2: a]
-    comment1: a#str
-    comment2: a//str
-    comment3: a/*str*/
+  noquotes:
+  {
+    num0: ".1,2"
+    num1: "1.1.1,2"
+    num2: "-.1,"
+    num3: "1e10e,2"
+    num4: "-1e--10,"
+    kw1: "true1,"
+    kw2: "false0,"
+    kw3: "null0,"
+    close1: "a}"
+    close2: "a]"
+    comment1: "a#str"
+    comment2: "a//str"
+    comment3: "a/*str*/"
   }
 }

@@ -64,12 +64,12 @@ func run(t *testing.T, file string) {
 	var data interface{}
 	if err := Unmarshal(testContent, &data); err != nil {
 		if !shouldFail {
-			panic(err)
+			t.Error(err)
 		} else {
 			return
 		}
 	} else if shouldFail {
-		panic(errors.New(name + " should_fail!"))
+		t.Error(errors.New(name + " should_fail!"))
 	}
 
 	rjson, rhjson, cm2, cm3 := getResultContent(name)
@@ -85,11 +85,11 @@ func run(t *testing.T, file string) {
 		decOpt := DefaultDecoderOptions()
 		decOpt.WhitespaceAsComments = false
 		if err := UnmarshalWithOptions(testContent, &node, decOpt); err != nil {
-			panic(err)
+			t.Error(err)
 		}
 		actualCm2, err = Marshal(node)
 		if err != nil {
-			panic(err)
+			t.Error(err)
 		}
 		actualCm2 = append(actualCm2, '\n')
 	}
@@ -97,11 +97,11 @@ func run(t *testing.T, file string) {
 	{
 		var node Node
 		if err := Unmarshal(testContent, &node); err != nil {
-			panic(err)
+			t.Error(err)
 		}
 		actualCm3, err = Marshal(node)
 		if err != nil {
-			panic(err)
+			t.Error(err)
 		}
 	}
 
@@ -118,56 +118,52 @@ func run(t *testing.T, file string) {
 	cm2OK := bytes.Equal(cm2, actualCm2)
 	cm3OK := bytes.Equal(cm3, actualCm3)
 	if !hjsonOK {
-		t.Logf("%s\n---hjson expected\n%s\n---hjson actual\n%s\n---\n", name, rhjson, actualHjson)
+		t.Errorf("%s\n---hjson expected\n%s\n---hjson actual\n%s\n---\n", name, rhjson, actualHjson)
 		//		err = ioutil.WriteFile(fmt.Sprintf("./assets/sorted/%s_result.hjson", name), actualHjson, 0644)
 		//		if err != nil {
-		//			panic(err)
+		//			t.Error(err)
 		//		}
 	}
 	if !jsonOK {
-		t.Logf("%s\n---json expected\n%s\n---json actual\n%s\n---\n", name, rjson, actualJSON)
+		t.Errorf("%s\n---json expected\n%s\n---json actual\n%s\n---\n", name, rjson, actualJSON)
 		//		err = ioutil.WriteFile(fmt.Sprintf("./assets/sorted/%s_result.json", name), actualJSON, 0644)
 		//		if err != nil {
-		//			panic(err)
+		//			t.Error(err)
 		//		}
 	}
 	if !cm2OK {
-		t.Logf("%s\n---cm2 expected\n%s\n---cm2 actual\n%s\n---\n", name, cm2, actualCm2)
+		t.Errorf("%s\n---cm2 expected\n%s\n---cm2 actual\n%s\n---\n", name, cm2, actualCm2)
 		//		err = ioutil.WriteFile(fmt.Sprintf("./assets/comments2/%s_result.hjson", name), actualCm2, 0644)
 		//		if err != nil {
-		//			panic(err)
+		//			t.Error(err)
 		//		}
 	}
 	{
 		var roundTrip interface{}
 		err = Unmarshal(actualCm2, &roundTrip)
 		if err != nil {
-			panic(err)
+			t.Error(err)
 		}
 		if !reflect.DeepEqual(data, roundTrip) {
-			panic("cm2 roundtrip failed!")
+			t.Errorf("cm2 roundtrip failed!")
 		}
 	}
 	if !cm3OK {
-		t.Logf("%s\n---cm3 expected\n%s\n---cm3 actual\n%s\n---\n", name, cm3, actualCm3)
+		t.Errorf("%s\n---cm3 expected\n%s\n---cm3 actual\n%s\n---\n", name, cm3, actualCm3)
 		//		err = ioutil.WriteFile(fmt.Sprintf("./assets/comments3/%s_result.hjson", name), actualCm3, 0644)
 		//		if err != nil {
-		//			panic(err)
+		//			t.Error(err)
 		//		}
 	}
 	{
 		var roundTrip interface{}
 		err = Unmarshal(actualCm3, &roundTrip)
 		if err != nil {
-			panic(err)
+			t.Error(err)
 		}
 		if !reflect.DeepEqual(data, roundTrip) {
-			panic("cm3 roundtrip failed!")
+			t.Errorf("cm3 roundtrip failed!")
 		}
-	}
-
-	if !hjsonOK || !jsonOK || !cm2OK || !cm3OK {
-		panic("fail!")
 	}
 }
 

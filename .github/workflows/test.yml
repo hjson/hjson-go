@@ -12,11 +12,11 @@ jobs:
       - run: go version
       - run: go test -v
       - run: cd hjson-cli && go build
-      - run: hjson-cli/hjson-cli assets/comments_test.hjson | diff assets/sorted/comments_result.hjson -
-        shell: bash
-      - run: hjson-cli/hjson-cli -j assets/comments_test.hjson | diff assets/sorted/comments_result.json -
-        shell: bash
-      - run: hjson-cli/hjson-cli -preserveKeyOrder assets/comments_test.hjson | diff assets/comments_result.hjson -
-        shell: bash
-      - run: hjson-cli/hjson-cli -j -preserveKeyOrder assets/comments_test.hjson | diff assets/comments_result.json -
-        shell: bash
+      - if: runner.os == 'Linux'
+        run: hjson-cli/hjson-cli assets/comments_test.hjson | diff assets/sorted/comments_result.hjson -
+      - if: runner.os == 'Linux'
+        run: hjson-cli/hjson-cli -j assets/comments_test.hjson | diff assets/sorted/comments_result.json -
+      - if: runner.os == 'Linux'
+        run: hjson-cli/hjson-cli -preserveKeyOrder assets/comments_test.hjson | diff assets/comments_result.hjson -
+      - if: runner.os == 'Linux'
+        run: hjson-cli/hjson-cli -j -preserveKeyOrder assets/comments_test.hjson | diff assets/comments_result.json -

@@ -91,7 +91,9 @@ func run(t *testing.T, file string) {
 		if err != nil {
 			t.Error(err)
 		}
-		actualCm2 = append(actualCm2, '\n')
+		if len(actualCm2) > 0 && actualCm2[len(actualCm2)-1] != '\n' {
+			actualCm2 = append(actualCm2, '\n')
+		}
 	}
 	var actualCm3 []byte
 	{
@@ -103,14 +105,9 @@ func run(t *testing.T, file string) {
 		if err != nil {
 			t.Error(err)
 		}
-	}
-
-	// add fixes where go's json differs from javascript
-	switch name {
-	case "kan":
-		actualJSON = []byte(strings.Replace(string(actualJSON), "    -0,", "    0,", -1))
-	case "pass1":
-		actualJSON = []byte(strings.Replace(string(actualJSON), "1.23456789e+09", "1234567890", -1))
+		if len(actualCm3) > 0 && actualCm3[len(actualCm3)-1] != '\n' {
+			actualCm3 = append(actualCm3, '\n')
+		}
 	}
 
 	hjsonOK := bytes.Equal(rhjson, actualHjson)

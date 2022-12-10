@@ -8,21 +8,26 @@ import (
 
 type Comments struct {
 	// Comment/whitespace on line(s) before the value, and before the value on
-	// the same line.
+	// the same line. If not empty, is expected to end with a line feed +
+	// indentation for the value.
 	Before string
 	// Comment/whitespace between the key and this value, if this value is an
 	// element in a map/object.
 	Key string
-	// Comment/whitespace on the same line as the leading bracket ({ or [) for
-	// this value, if this value is a slice/array or map/object.
+	// Comment/whitespace after (but still on the same line as) the leading
+	// bracket ({ or [) for this value, if this value is a slice/array or
+	// map/object. Is not expected to contain any line feed.
 	InsideFirst string
 	// Comment/whitespace from the beginning of the first line after all child
-	// values to this value, until the closing bracket (} or ]), if this value is
-	// a slice/array or map/object.
+	// values belonging to this value, until the closing bracket (} or ]), if
+	// this value is a slice/array or map/object. If not empty, is expected to
+	// end with a line feed + indentation for the closing bracket.
 	InsideLast string
-	// Comment/whitespace on line(s) after the value, and after the value on the
-	// same line. hjson.Unmarshal() will try to assign comments/whitespace from
-	// lines between values to `Before` on the value after those lines.
+	// Comment/whitespace after (but still on the same line as) the value. Is not
+	// expected to contain any line feed. hjson.Unmarshal() will try to assign
+	// comments/whitespace from lines between values to `Before` on the value
+	// after those lines, or to `InsideLast` on the slice/map if the lines
+	// containing comments appear after the last element inside a slice/map.
 	After string
 }
 

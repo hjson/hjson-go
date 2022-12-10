@@ -254,8 +254,9 @@ The comments will contain all whitespace chars too (including line feeds) so tha
 package main
 
 import (
-    "github.com/hjson/hjson-go/v4"
     "fmt"
+
+    "github.com/hjson/hjson-go/v4"
 )
 
 func main() {
@@ -276,8 +277,7 @@ func main() {
         panic(err)
     }
 
-    node.NK("array").Cm.Before = `
-        # please specify an array
+    node.NK("array").Cm.Before = `        # please specify an array
         `
 
     if _, _, err := node.NKC("subMap").SetKey("subVal", 1); err != nil {
@@ -306,11 +306,10 @@ Output:
             foo
             bar
         ]
-
   subMap: {
     subVal: 1
   }
-}
+    }
 ```
 
 

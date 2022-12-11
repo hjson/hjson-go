@@ -75,8 +75,14 @@ func run(t *testing.T, file string) {
 	rjson, rhjson, cm2, cm3 := getResultContent(name)
 
 	actualHjson, err := Marshal(data)
+	if err != nil {
+		t.Error(err)
+	}
 	actualHjson = append(actualHjson, '\n')
 	actualJSON, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		t.Error(err)
+	}
 	actualJSON = append(actualJSON, '\n')
 	actualJSON = fixJSON(actualJSON)
 	var actualCm2 []byte

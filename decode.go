@@ -47,10 +47,11 @@ func DefaultDecoderOptions() DecoderOptions {
 
 type hjsonParser struct {
 	DecoderOptions
-	data            []byte
-	at              int  // The index of the current character
-	ch              byte // The current character
-	structTypeCache map[reflect.Type]structFieldMap
+	data              []byte
+	at                int  // The index of the current character
+	ch                byte // The current character
+	structTypeCache   map[reflect.Type]structFieldMap
+	willMarshalToJSON bool
 }
 
 var unmarshalerText = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
@@ -326,7 +327,7 @@ func (p *hjsonParser) white() {
 func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}, error) {
 
 	// Hjson strings can be quoteless
-	// returns string, json.Number, true, false, or null.
+	// returns string, (json.Number or float64), true, false, or null.
 
 	if isPunctuatorChar(p.ch) {
 		return nil, p.errAt("Found a punctuator character '" + string(p.ch) + "' when expecting a quoteless string (check your syntax)")
@@ -369,8 +370,12 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 					}
 				default:
 					if chf == '-' || chf >= '0' && chf <= '9' {
-						// Always use json.Number because we will marshal to JSON.
-						if n, err := tryParseNumber(value.Bytes(), false, true); err == nil {
+						// Always use json.Number if we will marshal to JSON.
+						if n, err := tryParseNumber(
+							value.Bytes(),
+							false,
+							p.willMarshalToJSON || p.DecoderOptions.UseJSONNumber,
+						); err == nil {
 							return n, nil
 						}
 					}
@@ -477,7 +482,7 @@ func (p *hjsonParser) readObject(
 ) (value interface{}, err error) {
 	// Parse an object value.
 
-	var object orderedMap
+	object := NewOrderedMap()
 
 	if !withoutBraces {
 		// assuming ch == '{'
@@ -562,7 +567,7 @@ func (p *hjsonParser) readObject(
 		if val, err = p.readValue(newDest, elemType); err != nil {
 			return nil, err
 		}
-		object = append(object, keyVal{key, val})
+		object.Set(key, val)
 		p.white()
 		// in Hjson the comma is optional and trailing commas are allowed
 		if p.ch == ',' {
@@ -652,18 +657,27 @@ func Unmarshal(data []byte, v interface{}) error {
 	return UnmarshalWithOptions(data, v, DefaultDecoderOptions())
 }
 
-func orderedUnmarshal(data []byte, v interface{}, options DecoderOptions) (interface{}, error) {
+func orderedUnmarshal(
+	data []byte,
+	v interface{},
+	options DecoderOptions,
+	willMarshalToJSON bool,
+) (
+	interface{},
+	error,
+) {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		return nil, fmt.Errorf("Cannot unmarshal into non-pointer %v", reflect.TypeOf(v))
 	}
 
 	parser := &hjsonParser{
-		DecoderOptions:  options,
-		data:            data,
-		at:              0,
-		ch:              ' ',
-		structTypeCache: map[reflect.Type]structFieldMap{},
+		DecoderOptions:    options,
+		data:              data,
+		at:                0,
+		ch:                ' ',
+		structTypeCache:   map[reflect.Type]structFieldMap{},
+		willMarshalToJSON: willMarshalToJSON,
 	}
 	parser.resetAt()
 	value, err := parser.rootValue(rv)
@@ -677,15 +691,35 @@ func orderedUnmarshal(data []byte, v interface{}, options DecoderOptions) (inter
 // UnmarshalWithOptions parses the Hjson-encoded data and stores the result
 // in the value pointed to by v.
 //
-// Internally the Hjson input is converted to JSON, which is then used as input
-// to the function json.Unmarshal().
+// Unless v is of type *hjson.OrderedMap, the Hjson input is internally
+// converted to JSON, which is then used as input to the function
+// json.Unmarshal().
 //
 // For more details about the output from this function, see the documentation
 // for json.Unmarshal().
 func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) error {
-	value, err := orderedUnmarshal(data, v, options)
+	inOM, destinationIsOrderedMap := v.(*OrderedMap)
+	if !destinationIsOrderedMap {
+		pInOM, ok := v.(**OrderedMap)
+		if ok {
+			destinationIsOrderedMap = true
+			inOM = &OrderedMap{}
+			*pInOM = inOM
+		}
+	}
+
+	value, err := orderedUnmarshal(data, v, options, !destinationIsOrderedMap)
 	if err != nil {
 		return err
+	}
+
+	if destinationIsOrderedMap {
+		if outOM, ok := value.(*OrderedMap); ok {
+			*inOM = *outOM
+			return nil
+		}
+		return fmt.Errorf("Cannot unmarshal into hjson.OrderedMap: Try %v as destination instead",
+			reflect.TypeOf(v))
 	}
 
 	// Convert to JSON so we can let json.Unmarshal() handle all destination

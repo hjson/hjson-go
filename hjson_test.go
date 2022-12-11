@@ -199,10 +199,11 @@ func TestUnknownFields(t *testing.T) {
 }
 
 type testOrderedMapA struct {
-	orderedMap
+	*OrderedMap
 }
 
 func (c *testOrderedMapA) UnmarshalJSON(in []byte) error {
+	c.OrderedMap = NewOrderedMap()
 	index := 0
 	for true {
 		i1 := bytes.IndexByte(in[index:], '"')
@@ -233,10 +234,10 @@ func (c *testOrderedMapA) UnmarshalJSON(in []byte) error {
 		i4 += index
 		index = i4 + 1
 
-		c.orderedMap = append(c.orderedMap, keyVal{
-			string(in[i1+1 : i2]),
-			string(in[i3+1 : i4]),
-		})
+		c.OrderedMap.Set(
+			string(in[i1+1:i2]),
+			string(in[i3+1:i4]),
+		)
 	}
 
 	return nil
@@ -247,10 +248,11 @@ func (c testOrderedMapA) ElemType() reflect.Type {
 }
 
 type testOrderedMapB struct {
-	orderedMap
+	*OrderedMap
 }
 
 func (c *testOrderedMapB) UnmarshalJSON(in []byte) error {
+	c.OrderedMap = NewOrderedMap()
 	index := 0
 	for true {
 		i1 := bytes.IndexByte(in[index:], '"')
@@ -281,10 +283,10 @@ func (c *testOrderedMapB) UnmarshalJSON(in []byte) error {
 		i4 += index
 		index = i4 + 1
 
-		c.orderedMap = append(c.orderedMap, keyVal{
-			string(in[i1+1 : i2]),
-			string(in[i3+1 : i4]),
-		})
+		c.OrderedMap.Set(
+			string(in[i1+1:i2]),
+			string(in[i3+1:i4]),
+		)
 	}
 
 	return nil
@@ -318,10 +320,10 @@ func TestUnmarshalInterface(t *testing.T) {
 	}
 	// Make sure that obj got the elements in the correct order (B before A).
 	expectedA := testOrderedMapA{
-		orderedMap{
+		NewOrderedMapFromSlice([]KeyValue{
 			{"B", "first"},
 			{"A", "second"},
-		},
+		}),
 	}
 	if !reflect.DeepEqual(objA, expectedA) {
 		t.Errorf("Unexpected obj: %#v\n", objA)
@@ -343,10 +345,10 @@ func TestUnmarshalInterface(t *testing.T) {
 	}
 	// Make sure that obj got the elements in the correct order (B before A).
 	expectedB := testOrderedMapB{
-		orderedMap{
+		NewOrderedMapFromSlice([]KeyValue{
 			{"B", "first"},
 			{"A", "second"},
-		},
+		}),
 	}
 	if !reflect.DeepEqual(objB, expectedB) {
 		t.Errorf("Unexpected obj: %#v\n", objB)
@@ -375,11 +377,11 @@ func TestUnmarshalInterfaceElemType(t *testing.T) {
 	}
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedA := testOrderedMapA{
-		orderedMap{
+		NewOrderedMapFromSlice([]KeyValue{
 			{"B", "first"},
 			{"A", "2"},
 			{"C", "third"},
-		},
+		}),
 	}
 	if !reflect.DeepEqual(objA, expectedA) {
 		t.Errorf("Unexpected obj: %#v\n", objA)
@@ -402,11 +404,11 @@ func TestUnmarshalInterfaceElemType(t *testing.T) {
 	}
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedB := testOrderedMapB{
-		orderedMap{
+		NewOrderedMapFromSlice([]KeyValue{
 			{"B", "first"},
 			{"A", "2"},
 			{"C", "third"},
-		},
+		}),
 	}
 	if !reflect.DeepEqual(objB, expectedB) {
 		t.Errorf("Unexpected obj: %#v\n", objB)
@@ -442,16 +444,16 @@ func TestUnmarshalSliceMapElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedA := []testOrderedMapA{
 		testOrderedMapA{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
-			},
+			}),
 		},
 		testOrderedMapA{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
-			},
+			}),
 		},
 	}
 	if !reflect.DeepEqual(objA, expectedA) {
@@ -476,16 +478,16 @@ func TestUnmarshalSliceMapElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedB := []testOrderedMapB{
 		testOrderedMapB{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
-			},
+			}),
 		},
 		testOrderedMapB{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
-			},
+			}),
 		},
 	}
 	if !reflect.DeepEqual(objB, expectedB) {
@@ -522,16 +524,16 @@ func TestUnmarshalSliceMapPointerElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedA := []*testOrderedMapA{
 		&testOrderedMapA{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
-			},
+			}),
 		},
 		&testOrderedMapA{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
-			},
+			}),
 		},
 	}
 	if !reflect.DeepEqual(objA, expectedA) {
@@ -556,16 +558,16 @@ func TestUnmarshalSliceMapPointerElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedB := []*testOrderedMapB{
 		&testOrderedMapB{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
-			},
+			}),
 		},
 		&testOrderedMapB{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
-			},
+			}),
 		},
 	}
 	if !reflect.DeepEqual(objB, expectedB) {
@@ -608,16 +610,16 @@ func TestUnmarshalStructElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedA := tsA{
 		Key1: testOrderedMapA{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
-			},
+			}),
 		},
 		Key2: testOrderedMapA{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
-			},
+			}),
 		},
 	}
 	if !reflect.DeepEqual(objA, expectedA) {
@@ -647,16 +649,16 @@ func TestUnmarshalStructElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedB := tsB{
 		Key1: testOrderedMapB{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
-			},
+			}),
 		},
 		Key2: testOrderedMapB{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
-			},
+			}),
 		},
 	}
 	if !reflect.DeepEqual(objB, expectedB) {
@@ -699,16 +701,16 @@ func TestUnmarshalStructPointerElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedA := tsA{
 		Key1: &testOrderedMapA{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
-			},
+			}),
 		},
 		Key2: &testOrderedMapA{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
-			},
+			}),
 		},
 	}
 	if !reflect.DeepEqual(objA, expectedA) {
@@ -738,16 +740,16 @@ func TestUnmarshalStructPointerElemType(t *testing.T) {
 	// Make sure that all values are strings (because of testOrderedMap.ElemType()).
 	expectedB := tsB{
 		Key1: &testOrderedMapB{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"B", "first"},
 				{"A", "2"},
 				{"C", "third"},
-			},
+			}),
 		},
 		Key2: &testOrderedMapB{
-			orderedMap{
+			NewOrderedMapFromSlice([]KeyValue{
 				{"D", "3"},
-			},
+			}),
 		},
 	}
 	if !reflect.DeepEqual(objB, expectedB) {

@@ -11,6 +11,12 @@ jobs:
       - uses: actions/checkout@v3
       - run: go version
       - run: go test -v
-      - run: |
-          cd hjson-cli
-          go install
+      - run: cd hjson-cli && go build
+      - if: runner.os == 'Linux'
+        run: hjson-cli/hjson-cli assets/comments_test.hjson | diff assets/sorted/comments_result.hjson -
+      - if: runner.os == 'Linux'
+        run: hjson-cli/hjson-cli -j assets/comments_test.hjson | diff assets/sorted/comments_result.json -
+      - if: runner.os == 'Linux'
+        run: hjson-cli/hjson-cli -preserveKeyOrder assets/comments_test.hjson | diff assets/comments_result.hjson -
+      - if: runner.os == 'Linux'
+        run: hjson-cli/hjson-cli -j -preserveKeyOrder assets/comments_test.hjson | diff assets/comments_result.json -

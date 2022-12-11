@@ -1,0 +1,51 @@
+// before
+/* before2 */ { #before1
+  key1:/*key1keycm*/a string value // still part of the string
+ key2:   /* key2keycm  */   "a string value" // not part of the string
+  // map1before
+  map1: /* map1key */
+  {}//map2after
+ map2: {}
+   map3: {
+      // map3 inner comment
+      }
+   vec1: []
+   // map4before
+  map4:/*map4key*/{
+  /* map4inner */
+  } // map4after
+  //map5before
+  map5: /*map5key*/ {
+      //map5ab4
+      val5a: /* map5akey */ 1, // map5aAfter
+      val5b: 2 /* map5bb4comma */ , #map5bAfter
+    #map5extra
+  } /* map5after */
+  // vec1bbefore
+  vec1b: /* vec1bkey */
+  []//vec1bafter
+ vec2: []
+   vec3: [
+      // vec3 inner comment
+      ]
+   // vec4before
+  vec4:/*vec4key*/[
+  /* vec4inner */
+  ] // vec4after
+  //vec5before
+  vec5: /*vec5key*/ [
+      //vec5ab4
+      1, // vec5aAfter
+      2 /* vec5bb4comma */ , #vec5bAfter
+    #vec5extra
+  ] /* map5after */
+  // before3
+
+  key3   : 3 # after3
+  # before4
+  /*before4b*/key4:4/*after4*/
+  #after4b
+}
+// after2
+
+/* after3 */

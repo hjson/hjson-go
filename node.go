@@ -39,8 +39,8 @@ type Comments struct {
 // After the unmarshal, Node.Value will contain any of these types:
 //
 //	nil (no type)
-//	float
-//	json.Number
+//	float64 (if UseJSONNumber == false)
+//	json.Number (if UseJSONNumber == true)
 //	string
 //	bool
 //	[]interface{}

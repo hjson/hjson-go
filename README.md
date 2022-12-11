@@ -237,13 +237,13 @@ The only way to read comments from Hjson input is to use a destination variable 
 
 When *hjson.Node* or *&ast;hjson.Node* is used as destination for Hjson unmarshal the output will be a tree of *&ast;hjson.Node* where all of the values contained in tree nodes will be of these types:
 
-*	nil (no type)
-*	float
-*	json.Number
-*	string
-*	bool
-*	[]interface{}
-*	*hjson.OrderedMap
+*	`nil` (no type)
+*	`float64` &nbsp;&nbsp;(if *UseJSONNumber* == `false`)
+*	*json.Number* &nbsp;&nbsp;(if *UseJSONNumber* == `true`)
+*	`string`
+*	`bool`
+*	`[]interface{}`
+*	*&ast;hjson.OrderedMap*
 
 These are just the types used by Hjson unmarshal and the convenience functions, you are free to assign any type of values to nodes in your own code.
 

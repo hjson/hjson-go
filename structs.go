@@ -255,50 +255,88 @@ func (e *hjsonEncoder) writeFields(
 	noIndent bool,
 	separator string,
 	isRootObject bool,
+	isObjElement bool,
+	cm Comments,
 ) error {
-	if len(fis) == 0 {
-		e.WriteString(separator)
-		e.WriteString("{}")
-		return nil
-	}
-
 	indent1 := e.indent
-	if !isRootObject || e.EmitRootBraces {
-		if !noIndent && !e.BracesSameLine {
-			e.writeIndent(e.indent)
-		} else {
-			e.WriteString(separator)
+	if !isRootObject || e.EmitRootBraces || len(fis) == 0 {
+		e.bracesIndent(isObjElement, len(fis) == 0, cm, separator)
+		e.WriteString("{" + cm.InsideFirst)
+
+		if len(fis) == 0 {
+			if cm.InsideFirst != "" || cm.InsideLast != "" {
+				e.WriteString(e.Eol)
+			}
+			e.WriteString(cm.InsideLast)
+			if cm.InsideLast != "" {
+				endsInsideComment, endsWithLineFeed := investigateComment(cm.InsideLast)
+				if endsInsideComment {
+					e.writeIndent(e.indent)
+				}
+				if endsWithLineFeed {
+					e.writeIndentNoEOL(e.indent)
+				}
+			} else if cm.InsideFirst != "" {
+				e.writeIndentNoEOL(e.indent)
+			}
+			e.WriteString("}")
+			return nil
 		}
 
 		e.indent++
-		e.WriteString("{")
+	} else {
+		e.WriteString(cm.InsideFirst)
 	}
 
 	// Join all of the member texts together, separated with newlines
+	var elemCm Comments
 	for i, fi := range fis {
+		var elem reflect.Value
+		elem, elemCm = e.unpackNode(fi.field, elemCm)
+		if i > 0 || !isRootObject || e.EmitRootBraces {
+			e.WriteString(e.Eol)
+		}
 		if len(fi.comment) > 0 {
 			for _, line := range strings.Split(fi.comment, e.Eol) {
-				if i > 0 || !isRootObject || e.EmitRootBraces {
-					e.writeIndent(e.indent)
-				}
-				e.WriteString(fmt.Sprintf("# %s", line))
+				e.writeIndentNoEOL(e.indent)
+				e.WriteString(fmt.Sprintf("# %s\n", line))
 			}
 		}
-		if i > 0 || !isRootObject || e.EmitRootBraces {
-			e.writeIndent(e.indent)
+		if elemCm.Before == "" {
+			e.writeIndentNoEOL(e.indent)
+		} else {
+			e.WriteString(elemCm.Before)
 		}
 		e.WriteString(e.quoteName(fi.name))
 		e.WriteString(":")
-		if err := e.str(fi.field, false, " ", false); err != nil {
+		e.WriteString(elemCm.Key)
+
+		if err := e.str(elem, false, " ", false, true, elemCm); err != nil {
 			return err
 		}
+
 		if len(fi.comment) > 0 && i < len(fis)-1 {
 			e.WriteString(e.Eol)
 		}
+
+		e.WriteString(elemCm.After)
+	}
+
+	if cm.InsideLast != "" {
+		e.WriteString(e.Eol + cm.InsideLast)
 	}
 
 	if !isRootObject || e.EmitRootBraces {
-		e.writeIndent(indent1)
+		if cm.InsideLast == "" {
+			e.writeIndent(indent1)
+		} else {
+			endsInsideComment, endsWithLineFeed := investigateComment(cm.InsideLast)
+			if endsInsideComment {
+				e.writeIndent(indent1)
+			} else if endsWithLineFeed {
+				e.writeIndentNoEOL(indent1)
+			}
+		}
 		e.WriteString("}")
 	}
 

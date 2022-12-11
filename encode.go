@@ -31,6 +31,9 @@ type EncoderOptions struct {
 	IndentBy string
 	// Base indentation string
 	BaseIndentation string
+	// Write comments, if any are found in hjson.Node structs or as tags on
+	// other structs.
+	Comments bool
 }
 
 // DefaultOptions returns the default encoding options.
@@ -41,6 +44,7 @@ type EncoderOptions struct {
 // QuoteAmbiguousStrings = true
 // IndentBy = "  "
 // BaseIndentation = ""
+// Comments = true
 func DefaultOptions() EncoderOptions {
 	return EncoderOptions{
 		Eol:                   "\n",
@@ -50,6 +54,7 @@ func DefaultOptions() EncoderOptions {
 		QuoteAmbiguousStrings: true,
 		IndentBy:              "  ",
 		BaseIndentation:       "",
+		Comments:              true,
 	}
 }
 
@@ -104,7 +109,22 @@ func (e *hjsonEncoder) quoteReplace(text string) string {
 	}))
 }
 
-func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool) {
+func (e *hjsonEncoder) quoteForComment(cmStr string) bool {
+	chars := []rune(cmStr)
+	for _, r := range chars {
+		switch r {
+		case '\r', '\n':
+			return false
+		case '/', '#':
+			return true
+		}
+	}
+
+	return false
+}
+
+func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool,
+	keyComment string, hasCommentAfter bool) {
 
 	// Check if we can insert this string without quotes
 	// see hjson syntax (must not parse as true, false, null or number)
@@ -112,8 +132,10 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool) 
 	if len(value) == 0 {
 		e.WriteString(separator + `""`)
 	} else if e.QuoteAlways ||
-		needsQuotes.MatchString(value) || (e.QuoteAmbiguousStrings && (startsWithNumber([]byte(value)) ||
-		startsWithKeyword.MatchString(value))) {
+		hasCommentAfter ||
+		needsQuotes.MatchString(value) ||
+		(e.QuoteAmbiguousStrings && (startsWithNumber([]byte(value)) ||
+			startsWithKeyword.MatchString(value))) {
 
 		// If the string contains no control characters, no quote characters, and no
 		// backslash characters, then we can safely slap some quotes around it.
@@ -124,7 +146,7 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool) 
 		if !needsEscape.MatchString(value) {
 			e.WriteString(separator + `"` + value + `"`)
 		} else if !needsEscapeML.MatchString(value) && !isRootObject {
-			e.mlString(value, separator)
+			e.mlString(value, separator, keyComment)
 		} else {
 			e.WriteString(separator + `"` + e.quoteReplace(value) + `"`)
 		}
@@ -134,7 +156,7 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool) 
 	}
 }
 
-func (e *hjsonEncoder) mlString(value string, separator string) {
+func (e *hjsonEncoder) mlString(value string, separator string, keyComment string) {
 	a := strings.Split(value, "\n")
 
 	if len(a) == 1 {
@@ -144,7 +166,9 @@ func (e *hjsonEncoder) mlString(value string, separator string) {
 		e.WriteString(separator + "'''")
 		e.WriteString(a[0])
 	} else {
-		e.writeIndent(e.indent + 1)
+		if !strings.Contains(keyComment, "\n") {
+			e.writeIndent(e.indent + 1)
+		}
 		e.WriteString("'''")
 		for _, v := range a {
 			indent := e.indent + 1
@@ -176,6 +200,18 @@ func (e *hjsonEncoder) quoteName(name string) string {
 	return name
 }
 
+func (e *hjsonEncoder) bracesIndent(isObjElement, isEmpty bool, cm Comments,
+	separator string) {
+
+	if !isObjElement || cm.Key == "" {
+		if isObjElement && !e.BracesSameLine && (!isEmpty || cm.InsideFirst != "") {
+			e.writeIndent(e.indent)
+		} else {
+			e.WriteString(separator)
+		}
+	}
+}
+
 type sortAlpha []reflect.Value
 
 func (s sortAlpha) Len() int {
@@ -188,19 +224,24 @@ func (s sortAlpha) Less(i, j int) bool {
 	return fmt.Sprintf("%v", s[i]) < fmt.Sprintf("%v", s[j])
 }
 
-func (e *hjsonEncoder) writeIndent(indent int) {
-	e.WriteString(e.Eol)
+func (e *hjsonEncoder) writeIndentNoEOL(indent int) {
 	e.WriteString(e.BaseIndentation)
 	for i := 0; i < indent; i++ {
 		e.WriteString(e.IndentBy)
 	}
 }
 
+func (e *hjsonEncoder) writeIndent(indent int) {
+	e.WriteString(e.Eol)
+	e.writeIndentNoEOL(indent)
+}
+
 func (e *hjsonEncoder) useMarshalerJSON(
 	value reflect.Value,
 	noIndent bool,
 	separator string,
-	isRootObject bool,
+	isRootObject,
+	isObjElement bool,
 ) error {
 	b, err := value.Interface().(json.Marshaler).MarshalJSON()
 	if err != nil {
@@ -210,21 +251,56 @@ func (e *hjsonEncoder) useMarshalerJSON(
 	decOpt := DefaultDecoderOptions()
 	decOpt.UseJSONNumber = true
 	var dummyDest interface{}
-	jsonRoot, err := orderedUnmarshal(b, &dummyDest, decOpt, false)
+	jsonRoot, err := orderedUnmarshal(b, &dummyDest, decOpt, false, false)
 	if err != nil {
 		return err
 	}
 
 	// Output Hjson with our current options, instead of JSON.
-	return e.str(reflect.ValueOf(jsonRoot), noIndent, separator, isRootObject)
+	return e.str(reflect.ValueOf(jsonRoot), noIndent, separator, isRootObject,
+		isObjElement, Comments{})
 }
 
 var marshalerJSON = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
 var marshalerText = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 
-func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string, isRootObject bool) error {
+func (e *hjsonEncoder) unpackNode(value reflect.Value, cm Comments) (reflect.Value, Comments) {
+	if value.IsValid() {
+		if node, ok := value.Interface().(Node); ok {
+			value = reflect.ValueOf(node.Value)
+			if e.Comments {
+				cm = node.Cm
+			}
+		} else if pNode, ok := value.Interface().(*Node); ok {
+			value = reflect.ValueOf(pNode.Value)
+			if e.Comments {
+				cm = pNode.Cm
+			}
+		}
+	}
+
+	return value, cm
+}
+
+// This function can often be called from within itself, so do not output
+// anything from the upper half of it.
+func (e *hjsonEncoder) str(
+	value reflect.Value,
+	noIndent bool,
+	separator string,
+	isRootObject,
+	isObjElement bool,
+	cm Comments,
+) error {
 
 	// Produce a string from value.
+
+	// Unpack *Node, possibly overwrite cm.
+	value, cm = e.unpackNode(value, cm)
+
+	if cm.Key != "" {
+		separator = ""
+	}
 
 	kind := value.Kind()
 
@@ -256,7 +332,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			e.WriteString("null")
 			return nil
 		}
-		return e.str(value.Elem(), noIndent, separator, isRootObject)
+		return e.str(value.Elem(), noIndent, separator, isRootObject, isObjElement, cm)
 	}
 
 	// Our internal orderedMap implements marshalerJSON. We must therefore place
@@ -270,11 +346,11 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 				name:  key,
 			})
 		}
-		return e.writeFields(fis, noIndent, separator, isRootObject)
+		return e.writeFields(fis, noIndent, separator, isRootObject, isObjElement, cm)
 	}
 
 	if value.Type().Implements(marshalerJSON) {
-		return e.useMarshalerJSON(value, noIndent, separator, isRootObject)
+		return e.useMarshalerJSON(value, noIndent, separator, isRootObject, isObjElement)
 	}
 
 	if value.Type().Implements(marshalerText) {
@@ -283,7 +359,8 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			return err
 		}
 
-		return e.str(reflect.ValueOf(string(b)), noIndent, separator, isRootObject)
+		return e.str(reflect.ValueOf(string(b)), noIndent, separator, isRootObject,
+			isObjElement, cm)
 	}
 
 	switch kind {
@@ -296,7 +373,8 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 			// without quotes
 			e.WriteString(separator + n)
 		} else {
-			e.quote(value.String(), separator, isRootObject)
+			e.quote(value.String(), separator, isRootObject, cm.Key,
+				e.quoteForComment(cm.After))
 		}
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -335,33 +413,45 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 		}
 
 	case reflect.Slice, reflect.Array:
+		e.bracesIndent(isObjElement, value.Len() == 0, cm, separator)
+		e.WriteString("[" + cm.InsideFirst)
 
-		len := value.Len()
-		if len == 0 {
-			e.WriteString(separator)
-			e.WriteString("[]")
-			break
+		if value.Len() == 0 {
+			if cm.InsideFirst != "" || cm.InsideLast != "" {
+				e.WriteString(e.Eol)
+				if cm.InsideLast == "" {
+					e.writeIndentNoEOL(e.indent)
+				}
+			}
+			e.WriteString(cm.InsideLast + "]")
+			return nil
 		}
 
 		indent1 := e.indent
 		e.indent++
 
-		if !noIndent && !e.BracesSameLine {
-			e.writeIndent(indent1)
-		} else {
-			e.WriteString(separator)
-		}
-		e.WriteString("[")
-
 		// Join all of the element texts together, separated with newlines
-		for i := 0; i < len; i++ {
-			e.writeIndent(e.indent)
-			if err := e.str(value.Index(i), true, "", false); err != nil {
+		for i := 0; i < value.Len(); i++ {
+			elem, elemCm := e.unpackNode(value.Index(i), Comments{})
+
+			if elemCm.Before == "" && elemCm.Key == "" {
+				e.writeIndent(e.indent)
+			} else {
+				e.WriteString(e.Eol + elemCm.Before + elemCm.Key)
+			}
+
+			if err := e.str(elem, true, "", false, false, elemCm); err != nil {
 				return err
 			}
+
+			e.WriteString(elemCm.After)
 		}
 
-		e.writeIndent(indent1)
+		if cm.InsideLast != "" {
+			e.WriteString(e.Eol + cm.InsideLast)
+		} else {
+			e.writeIndent(indent1)
+		}
 		e.WriteString("]")
 
 		e.indent = indent1
@@ -387,7 +477,7 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 				name:  name,
 			})
 		}
-		return e.writeFields(fis, noIndent, separator, isRootObject)
+		return e.writeFields(fis, noIndent, separator, isRootObject, isObjElement, cm)
 
 	case reflect.Struct:
 		// Struct field info is identical for all instances of the same type.
@@ -420,13 +510,16 @@ func (e *hjsonEncoder) str(value reflect.Value, noIndent bool, separator string,
 				continue
 			}
 
-			fis = append(fis, fieldInfo{
-				field:   fv,
-				name:    sfi.name,
-				comment: sfi.comment,
-			})
+			fi := fieldInfo{
+				field: fv,
+				name:  sfi.name,
+			}
+			if e.Comments {
+				fi.comment = sfi.comment
+			}
+			fis = append(fis, fi)
 		}
-		return e.writeFields(fis, noIndent, separator, isRootObject)
+		return e.writeFields(fis, noIndent, separator, isRootObject, isObjElement, cm)
 
 	default:
 		return errors.New("Unsupported type " + value.Type().String())
@@ -452,6 +545,28 @@ func isEmptyValue(v reflect.Value) bool {
 	default:
 		return false
 	}
+}
+
+func investigateComment(txt string) (
+	endsInsideComment,
+	endsWithLineFeed bool,
+) {
+	var prev rune
+	for _, rn := range txt {
+		switch rn {
+		case '\n':
+			endsInsideComment = false
+		case '#':
+			endsInsideComment = true
+		case '/':
+			if prev == '/' {
+				endsInsideComment = true
+			}
+		}
+		endsWithLineFeed = (rn == '\n')
+		prev = rn
+	}
+	return
 }
 
 // Marshal returns the Hjson encoding of v using
@@ -582,9 +697,16 @@ func MarshalWithOptions(v interface{}, options EncoderOptions) ([]byte, error) {
 		structTypeCache: map[reflect.Type][]structFieldInfo{},
 	}
 
-	err := e.str(reflect.ValueOf(v), true, e.BaseIndentation, true)
+	value := reflect.ValueOf(v)
+	_, cm := e.unpackNode(value, Comments{})
+	e.WriteString(cm.Before + cm.Key)
+
+	err := e.str(value, true, e.BaseIndentation, true, false, cm)
 	if err != nil {
 		return nil, err
 	}
+
+	e.WriteString(cm.After)
+
 	return e.Bytes(), nil
 }

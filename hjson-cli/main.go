@@ -46,6 +46,7 @@ func main() {
 	var omitRootBraces = flag.Bool("omitRootBraces", false, "Omit braces at the root.")
 	var quoteAlways = flag.Bool("quoteAlways", false, "Always quote string values.")
 	var showVersion = flag.Bool("v", false, "Show version.")
+	var preserveKeyOrder = flag.Bool("preserveKeyOrder", false, "Preserve key order in objects/maps.")
 
 	flag.Parse()
 	if *help || flag.NArg() > 1 {
@@ -77,7 +78,14 @@ func main() {
 
 	var value interface{}
 
-	if err := hjson.Unmarshal(data, &value); err != nil {
+	if *preserveKeyOrder {
+		var node *hjson.Node
+		err = hjson.Unmarshal(data, &node)
+		value = node
+	} else {
+		err = hjson.Unmarshal(data, &value)
+	}
+	if err != nil {
 		panic(err)
 	}
 
@@ -100,6 +108,7 @@ func main() {
 		opt.BracesSameLine = *bracesSameLine
 		opt.EmitRootBraces = !*omitRootBraces
 		opt.QuoteAlways = *quoteAlways
+		opt.Comments = false
 		out, err = hjson.MarshalWithOptions(value, opt)
 		if err != nil {
 			panic(err)

@@ -858,4 +858,20 @@ func TestStructComment(t *testing.T) {
 	if string(h) != expected {
 		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expected, string(h))
 	}
+
+	opt := DefaultOptions()
+	opt.Comments = false
+	h, err = MarshalWithOptions(a, opt)
+	if err != nil {
+		t.Error(err)
+	}
+	expected = `{
+  x: hi!
+  B: 3
+  C: some text
+  D: 5
+}`
+	if string(h) != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expected, string(h))
+	}
 }

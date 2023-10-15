@@ -190,11 +190,8 @@ func (e *hjsonEncoder) quoteName(name string) string {
 
 	// Check if we can insert this name without quotes
 
-	if needsEscapeName.MatchString(name) {
-		if needsEscape.MatchString(name) {
-			name = e.quoteReplace(name)
-		}
-		return `"` + name + `"`
+	if needsEscapeName.MatchString(name) || needsEscape.MatchString(name) {
+		return `"` + e.quoteReplace(name) + `"`
 	}
 	// without quotes
 	return name

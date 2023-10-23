@@ -1,5 +1,5 @@
 {
   hex: ģ䕧覫췯ꯍ
   uescape: "\u0000,\u0001,\uffff"
-  umlaut: äöüßÄÖÜ
+  "um\u000blaut": äöüßÄÖÜ
 }

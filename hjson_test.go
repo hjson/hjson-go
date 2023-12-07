@@ -1693,7 +1693,7 @@ func (c *itsJ) UnmarshalText(text []byte) error {
 }
 
 func (c itsJ) MarshalJSON() ([]byte, error) {
-	return []byte("{\"anon\": \"" + strings.ReplaceAll(c.anon, "\"", "\\\"") + "\"}"), nil
+	return []byte("{\"anon\": \"" + strings.Replace(c.anon, "\"", "\\\"", -1) + "\"}"), nil
 }
 
 type itsK *itsJ

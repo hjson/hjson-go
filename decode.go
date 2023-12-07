@@ -465,7 +465,7 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 			// therefore we also check if dest.Addr() implements encoding.TextUnmarshaler.
 			// But "null" is a special case: unmarshal it as nil if the original
 			// destination type is a pointer.
-			if chf == 'n' && !p.nodeDestination && t != nil && t.Kind() == reflect.Pointer &&
+			if chf == 'n' && !p.nodeDestination && t != nil && t.Kind() == reflect.Ptr &&
 				strings.TrimSpace(value.String()) == "null" {
 
 				return p.maybeWrapNode(&node, nil)

@@ -463,6 +463,13 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 			// Do not output anything else than a string if our destination is a string.
 			// Pointer methods can be called if the destination is addressable,
 			// therefore we also check if dest.Addr() implements encoding.TextUnmarshaler.
+			// But "null" is a special case: unmarshal it as nil if the original
+			// destination type is a pointer.
+			if chf == 'n' && !p.nodeDestination && t != nil && t.Kind() == reflect.Pointer &&
+				strings.TrimSpace(value.String()) == "null" {
+
+				return p.maybeWrapNode(&node, nil)
+			}
 			if (newT == nil || newT.Kind() != reflect.String) &&
 				(t == nil || !(t.Implements(unmarshalerText) ||
 					dest.CanAddr() && dest.Addr().Type().Implements(unmarshalerText))) {

@@ -1692,6 +1692,10 @@ func (c *itsJ) UnmarshalText(text []byte) error {
 	return nil
 }
 
+func (c itsJ) MarshalJSON() ([]byte, error) {
+	return []byte("{\"anon\": \"" + strings.ReplaceAll(c.anon, "\"", "\\\"") + "\"}"), nil
+}
+
 type itsK *itsJ
 
 type itsL int
@@ -1703,15 +1707,27 @@ func (c *itsL) UnmarshalText(text []byte) error {
 	return nil
 }
 
+func (c itsL) MarshalJSON() ([]byte, error) {
+	return []byte(string(rune(c))), nil
+}
+
 type itsM itsL
 
 func TestUnmarshalText(t *testing.T) {
 	type tsA struct {
-		A itsJ
-		B *itsJ
-		C encoding.TextUnmarshaler
-		D itsL
-		E itsM // Does not implement encoding.TextUnmarshaler, will receive int.
+		A       itsJ
+		B       *itsJ
+		C       encoding.TextUnmarshaler
+		D       itsL
+		E       itsM // Does not implement encoding.TextUnmarshaler, will receive int.
+		F       *itsM
+		G       *itsJ
+		H       *itsJ
+		I       *itsJ
+		J       *string
+		K       string
+		L       string
+		Novalue *string
 	}
 
 	textA := []byte(`
@@ -1720,6 +1736,9 @@ b: 4
 c: 5
 d: 6
 e: 7
+f: null, g: "a text"
+h: null, i: "second text"
+j: null, k: "another text", l: null
 `)
 	sA := tsA{
 		B: &itsJ{},
@@ -1729,13 +1748,25 @@ e: 7
 	if err != nil {
 		t.Error(err)
 	} else if !reflect.DeepEqual(sA, tsA{
-		A: itsJ{"3"},
-		B: &itsJ{"4"},
-		C: &itsJ{"5"},
-		D: itsL([]byte(`6`)[0]),
-		E: 7,
+		A:       itsJ{"3"},
+		B:       &itsJ{"4"},
+		C:       &itsJ{"5"},
+		D:       itsL([]byte(`6`)[0]),
+		E:       7,
+		F:       nil,
+		G:       &itsJ{"a text"},
+		H:       nil,
+		I:       &itsJ{"second text"},
+		J:       nil,
+		K:       "another text",
+		L:       "null",
+		Novalue: nil,
 	}) {
-		t.Errorf("Unexpected struct values:\n%#v\n", sA)
+		out, errJ := json.MarshalIndent(sA, "", "  ")
+		if errJ != nil {
+			t.Error(errJ)
+		}
+		t.Errorf("Unexpected struct values:\n%s\n", out)
 	}
 
 	textB := []byte(`8`)

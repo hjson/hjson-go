@@ -349,7 +349,7 @@ Output:
 {3}
 ```
 
-String pointer destinations are treated the same as string destinations, so you cannot set a string pointer to `nil` by writing `null` in an Hjson file. Writing `null` in an Hjson file would result in the string "null" being stored in the destination string pointer.
+String pointer destinations can be set to `nil` by writing `null` in an Hjson file. The same goes for a pointer destination of any type that implements `UnmarshalText()`.
 
 ## ElemTyper interface
 

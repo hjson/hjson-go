@@ -65,11 +65,11 @@ func run(t *testing.T, file string) {
 	if err := Unmarshal(testContent, &data); err != nil {
 		if !shouldFail {
 			t.Error(err)
-		} else {
-			return
 		}
+		return
 	} else if shouldFail {
 		t.Error(errors.New(name + " should_fail!"))
+		return
 	}
 
 	rjson, rhjson, cm2, cm3 := getResultContent(name)
@@ -77,11 +77,13 @@ func run(t *testing.T, file string) {
 	actualHjson, err := Marshal(data)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	actualHjson = append(actualHjson, '\n')
 	actualJSON, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		t.Error(err)
+		return
 	}
 	actualJSON = append(actualJSON, '\n')
 	actualJSON = fixJSON(actualJSON)
@@ -92,10 +94,12 @@ func run(t *testing.T, file string) {
 		decOpt.WhitespaceAsComments = false
 		if err := UnmarshalWithOptions(testContent, &node, decOpt); err != nil {
 			t.Error(err)
+			return
 		}
 		actualCm2, err = Marshal(node)
 		if err != nil {
 			t.Error(err)
+			return
 		}
 		if len(actualCm2) > 0 && actualCm2[len(actualCm2)-1] != '\n' {
 			actualCm2 = append(actualCm2, '\n')
@@ -106,10 +110,12 @@ func run(t *testing.T, file string) {
 		var node Node
 		if err := Unmarshal(testContent, &node); err != nil {
 			t.Error(err)
+			return
 		}
 		actualCm3, err = Marshal(node)
 		if err != nil {
 			t.Error(err)
+			return
 		}
 		if len(actualCm3) > 0 && actualCm3[len(actualCm3)-1] != '\n' {
 			actualCm3 = append(actualCm3, '\n')
@@ -146,6 +152,7 @@ func run(t *testing.T, file string) {
 		err = Unmarshal(actualCm2, &roundTrip)
 		if err != nil {
 			t.Error(err)
+			return
 		}
 		if !reflect.DeepEqual(data, roundTrip) {
 			t.Errorf("cm2 roundtrip failed!")
@@ -163,6 +170,7 @@ func run(t *testing.T, file string) {
 		err = Unmarshal(actualCm3, &roundTrip)
 		if err != nil {
 			t.Error(err)
+			return
 		}
 		if !reflect.DeepEqual(data, roundTrip) {
 			t.Errorf("cm3 roundtrip failed!")

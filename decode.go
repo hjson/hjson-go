@@ -12,6 +12,9 @@ import (
 
 const maxPointerDepth = 512
 
+// This limits the max nesting depth to prevent stack overflow.
+const maxNestingDepth = 10000
+
 type commentInfo struct {
 	hasComment bool
 	cmStart    int
@@ -73,6 +76,7 @@ type hjsonParser struct {
 	structTypeCache   map[reflect.Type]structFieldMap
 	willMarshalToJSON bool
 	nodeDestination   bool
+	nestingDepth      int
 }
 
 var unmarshalerText = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
@@ -95,6 +99,7 @@ func (p *hjsonParser) setComment2(pCm *string, ciA, ciB commentInfo) {
 
 func (p *hjsonParser) resetAt() {
 	p.at = 0
+	p.nestingDepth = 0
 	p.next()
 }
 
@@ -549,6 +554,11 @@ func getElemTyperType(rv reflect.Value, t reflect.Type) reflect.Type {
 
 func (p *hjsonParser) readArray(dest reflect.Value, t reflect.Type) (value interface{}, err error) {
 	var node Node
+
+	if p.nestingDepth > maxNestingDepth {
+		return nil, p.errAt(fmt.Sprintf("Exceeded max depth (%d)", maxNestingDepth))
+	}
+
 	array := make([]interface{}, 0, 1)
 
 	// Skip '['.
@@ -624,6 +634,11 @@ func (p *hjsonParser) readObject(
 	// Parse an object value.
 	var node Node
 	var elemNode *Node
+
+	if p.nestingDepth > maxNestingDepth {
+		return nil, p.errAt(fmt.Sprintf("Exceeded max depth (%d)", maxNestingDepth))
+	}
+
 	object := NewOrderedMap()
 
 	// If withoutBraces == true we use the input argument ciBefore as
@@ -775,9 +790,13 @@ func (p *hjsonParser) readValue(dest reflect.Value, t reflect.Type) (ret interfa
 	// Parse an Hjson value. It could be an object, an array, a string, a number or a word.
 	switch p.ch {
 	case '{':
+		p.nestingDepth++
 		ret, err = p.readObject(false, dest, t, ciBefore)
+		p.nestingDepth--
 	case '[':
+		p.nestingDepth++
 		ret, err = p.readArray(dest, t)
+		p.nestingDepth--
 	case '"', '\'':
 		s, err := p.readString(true)
 		if err != nil {
@@ -942,6 +961,7 @@ func orderedUnmarshal(
 		structTypeCache:   map[reflect.Type]structFieldMap{},
 		willMarshalToJSON: willMarshalToJSON,
 		nodeDestination:   nodeDestination,
+		nestingDepth:      0,
 	}
 	parser.resetAt()
 	value, err := parser.rootValue(rv)

@@ -364,6 +364,10 @@ func (o *OrderedMap[T]) ElemType() reflect.Type {
 }
 ```
 
+## Max nesting depth
+
+In order to avoid stack overflow all unmarshal-functions return an error if the Hjson input contains a tree more than 10000 levels deep. This is the same limit as in the Go standard library package `encoding/json`.
+
 # API
 
 [![godoc](https://godoc.org/github.com/hjson/hjson-go/v4?status.svg)](https://godoc.org/github.com/hjson/hjson-go/v4)

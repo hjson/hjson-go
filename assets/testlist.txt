@@ -70,6 +70,7 @@ failStr6c_test.hjson
 failStr6d_test.hjson
 failStr7a_test.hjson
 failStr8a_test.hjson
+failStr9a_test.hjson
 int64_test.hjson
 kan_test.hjson
 keys_test.hjson
@@ -85,6 +86,7 @@ passSingle_test.hjson
 stringify1_test.hjson
 strings2_test.hjson
 strings3_test.hjson
+strings4_test.hjson
 strings_test.hjson
 trail_test.hjson
 stringify/quotes_all_test.hjson

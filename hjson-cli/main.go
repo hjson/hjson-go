@@ -47,6 +47,7 @@ func main() {
 	var quoteAlways = flag.Bool("quoteAlways", false, "Always quote string values.")
 	var showVersion = flag.Bool("v", false, "Show version.")
 	var preserveKeyOrder = flag.Bool("preserveKeyOrder", false, "Preserve key order in objects/maps.")
+	var preserveComments = flag.Bool("preserveComments", false, "Preserve comments (and key order) in Hjson output.")
 
 	flag.Parse()
 	if *help || flag.NArg() > 1 {
@@ -78,9 +79,11 @@ func main() {
 
 	var value interface{}
 
-	if *preserveKeyOrder {
+	if *preserveKeyOrder || *preserveComments {
 		var node *hjson.Node
-		err = hjson.Unmarshal(data, &node)
+		opt := hjson.DefaultDecoderOptions()
+		opt.WhitespaceAsComments = false
+		err = hjson.UnmarshalWithOptions(data, &node, opt)
 		value = node
 	} else {
 		err = hjson.Unmarshal(data, &value)
@@ -108,7 +111,7 @@ func main() {
 		opt.BracesSameLine = *bracesSameLine
 		opt.EmitRootBraces = !*omitRootBraces
 		opt.QuoteAlways = *quoteAlways
-		opt.Comments = false
+		opt.Comments = *preserveComments
 		out, err = hjson.MarshalWithOptions(value, opt)
 		if err != nil {
 			panic(err)

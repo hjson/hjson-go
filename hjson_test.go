@@ -1793,3 +1793,54 @@ j: null, k: "another text", l: null
 		t.Error("Should have failed, should not be possible to call pointer method UnmarshalText() on the map elements because they are not addressable.")
 	}
 }
+
+type UnmarshalExtraFieldsConfig struct {
+	Type  string `json:"type"`
+	Extra map[string]interface{}
+}
+
+// We implement UnmarshalJSON to capture the extra fields
+func (c *UnmarshalExtraFieldsConfig) UnmarshalJSON(data []byte) error {
+	type Alias UnmarshalExtraFieldsConfig
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+	// This will unmarshal the known fields
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Now unmarshal everything into a map to get extra fields
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	if val, ok := raw["allow_local"]; ok {
+		if _, isBool := val.(bool); !isBool {
+			return fmt.Errorf("allow_local is not bool, got %T", val)
+		}
+	} else {
+		return fmt.Errorf("allow_local missing")
+	}
+	return nil
+}
+
+func TestUnmarshalStructWithExtraFields(t *testing.T) {
+	txt := `
+{
+  type: network_allow
+  allow_local: true
+}
+`
+	var cfg UnmarshalExtraFieldsConfig
+	err := Unmarshal([]byte(txt), &cfg)
+	if err != nil {
+		if strings.Contains(err.Error(), "allow_local is not bool") {
+			t.Fatalf("Bug reproduced: %v", err)
+		}
+		t.Fatalf("Unexpected error: %v", err)
+	}
+}

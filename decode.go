@@ -701,6 +701,7 @@ func (p *hjsonParser) readObject(
 
 		var newDest reflect.Value
 		var newDestType reflect.Type
+		currentElemType := elemType
 		if stm != nil {
 			sfi, ok := stm.getField(key)
 			if ok {
@@ -713,7 +714,7 @@ func (p *hjsonParser) readObject(
 						return nil, p.errAt("Internal error")
 					}
 					newDestType = newDestType.Field(i).Type
-					elemType = newDestType
+					currentElemType = newDestType
 
 					if newDest.IsValid() {
 						if newDest.Kind() != reflect.Struct {
@@ -732,7 +733,7 @@ func (p *hjsonParser) readObject(
 
 		// duplicate keys overwrite the previous value
 		var val interface{}
-		if val, err = p.readValue(newDest, elemType); err != nil {
+		if val, err = p.readValue(newDest, currentElemType); err != nil {
 			return nil, err
 		}
 		if p.nodeDestination {

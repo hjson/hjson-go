@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -873,5 +874,30 @@ func TestStructComment(t *testing.T) {
 }`
 	if string(h) != expected {
 		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expected, string(h))
+	}
+}
+
+func TestEncodeMaxDepth(t *testing.T) {
+	// Deeply nested, non-cyclic input must be rejected with an error rather than
+	// recursing until the goroutine stack overflows (a fatal, unrecoverable
+	// crash). The cycle check only stops repeated pointers; distinct pointers at
+	// every level slip past it, so a separate depth bound is required.
+	var deep interface{} = "leaf"
+	for i := 0; i < maxNestingDepth+100; i++ {
+		deep = []interface{}{deep}
+	}
+	if _, err := Marshal(deep); err == nil {
+		t.Error("expected an error for input nested past maxNestingDepth, got nil")
+	} else if !strings.Contains(err.Error(), "Exceeded max depth") {
+		t.Errorf("expected a max-depth error, got: %v", err)
+	}
+
+	// Modest nesting must still encode without error.
+	var shallow interface{} = "leaf"
+	for i := 0; i < 100; i++ {
+		shallow = []interface{}{shallow}
+	}
+	if _, err := Marshal(shallow); err != nil {
+		t.Errorf("modest nesting should encode without error, got: %v", err)
 	}
 }

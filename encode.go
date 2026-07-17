@@ -314,6 +314,13 @@ func (e *hjsonEncoder) str(
 			e.parents[p] = struct{}{}
 			defer delete(e.parents, p)
 		}
+		// Bound the nesting depth so deeply-nested (non-cyclic) input cannot
+		// exhaust the stack. The cycle check above only stops repeated pointers;
+		// distinct pointers at every level slip past it. This mirrors the
+		// decoder's maxNestingDepth guard.
+		if e.pDepth > maxNestingDepth {
+			return fmt.Errorf("Exceeded max depth (%d)", maxNestingDepth)
+		}
 		defer func() { e.pDepth-- }()
 	}
 

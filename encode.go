@@ -314,6 +314,11 @@ func (e *hjsonEncoder) str(
 			e.parents[p] = struct{}{}
 			defer delete(e.parents, p)
 		}
+
+		if e.pDepth > maxNestingDepth {
+			return fmt.Errorf("Exceeded max depth (%d)", maxNestingDepth)
+		}
+
 		defer func() { e.pDepth-- }()
 	}
 

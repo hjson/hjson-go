@@ -296,10 +296,17 @@ func (e *hjsonEncoder) writeFields(
 		if i > 0 || !isRootObject || e.EmitRootBraces {
 			e.WriteString(e.Eol)
 		}
+		if i > 0 && e.Eol == "" {
+			e.WriteString(", ")
+		}
 		if len(fi.comment) > 0 {
 			for _, line := range strings.Split(fi.comment, e.Eol) {
 				e.writeIndentNoEOL(e.indent)
-				e.WriteString(fmt.Sprintf("# %s\n", line))
+				l, r := "", ""
+				if e.EnableColor {
+					l, r = e.ColorStyle.Remark[0], e.ColorStyle.Remark[1]
+				}
+				e.WriteString(fmt.Sprintf("%s# %s%s\n", l, line, r))
 			}
 		}
 		if elemCm.Before == "" {
@@ -307,7 +314,11 @@ func (e *hjsonEncoder) writeFields(
 		} else {
 			e.WriteString(elemCm.Before)
 		}
-		e.WriteString(e.quoteName(fi.name))
+		l, r := "", ""
+		if e.EnableColor {
+			l, r = e.ColorStyle.Key[0], e.ColorStyle.Key[1]
+		}
+		e.WriteString(l + e.quoteName(fi.name) + r)
 		e.WriteString(":")
 		e.WriteString(elemCm.Key)
 

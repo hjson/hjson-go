@@ -9,7 +9,7 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/hjson/hjson-go/v4"
+	"github.com/bingoohuang/hjson"
 )
 
 // Can be set when building for example like this:

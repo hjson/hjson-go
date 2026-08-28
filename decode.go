@@ -717,14 +717,14 @@ func (p *hjsonParser) readObject(
 					currentElemType = newDestType
 
 					if newDest.IsValid() {
-						if newDest.Kind() != reflect.Struct {
+						if newDest.Kind() == reflect.Struct {
+							newDest = newDest.Field(i)
+						} else {
 							// We are only keeping track of newDest in case it contains a
 							// tree that we will partially update. But here we have not found
 							// any tree, so we can ignore newDest and just look at
 							// newDestType instead.
 							newDest = reflect.Value{}
-						} else {
-							newDest = newDest.Field(i)
 						}
 					}
 				}
@@ -873,47 +873,43 @@ func (p *hjsonParser) rootValue(dest reflect.Value) (ret interface{}, err error)
 		return
 	}
 
-	if ret == nil {
-		// Assume we have a root object without braces.
-		ret, errSyntax = p.readObject(true, dest, t, ciBefore)
-		ciAfter, err = p.checkTrailing()
-		if errSyntax != nil || err != nil {
-			// Syntax error, or maybe a single JSON value.
-			ret = nil
-			err = nil
-		} else {
-			if p.nodeDestination {
-				if node, ok := ret.(*Node); ok {
-					p.setComment1(&node.Cm.After, ciAfter)
-				}
+	// Assume we have a root object without braces.
+	ret, errSyntax = p.readObject(true, dest, t, ciBefore)
+	ciAfter, err = p.checkTrailing()
+	if errSyntax != nil || err != nil {
+		// Syntax error, or maybe a single JSON value.
+		ret = nil
+		err = nil
+	} else {
+		if p.nodeDestination {
+			if node, ok := ret.(*Node); ok {
+				p.setComment1(&node.Cm.After, ciAfter)
 			}
-			return
 		}
+		return
 	}
 
-	if ret == nil {
-		// test if we are dealing with a single JSON value instead (true/false/null/num/"")
-		p.resetAt()
-		ret, err = p.readValue(dest, t)
-		if err == nil {
-			ciAfter, err = p.checkTrailing()
-		}
-		if err == nil {
-			if p.nodeDestination {
-				if node, ok := ret.(*Node); ok {
-					// ciBefore has been read again and set on the node inside the
-					// function p.readValue().
-					existingAfter := node.Cm.After
-					p.setComment1(&node.Cm.After, ciAfter)
-					if node.Cm.After != "" {
-						existingAfter += "\n"
-					}
-					node.Cm.After = existingAfter + node.Cm.After
+	// test if we are dealing with a single JSON value instead (true/false/null/num/"")
+	p.resetAt()
+	ret, err = p.readValue(dest, t)
+	if err == nil {
+		ciAfter, err = p.checkTrailing()
+	}
+	if err == nil {
+		if p.nodeDestination {
+			if node, ok := ret.(*Node); ok {
+				// ciBefore has been read again and set on the node inside the
+				// function p.readValue().
+				existingAfter := node.Cm.After
+				p.setComment1(&node.Cm.After, ciAfter)
+				if node.Cm.After != "" {
+					existingAfter += "\n"
 				}
+				node.Cm.After = existingAfter + node.Cm.After
 			}
-
-			return
 		}
+
+		return
 	}
 
 	if errSyntax != nil {
@@ -951,7 +947,7 @@ func orderedUnmarshal(
 ) {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return nil, fmt.Errorf("Cannot unmarshal into non-pointer %v", reflect.TypeOf(v))
+		return nil, fmt.Errorf("cannot unmarshal into non-pointer %v", reflect.TypeOf(v))
 	}
 
 	parser := &hjsonParser{
@@ -1022,7 +1018,7 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 			*inOM = *outOM
 			return nil
 		}
-		return fmt.Errorf("Cannot unmarshal into hjson.OrderedMap: Try %v as destination instead",
+		return fmt.Errorf("cannot unmarshal into hjson.OrderedMap: Try %v as destination instead",
 			reflect.TypeOf(v))
 	}
 
@@ -1038,7 +1034,7 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 	// and merging.
 	buf, err := json.Marshal(value)
 	if err != nil {
-		return errors.New("Internal error")
+		return errors.New("internal error")
 	}
 
 	dec := json.NewDecoder(bytes.NewBuffer(buf))

@@ -34,6 +34,11 @@ type EncoderOptions struct {
 	// Write comments, if any are found in hjson.Node structs or as tags on
 	// other structs.
 	Comments bool
+
+	// EnableColor enables colorized output
+	EnableColor bool
+	// ColorStyle is the style to use for colorized output
+	ColorStyle *Style
 }
 
 // DefaultOptions returns the default encoding options.
@@ -55,6 +60,8 @@ func DefaultOptions() EncoderOptions {
 		IndentBy:              "  ",
 		BaseIndentation:       "",
 		Comments:              true,
+		EnableColor:           false,
+		ColorStyle:            TerminalStyle,
 	}
 }
 
@@ -123,14 +130,18 @@ func (e *hjsonEncoder) quoteForComment(cmStr string) bool {
 	return false
 }
 
-func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool,
+func (e *hjsonEncoder) quote(value, separator string, isRootObject bool,
 	keyComment string, hasCommentAfter bool) {
 
 	// Check if we can insert this string without quotes
 	// see hjson syntax (must not parse as true, false, null or number)
+	l, r := "", ""
+	if e.EnableColor {
+		l, r = e.ColorStyle.String[0], e.ColorStyle.String[1]
+	}
 
 	if len(value) == 0 {
-		e.WriteString(separator + `""`)
+		e.WriteString(separator + l + `""` + r)
 	} else if e.QuoteAlways ||
 		hasCommentAfter ||
 		needsQuotes.MatchString(value) ||
@@ -144,26 +155,27 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool,
 		// sequences.
 
 		if !needsEscape.MatchString(value) {
-			e.WriteString(separator + `"` + value + `"`)
+
+			e.WriteString(separator + l + `"` + value + `"` + r)
 		} else if !needsEscapeML.MatchString(value) && !isRootObject {
-			e.mlString(value, separator, keyComment)
+			e.mlString(value, separator, keyComment, l, r)
 		} else {
-			e.WriteString(separator + `"` + e.quoteReplace(value) + `"`)
+			e.WriteString(separator + l + `"` + e.quoteReplace(value) + `"` + r)
 		}
 	} else {
 		// return without quotes
-		e.WriteString(separator + value)
+		e.WriteString(separator + l + value + r)
 	}
 }
 
-func (e *hjsonEncoder) mlString(value string, separator string, keyComment string) {
+func (e *hjsonEncoder) mlString(value, separator, keyComment, lColor, rColor string) {
 	a := strings.Split(value, "\n")
 
 	if len(a) == 1 {
 		// The string contains only a single line. We still use the multiline
 		// format as it avoids escaping the \ character (e.g. when used in a
 		// regex).
-		e.WriteString(separator + "'''")
+		e.WriteString(separator + lColor + "'''")
 		e.WriteString(a[0])
 	} else {
 		if !strings.Contains(keyComment, "\n") {
@@ -176,11 +188,11 @@ func (e *hjsonEncoder) mlString(value string, separator string, keyComment strin
 				indent = 0
 			}
 			e.writeIndent(indent)
-			e.WriteString(v)
+			e.WriteString(lColor + v + rColor)
 		}
 		e.writeIndent(e.indent + 1)
 	}
-	e.WriteString("'''")
+	e.WriteString("'''" + rColor)
 }
 
 func (e *hjsonEncoder) quoteName(name string) string {
@@ -279,6 +291,14 @@ func (e *hjsonEncoder) unpackNode(value reflect.Value, cm Comments) (reflect.Val
 	return value, cm
 }
 
+func (e *hjsonEncoder) writeNull() {
+	l, r := "", ""
+	if e.EnableColor {
+		l, r = e.ColorStyle.Null[0], e.ColorStyle.Null[1]
+	}
+	e.WriteString(l + "null" + r)
+}
+
 // This function can often be called from within itself, so do not output
 // anything from the upper half of it.
 func (e *hjsonEncoder) str(
@@ -324,14 +344,14 @@ func (e *hjsonEncoder) str(
 
 	if !value.IsValid() {
 		e.WriteString(separator)
-		e.WriteString("null")
+		e.writeNull()
 		return nil
 	}
 
 	if kind == reflect.Interface || kind == reflect.Ptr {
 		if value.IsNil() {
 			e.WriteString(separator)
-			e.WriteString("null")
+			e.writeNull()
 			return nil
 		}
 		return e.str(value.Elem(), noIndent, separator, isRootObject, isObjElement, cm)
@@ -372,8 +392,14 @@ func (e *hjsonEncoder) str(
 			if n == "" {
 				n = "0"
 			}
+			e.WriteString(separator)
+
+			l, r := "", ""
+			if e.EnableColor {
+				l, r = e.ColorStyle.Number[0], e.ColorStyle.Number[1]
+			}
 			// without quotes
-			e.WriteString(separator + n)
+			e.WriteString(l + n + r)
 		} else {
 			e.quote(value.String(), separator, isRootObject, cm.Key,
 				e.quoteForComment(cm.After))
@@ -381,21 +407,33 @@ func (e *hjsonEncoder) str(
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		e.WriteString(separator)
-		e.WriteString(strconv.FormatInt(value.Int(), 10))
+		l, r := "", ""
+		if e.EnableColor {
+			l, r = e.ColorStyle.Number[0], e.ColorStyle.Number[1]
+		}
+		e.WriteString(l + strconv.FormatInt(value.Int(), 10) + r)
 
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Uintptr:
 		e.WriteString(separator)
-		e.WriteString(strconv.FormatUint(value.Uint(), 10))
+		l, r := "", ""
+		if e.EnableColor {
+			l, r = e.ColorStyle.Number[0], e.ColorStyle.Number[1]
+		}
+		e.WriteString(l + strconv.FormatUint(value.Uint(), 10) + r)
 
 	case reflect.Float32, reflect.Float64:
 		// JSON numbers must be finite. Encode non-finite numbers as null.
 		e.WriteString(separator)
 		number := value.Float()
+		l, r := "", ""
+		if e.EnableColor {
+			l, r = e.ColorStyle.Number[0], e.ColorStyle.Number[1]
+		}
 		if math.IsInf(number, 0) || math.IsNaN(number) {
-			e.WriteString("null")
+			e.writeNull()
 		} else if number == -0 {
-			e.WriteString("0")
+			e.WriteString(l + "0" + r)
 		} else {
 			// find shortest representation ('G' does not work)
 			val := strconv.FormatFloat(number, 'f', -1, 64)
@@ -403,15 +441,23 @@ func (e *hjsonEncoder) str(
 			if len(exp) < len(val) {
 				val = strings.ToLower(exp)
 			}
-			e.WriteString(val)
+
+			e.WriteString(l + val + r)
 		}
 
 	case reflect.Bool:
 		e.WriteString(separator)
+		l, r := "", ""
 		if value.Bool() {
-			e.WriteString("true")
+			if e.EnableColor {
+				l, r = e.ColorStyle.True[0], e.ColorStyle.True[1]
+			}
+			e.WriteString(l + "true" + r)
 		} else {
-			e.WriteString("false")
+			if e.EnableColor {
+				l, r = e.ColorStyle.False[0], e.ColorStyle.False[1]
+			}
+			e.WriteString(l + "false" + r)
 		}
 
 	case reflect.Slice, reflect.Array:
@@ -440,6 +486,10 @@ func (e *hjsonEncoder) str(
 				e.writeIndent(e.indent)
 			} else {
 				e.WriteString(e.Eol + elemCm.Before + elemCm.Key)
+			}
+
+			if i > 0 && e.Eol == "" {
+				e.WriteString(", ")
 			}
 
 			if err := e.str(elem, true, "", false, false, elemCm); err != nil {

@@ -4,7 +4,7 @@
 [![Go Pkg](https://img.shields.io/github/release/hjson/hjson-go.svg?style=flat-square&label=go-pkg)](https://github.com/hjson/hjson-go/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hjson/hjson-go?style=flat-square)](https://goreportcard.com/report/github.com/hjson/hjson-go)
 [![coverage](https://img.shields.io/badge/coverage-ok-brightgreen.svg?style=flat-square)](https://gocover.io/github.com/hjson/hjson-go/)
-[![godoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](https://godoc.org/github.com/hjson/hjson-go/v4)
+[![godoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](https://godoc.org/github.com/bingoohuang/hjson)
 
 ![Hjson Intro](https://hjson.github.io/hjson1.gif)
 
@@ -29,7 +29,7 @@
 
 The Go implementation of Hjson is based on [hjson-js](https://github.com/hjson/hjson-js). For other platforms see [hjson.github.io](https://hjson.github.io).
 
-More documentation can be found at https://pkg.go.dev/github.com/hjson/hjson-go/v4
+More documentation can be found at https://pkg.go.dev/github.com/bingoohuang/hjson
 
 # Install
 
@@ -39,11 +39,11 @@ If you instead want to build locally, make sure you have a working Go environmen
 
 - In order to use Hjson from your own Go source code, just add an import line like the one here below. Before building your project, run `go mod tidy` in order to download the Hjson source files. The suffix `/v4` is required in the import path, unless you specifically want to use an older major version.
 ```go
-import "github.com/hjson/hjson-go/v4"
+import "github.com/bingoohuang/hjson"
 ```
 - If you instead want to use the **hjson-cli** command line tool, run the command here below in your terminal. The executable will be installed into your `go/bin` folder, make sure that folder is included in your `PATH` environment variable.
 ```bash
-go install github.com/hjson/hjson-go/v4/hjson-cli@latest
+go install github.com/bingoohuang/hjson/hjson-cli@latest
 ```
 # Usage as command line tool
 ```
@@ -81,7 +81,7 @@ Sample:
 package main
 
 import (
-    "github.com/hjson/hjson-go/v4"
+    "github.com/bingoohuang/hjson"
     "fmt"
 )
 
@@ -142,7 +142,7 @@ If you prefer, you can also unmarshal to Go structs (including structs implement
 package main
 
 import (
-    "github.com/hjson/hjson-go/v4"
+    "github.com/bingoohuang/hjson"
     "fmt"
 )
 
@@ -193,7 +193,7 @@ By using key `comment` in struct field tags you can specify comments to be writt
 package main
 
 import (
-    "github.com/hjson/hjson-go/v4"
+    "github.com/bingoohuang/hjson"
     "fmt"
 )
 
@@ -256,7 +256,7 @@ package main
 import (
     "fmt"
 
-    "github.com/hjson/hjson-go/v4"
+    "github.com/bingoohuang/hjson"
 )
 
 func main() {
@@ -324,7 +324,7 @@ The ambiguity can be avoided by using typed destinations when unmarshalling. A s
 package main
 
 import (
-    "github.com/hjson/hjson-go/v4"
+    "github.com/bingoohuang/hjson"
     "fmt"
 )
 
@@ -370,7 +370,7 @@ In order to avoid stack overflow all unmarshal-functions return an error if the 
 
 # API
 
-[![godoc](https://godoc.org/github.com/hjson/hjson-go/v4?status.svg)](https://godoc.org/github.com/hjson/hjson-go/v4)
+[![godoc](https://godoc.org/github.com/bingoohuang/hjson?status.svg)](https://godoc.org/github.com/bingoohuang/hjson)
 
 # History
 

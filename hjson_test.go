@@ -1844,3 +1844,24 @@ func TestUnmarshalStructWithExtraFields(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 }
+
+func TestExponentNeedsDigits(t *testing.T) {
+	// an exponent with no digits is a quoteless string, as the encoder already treats it
+	for _, s := range []string{"1e", "1E", "1e+", "1.2e", "-1e"} {
+		var m map[string]interface{}
+		if err := Unmarshal([]byte("{\n  k: "+s+"\n}"), &m); err != nil {
+			t.Fatalf("%q: %v", s, err)
+		}
+		if m["k"] != s {
+			t.Fatalf("%q: got %#v", s, m["k"])
+		}
+	}
+
+	var m map[string]interface{}
+	if err := Unmarshal([]byte("{\n  k: 1e5\n}"), &m); err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprintf("%v", m["k"]) != "100000" {
+		t.Fatalf("1e5: got %#v", m["k"])
+	}
+}

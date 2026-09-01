@@ -79,6 +79,10 @@ func tryParseNumber(text []byte, stopAtNext, useJSONNumber bool) (interface{}, e
 		if p.ch == '-' || p.ch == '+' {
 			p.next()
 		}
+		// an exponent needs at least one digit
+		if p.ch < '0' || p.ch > '9' {
+			return 0, errors.New("Invalid number")
+		}
 		for p.ch >= '0' && p.ch <= '9' {
 			p.next()
 		}

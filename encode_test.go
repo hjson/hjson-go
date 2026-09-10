@@ -875,3 +875,37 @@ func TestStructComment(t *testing.T) {
 		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expected, string(h))
 	}
 }
+
+func TestQuoteUnicodeWhitespace(t *testing.T) {
+	// The parser trims quoteless strings with strings.TrimSpace, so the encoder
+	// must quote strings that start or end with a rune unicode.IsSpace reports.
+	tests := []struct {
+		r          rune
+		wantQuoted bool
+	}{
+		{'\u0085', true}, {'\u00a0', true}, {'\u1680', true}, {'\u2000', true},
+		{'\u200a', true}, {'\u2028', true}, {'\u2029', true}, {'\u202f', true},
+		{'\u205f', true}, {'\u3000', true},
+		{'\u200b', false}, {'\u180e', false},
+	}
+	for _, tt := range tests {
+		for _, value := range []string{string(tt.r) + "ab", "ab" + string(tt.r)} {
+			b, err := Marshal(map[string]interface{}{"k": value})
+			if err != nil {
+				t.Errorf("%U: Marshal: %v", tt.r, err)
+				continue
+			}
+			if quoted := bytes.Contains(b, []byte(`k: "`)); quoted != tt.wantQuoted {
+				t.Errorf("%U: quoted %v, want %v (encoded as %q)", tt.r, quoted, tt.wantQuoted, b)
+			}
+			var dst map[string]interface{}
+			if err := Unmarshal(b, &dst); err != nil {
+				t.Errorf("%U: Unmarshal(%q): %v", tt.r, b, err)
+				continue
+			}
+			if got := dst["k"]; got != value {
+				t.Errorf("%U: got %q, want %q (encoded as %q)", tt.r, got, value, b)
+			}
+		}
+	}
+}

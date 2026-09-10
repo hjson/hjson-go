@@ -134,6 +134,9 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool,
 	} else if e.QuoteAlways ||
 		hasCommentAfter ||
 		needsQuotes.MatchString(value) ||
+		// The parser trims quoteless strings with strings.TrimSpace, which also
+		// removes non-ASCII whitespace that the needsQuotes regexp does not match.
+		len(value) != len(strings.TrimSpace(value)) ||
 		(e.QuoteAmbiguousStrings && (startsWithNumber([]byte(value)) ||
 			startsWithKeyword.MatchString(value))) {
 

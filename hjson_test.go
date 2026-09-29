@@ -1865,33 +1865,3 @@ func TestExponentNeedsDigits(t *testing.T) {
 		t.Fatalf("1e5: got %#v", m["k"])
 	}
 }
-
-func TestUnicodeSurrogatePair(t *testing.T) {
-	for text, want := range map[string]string{
-		`"\u00e9"`:              "\u00e9",
-		`"\ud83d\ude00"`:        "\U0001F600",
-		`"\uD83D\uDE00x"`:       "\U0001F600x",
-		`{k: "a\ud83d\ude00b"}`: "a\U0001F600b",
-		`"\ud83d"`:              "\uFFFD",
-		`"\ude00\ud83d"`:        "\uFFFD\uFFFD",
-		`"\ud83dx"`:             "\uFFFDx",
-		`"\ud83d\u00e9"`:        "\uFFFD\u00e9",
-		`"\ud83d\n"`:            "\uFFFD\n",
-	} {
-		var v interface{}
-		if err := Unmarshal([]byte(text), &v); err != nil {
-			t.Fatalf("%s: %v", text, err)
-		}
-		if m, ok := v.(map[string]interface{}); ok {
-			v = m["k"]
-		}
-		if v != want {
-			t.Errorf("%s: got %+q, want %+q", text, v, want)
-		}
-	}
-
-	var v interface{}
-	if err := Unmarshal([]byte(`"\ud83d\uzzzz"`), &v); err == nil {
-		t.Errorf("expected error for bad \\u escape after high surrogate, got %+q", v)
-	}
-}

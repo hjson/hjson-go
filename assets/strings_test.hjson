@@ -88,4 +88,13 @@
     minus: "-3"
     zero: "0"
   }
+
+  # could be mistaken for numbers but are strings
+  sci:
+  {
+    a: 1e
+    b: 1E
+    c: 1.2e
+    d: 1e+
+  }
 }

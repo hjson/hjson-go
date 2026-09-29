@@ -1,0 +1,4 @@
+{
+  # invalid surrogate pair
+  char: "\ud83d\uzzzz"
+}

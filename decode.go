@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"unicode"
+	"unicode/utf16"
 )
 
 const maxPointerDepth = 512
@@ -192,6 +194,30 @@ func unravelDestination(dest reflect.Value, t reflect.Type) (reflect.Value, refl
 	return dest, t
 }
 
+func hexValue(c byte) int {
+	switch {
+	case c >= '0' && c <= '9':
+		return int(c - '0')
+	case c >= 'a' && c <= 'f':
+		return int(c - 'a' + 0xa)
+	case c >= 'A' && c <= 'F':
+		return int(c - 'A' + 0xa)
+	}
+	return -1
+}
+
+func (p *hjsonParser) peekHex4(offs int) rune {
+	r := rune(0)
+	for i := 0; i < 4; i++ {
+		hex := hexValue(p.peek(offs + i))
+		if hex < 0 {
+			return -1
+		}
+		r = r*16 + rune(hex)
+	}
+	return r
+}
+
 func (p *hjsonParser) readString(allowML bool) (string, error) {
 
 	// Parse a string value.
@@ -217,19 +243,22 @@ func (p *hjsonParser) readString(allowML bool) (string, error) {
 				uffff := 0
 				for i := 0; i < 4; i++ {
 					p.next()
-					var hex int
-					if p.ch >= '0' && p.ch <= '9' {
-						hex = int(p.ch - '0')
-					} else if p.ch >= 'a' && p.ch <= 'f' {
-						hex = int(p.ch - 'a' + 0xa)
-					} else if p.ch >= 'A' && p.ch <= 'F' {
-						hex = int(p.ch - 'A' + 0xa)
-					} else {
+					hex := hexValue(p.ch)
+					if hex < 0 {
 						return "", p.errAt("Bad \\u char " + string(p.ch))
 					}
 					uffff = uffff*16 + hex
 				}
-				res.WriteRune(rune(uffff))
+				r := rune(uffff)
+				if utf16.IsSurrogate(r) && p.peek(0) == '\\' && p.peek(1) == 'u' {
+					if r2 := utf16.DecodeRune(r, p.peekHex4(2)); r2 != unicode.ReplacementChar {
+						r = r2
+						for i := 0; i < 6; i++ {
+							p.next()
+						}
+					}
+				}
+				res.WriteRune(r)
 			} else if ech, ok := escapee[p.ch]; ok {
 				res.WriteByte(ech)
 			} else {

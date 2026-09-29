@@ -59,6 +59,12 @@
   notml2: "  \n"
   notml3: "\n  \n  \n  \n"
   notml4: "\t\n"
+  sci: {
+    a: 1e
+    b: 1E
+    c: 1.2e
+    d: 1e+
+  }
   special: {
     false: "false"
     minus: "-3"

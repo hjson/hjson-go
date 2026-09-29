@@ -80,4 +80,30 @@
   text4a: " untrimmed "
   text4b: " untrimmed"
   text4c: "untrimmed "
+  text4d: " u"
+  text4d2: "u "
+  text4e: "\u0085u"
+  text4e2: "u\u0085"
+  text4f: " u"
+  text4f2: "u "
+  text4g: " u"
+  text4g2: "u "
+  text4h: " u"
+  text4h2: "u "
+  text4i: " u"
+  text4i2: "u "
+  text4j: "\u2028u"
+  text4j2: "u\u2028"
+  text4k: "\u2029u"
+  text4k2: "u\u2029"
+  text4l: "\u202fu"
+  text4l2: "u\u202f"
+  text4m: " u"
+  text4m2: "u "
+  text4n: "　u"
+  text4n2: "u　"
+  text4o: ​u
+  text4o2: u​
+  text4p: ᠎u
+  text4p2: u᠎
 }

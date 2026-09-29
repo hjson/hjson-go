@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -126,14 +127,21 @@ func (e *hjsonEncoder) quoteForComment(cmStr string) bool {
 func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool,
 	keyComment string, hasCommentAfter bool) {
 
+	if len(value) == 0 {
+		e.WriteString(separator + `""`)
+		return
+	}
+
 	// Check if we can insert this string without quotes
 	// see hjson syntax (must not parse as true, false, null or number)
 
-	if len(value) == 0 {
-		e.WriteString(separator + `""`)
-	} else if e.QuoteAlways ||
+	firstRune, _ := utf8.DecodeRuneInString(value)
+	lastRune, _ := utf8.DecodeLastRuneInString(value)
+	if e.QuoteAlways ||
 		hasCommentAfter ||
 		needsQuotes.MatchString(value) ||
+		unicode.IsSpace(firstRune) ||
+		unicode.IsSpace(lastRune) ||
 		(e.QuoteAmbiguousStrings && (startsWithNumber([]byte(value)) ||
 			startsWithKeyword.MatchString(value))) {
 

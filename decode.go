@@ -1023,7 +1023,7 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 	inOM, destinationIsOrderedMap := v.(*OrderedMap)
 	if !destinationIsOrderedMap {
 		pInOM, ok := v.(**OrderedMap)
-		if ok {
+		if ok && pInOM != nil {
 			destinationIsOrderedMap = true
 			inOM = &OrderedMap{}
 			*pInOM = inOM
@@ -1033,7 +1033,7 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 	inNode, destinationIsNode := v.(*Node)
 	if !destinationIsNode {
 		pInNode, ok := v.(**Node)
-		if ok {
+		if ok && pInNode != nil {
 			destinationIsNode = true
 			inNode = &Node{}
 			*pInNode = inNode

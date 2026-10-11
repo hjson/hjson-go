@@ -1865,3 +1865,21 @@ func TestExponentNeedsDigits(t *testing.T) {
 		t.Fatalf("1e5: got %#v", m["k"])
 	}
 }
+
+func TestUnmarshalNilSpecialDestinations(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		dest interface{}
+	}{
+		{"ordered map", (*OrderedMap)(nil)},
+		{"ordered map pointer", (**OrderedMap)(nil)},
+		{"node", (*Node)(nil)},
+		{"node pointer", (**Node)(nil)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := Unmarshal([]byte("{}"), tc.dest); err == nil {
+				t.Fatal("expected an error for a nil destination pointer")
+			}
+		})
+	}
+}

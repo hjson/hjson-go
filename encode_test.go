@@ -3,6 +3,7 @@ package hjson
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"reflect"
@@ -873,5 +874,74 @@ func TestStructComment(t *testing.T) {
 }`
 	if string(h) != expected {
 		t.Errorf("Expected:\n%s\nGot:\n%s\n\n", expected, string(h))
+	}
+}
+
+type pointerJSONMarshaler struct{ err error }
+
+func (v *pointerJSONMarshaler) MarshalJSON() ([]byte, error) {
+	return []byte(`"custom-json"`), v.err
+}
+func (v *pointerJSONMarshaler) MarshalText() ([]byte, error) {
+	return []byte("should-not-use-text"), nil
+}
+
+type pointerTextMarshaler struct{ err error }
+
+func (v *pointerTextMarshaler) MarshalText() ([]byte, error) {
+	return []byte("custom-text"), v.err
+}
+
+func TestEncodePointerMarshalers(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		value interface{}
+		want  string
+	}{
+		{"json", &pointerJSONMarshaler{}, "custom-json"},
+		{"text", &pointerTextMarshaler{}, "custom-text"},
+		{"nil json", (*pointerJSONMarshaler)(nil), "null"},
+		{"nil text", (*pointerTextMarshaler)(nil), "null"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := Marshal(tc.value)
+			if err != nil || string(got) != tc.want {
+				t.Fatalf("got %s, error %v; want %s", got, err, tc.want)
+			}
+		})
+	}
+	// A typed interface can hold a nil pointer; it must not invoke its method.
+	nilJSON := map[string]json.Marshaler{"value": (*pointerJSONMarshaler)(nil)}
+	nilBuf, nilErr := Marshal(nilJSON)
+	if nilErr != nil {
+		t.Fatal(nilErr)
+	}
+	var nilDecoded map[string]interface{}
+	if err := Unmarshal(nilBuf, &nilDecoded); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(nilDecoded, map[string]interface{}{"value": nil}) {
+		t.Errorf("typed nil marshaler: %v", nilDecoded)
+	}
+	nested := map[string]interface{}{"json": &pointerJSONMarshaler{}, "text": &pointerTextMarshaler{}}
+	buf, err := Marshal(nested)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded map[string]interface{}
+	if err := Unmarshal(buf, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(decoded, map[string]interface{}{"json": "custom-json", "text": "custom-text"}) {
+		t.Errorf("nested marshalers ignored: %v", decoded)
+	}
+}
+
+func TestEncodePointerMarshalerErrors(t *testing.T) {
+	want := errors.New("marshaler failed")
+	for _, value := range []interface{}{&pointerJSONMarshaler{want}, &pointerTextMarshaler{want}} {
+		if _, err := Marshal(value); err != want {
+			t.Errorf("%T: got %v, want %v", value, err, want)
+		}
 	}
 }

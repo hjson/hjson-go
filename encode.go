@@ -342,12 +342,17 @@ func (e *hjsonEncoder) str(
 			e.WriteString("null")
 			return nil
 		}
-		return e.str(value.Elem(), noIndent, separator, isRootObject, isObjElement, cm)
+		if kind == reflect.Interface {
+			return e.str(value.Elem(), noIndent, separator, isRootObject, isObjElement, cm)
+		}
 	}
 
 	// Our internal orderedMap implements marshalerJSON. We must therefore place
 	// this check before checking marshalerJSON. Calling orderedMap.MarshalJSON()
 	// from this function would cause an infinite loop.
+	if _, ok := value.Interface().(*OrderedMap); ok {
+		return e.str(value.Elem(), noIndent, separator, isRootObject, isObjElement, cm)
+	}
 	if om, ok := value.Interface().(OrderedMap); ok {
 		var fis []fieldInfo
 		for _, key := range om.Keys {
@@ -371,6 +376,10 @@ func (e *hjsonEncoder) str(
 
 		return e.str(reflect.ValueOf(string(b)), noIndent, separator, isRootObject,
 			isObjElement, cm)
+	}
+
+	if kind == reflect.Ptr {
+		return e.str(value.Elem(), noIndent, separator, isRootObject, isObjElement, cm)
 	}
 
 	switch kind {

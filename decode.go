@@ -1024,6 +1024,9 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 	if !destinationIsOrderedMap {
 		pInOM, ok := v.(**OrderedMap)
 		if ok {
+			if pInOM == nil {
+				return fmt.Errorf("The pointer to the destination pointer must not be nil")
+			}
 			destinationIsOrderedMap = true
 			inOM = &OrderedMap{}
 			*pInOM = inOM
@@ -1034,6 +1037,9 @@ func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) er
 	if !destinationIsNode {
 		pInNode, ok := v.(**Node)
 		if ok {
+			if pInNode == nil {
+				return fmt.Errorf("The pointer to the destination pointer must not be nil")
+			}
 			destinationIsNode = true
 			inNode = &Node{}
 			*pInNode = inNode

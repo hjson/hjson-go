@@ -945,3 +945,55 @@ func TestEncodePointerMarshalerErrors(t *testing.T) {
 		}
 	}
 }
+
+type nilNodeHolder struct {
+	Meta *Node `json:"meta" comment:"A node."`
+	A    int   `json:"a"`
+}
+
+func TestEncodeNilNode(t *testing.T) {
+	// A nil pointer to a Node wraps nothing, so it is encoded as null, like a
+	// Node that holds nothing, like a nil pointer of any other type and like
+	// json.Marshal() does. These used to panic.
+	for _, tc := range []struct {
+		name  string
+		value interface{}
+		want  string
+	}{
+		{"root", (*Node)(nil), "null"},
+		{"map value", map[string]interface{}{"a": (*Node)(nil), "b": 1}, "{\n  a: null\n  b: 1\n}"},
+		{"typed map value", map[string]*Node{"k": nil}, "{\n  k: null\n}"},
+		{"array element", []interface{}{(*Node)(nil), 2}, "[\n  null\n  2\n]"},
+		{"struct field", nilNodeHolder{A: 3}, "{\n  # A node.\n  meta: null\n\n  a: 3\n}"},
+		{"inside a node", &Node{Value: (*Node)(nil)}, "null"},
+		{"inside a node value", Node{Value: map[string]interface{}{"x": (*Node)(nil)}}, "{\n  x: null\n}"},
+		{"node holding nothing", &Node{}, "null"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := Marshal(tc.value)
+			if err != nil || string(got) != tc.want {
+				t.Fatalf("got %s, error %v; want %s", got, err, tc.want)
+			}
+		})
+	}
+
+	// The base indentation is written in front of it, as for any other value.
+	got, err := MarshalWithOptions((*Node)(nil), func() EncoderOptions {
+		o := DefaultOptions()
+		o.BaseIndentation = "    "
+		return o
+	}())
+	if err != nil || string(got) != "    null" {
+		t.Fatalf("got %s, error %v; want \"    null\"", got, err)
+	}
+
+	// A Node keeps the value it wraps, even when that is a nil pointer, so a
+	// comment on the outer Node still has to be written.
+	got, err = Marshal(Node{
+		Value: (*Node)(nil),
+		Cm:    Comments{Key: "# key comment"},
+	})
+	if err != nil || string(got) != "# key commentnull" {
+		t.Fatalf("got %s, error %v; want \"# key commentnull\"", got, err)
+	}
+}

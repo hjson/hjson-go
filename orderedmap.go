@@ -81,8 +81,12 @@ func (c *OrderedMap) AtKey(key string) (interface{}, bool) {
 // index < 0 or index > c.Len(). If the key already exists in the OrderedMap,
 // the new value is set but the position of the key is not changed. Returns
 // the old value and true if the key already exists in the OrderedMap, nil and
-// false otherwise.
+// false otherwise. An OrderedMap that has no map of its own yet, because it
+// was not made by NewOrderedMap(), gets one here.
 func (c *OrderedMap) Insert(index int, key string, value interface{}) (interface{}, bool) {
+	if c.Map == nil {
+		c.Map = map[string]interface{}{}
+	}
 	oldValue, exists := c.Map[key]
 	c.Map[key] = value
 	if exists {
@@ -101,7 +105,9 @@ func (c *OrderedMap) Insert(index int, key string, value interface{}) (interface
 // already exist in the OrderedMap it is appended to the end of the OrderedMap.
 // If the key already exists in the OrderedMap, the new value is set but the
 // position of the key is not changed. Returns the old value and true if the
-// key already exists in the OrderedMap, nil and false otherwise.
+// key already exists in the OrderedMap, nil and false otherwise. An OrderedMap
+// that has no map of its own yet, because it was not made by NewOrderedMap(),
+// gets one here.
 func (c *OrderedMap) Set(key string, value interface{}) (interface{}, bool) {
 	return c.Insert(len(c.Keys), key, value)
 }

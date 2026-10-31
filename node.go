@@ -176,7 +176,7 @@ func (c *Node) Insert(index int, key string, value interface{}) (interface{}, bo
 	var found bool
 	switch cont := c.Value.(type) {
 	case *OrderedMap:
-		oldVal, found := cont.Map[key]
+		oldVal, found = cont.Map[key]
 		if found {
 			if node, ok := oldVal.(*Node); ok {
 				oldVal = node.Value

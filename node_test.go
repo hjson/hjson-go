@@ -586,3 +586,108 @@ func TestNodeSliceInsertDelete(t *testing.T) {
   1
 ]`)
 }
+
+func TestNodeInsertExistingKey(t *testing.T) {
+	txt := `a: 1 // after a
+b: 2`
+
+	unmarshal := func(t *testing.T) *Node {
+		t.Helper()
+		var node Node
+		if err := Unmarshal([]byte(txt), &node); err != nil {
+			t.Fatal(err)
+		}
+		return &node
+	}
+
+	// Inserting a key that is already there keeps its place, gives back the
+	// value it held and reports true, as documented and as SetKey() already
+	// did.
+	t.Run("into a child node", func(t *testing.T) {
+		node := unmarshal(t)
+		child := node.Value.(*OrderedMap).Map["a"].(*Node)
+
+		val, found, err := node.Insert(1, "a", 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if val != 1.0 || !found {
+			t.Errorf("Insert returned %v, %v; want 1, true", val, found)
+		}
+		// The child node found is the one that is given the new value, so that
+		// anything pointing at it still points at the value in place.
+		if again := node.Value.(*OrderedMap).Map["a"].(*Node); again != child {
+			t.Error("Insert replaced the child node instead of using it")
+		}
+		if child.Value != 3 {
+			t.Errorf("Child node holds %#v; want 3", child.Value)
+		}
+		verifyNodeContent(t, node, `a: 3 // after a
+b: 2`)
+	})
+
+	// A value that was put in the OrderedMap without a node of its own is
+	// wrapped in one and reported as it stands.
+	t.Run("of a value that is no child node", func(t *testing.T) {
+		node := unmarshal(t)
+		om := node.Value.(*OrderedMap)
+		om.Map["a"] = 7
+
+		val, found, err := node.Insert(0, "a", 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if val != 7 || !found {
+			t.Errorf("Insert returned %v, %v; want 7, true", val, found)
+		}
+		if _, isNode := om.Map["a"].(*Node); !isNode {
+			t.Errorf("Value is %T; want *hjson.Node", om.Map["a"])
+		}
+	})
+
+	t.Run("that is not there yet", func(t *testing.T) {
+		node := unmarshal(t)
+
+		val, found, err := node.Insert(1, "c", 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if val != nil || found {
+			t.Errorf("Insert returned %v, %v; want nil, false", val, found)
+		}
+		verifyNodeContent(t, node, `a: 1 // after a
+c: 3
+b: 2`)
+	})
+
+	// An array has no keys to look for, so nothing is ever found in it.
+	t.Run("into an array", func(t *testing.T) {
+		var node Node
+		if err := Unmarshal([]byte("[\n  1\n  2\n]"), &node); err != nil {
+			t.Fatal(err)
+		}
+		val, found, err := node.Insert(0, "a", 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if val != nil || found {
+			t.Errorf("Insert returned %v, %v; want nil, false", val, found)
+		}
+	})
+
+	// The two functions differ in where they put a key that was missing, not
+	// in what they report for one that was there.
+	t.Run("reports like SetKey", func(t *testing.T) {
+		for _, key := range []string{"a", "b", "not there"} {
+			insertVal, insertFound, insertErr := unmarshal(t).Insert(0, key, 3)
+			setKeyVal, setKeyFound, setKeyErr := unmarshal(t).SetKey(key, 3)
+			if insertErr != nil || setKeyErr != nil {
+				t.Fatalf("%s: %v, %v", key, insertErr, setKeyErr)
+			}
+			if insertVal != setKeyVal || insertFound != setKeyFound {
+				t.Errorf("%s: Insert returned %v, %v; SetKey returned %v, %v",
+					key, insertVal, insertFound, setKeyVal, setKeyFound)
+			}
+		}
+	})
+}

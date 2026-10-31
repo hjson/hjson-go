@@ -307,6 +307,14 @@ func (e *hjsonEncoder) str(
 
 	// Produce a string from value.
 
+	// Note when unpackNode() below is about to replace a Node with the value it
+	// wraps, as doing that hides one level of recursion from the checks made
+	// after it. A pointer to a Node is left to those checks, which see it.
+	wrappedInNode := false
+	if value.IsValid() {
+		_, wrappedInNode = value.Interface().(Node)
+	}
+
 	// Unpack *Node, possibly overwrite cm.
 	value, cm = e.unpackNode(value, cm)
 
@@ -335,6 +343,18 @@ func (e *hjsonEncoder) str(
 		}
 
 		defer func() { e.pDepth-- }()
+
+	case reflect.Struct:
+		// Only a Node is replaced by the value it wraps, and only a pointer
+		// has an address that a circular reference can be found by. A value
+		// can not contain itself, so the depth limit is all that applies here.
+		if wrappedInNode {
+			if e.pDepth++; e.pDepth > maxNestingDepth {
+				return fmt.Errorf("Exceeded max depth (%d)", maxNestingDepth)
+			}
+
+			defer func() { e.pDepth-- }()
+		}
 	}
 
 	if !value.IsValid() {
@@ -369,6 +389,18 @@ func (e *hjsonEncoder) str(
 			})
 		}
 		return e.writeFields(fis, noIndent, separator, isRootObject, isObjElement, cm)
+	}
+
+	// A Node, or pointer to one, that was nested inside another Node is left
+	// here by unpackNode(). Unpack it for the same reason as hjson.OrderedMap
+	// above: Node.MarshalJSON() hands the value on to encoding/json, which
+	// begins looking for circular references from scratch on every call to
+	// Marshal() and observes none of the limits used here, so a Node that
+	// refers back to itself would be followed until the stack ran out.
+	// Recursing into str() keeps both of those checks in play.
+	switch value.Interface().(type) {
+	case Node, *Node:
+		return e.str(value, noIndent, separator, isRootObject, isObjElement, cm)
 	}
 
 	if value.Type().Implements(marshalerJSON) {

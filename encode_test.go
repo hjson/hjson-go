@@ -997,3 +997,93 @@ func TestEncodeNilNode(t *testing.T) {
 		t.Fatalf("got %s, error %v; want \"# key commentnull\"", got, err)
 	}
 }
+
+// Encoding a value that refers to itself has always been reported as an error,
+// but a Node was an exception: it was handed to Node.MarshalJSON(), which
+// passed it on to encoding/json, which begins looking for circular references
+// from scratch on every call. A Node that referred to itself was therefore
+// followed until the stack ran out, which no caller can recover from.
+func TestEncodeNodeCircularReference(t *testing.T) {
+	selfPointer := &Node{}
+	selfPointer.Value = selfPointer
+
+	selfValue := Node{}
+	selfValue.Value = &selfValue
+
+	first := &Node{}
+	second := &Node{Value: first}
+	first.Value = second
+
+	inMap := &Node{}
+	inMap.Value = map[string]interface{}{"self": inMap}
+
+	for _, tc := range []struct {
+		name  string
+		value interface{}
+	}{
+		{"pointer to itself", selfPointer},
+		{"value referring to itself", &selfValue},
+		{"two nodes referring to each other", first},
+		{"node referred to from a map", inMap},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := Marshal(tc.value); err == nil {
+				t.Error("Expected an error for a Node that refers to itself")
+			}
+		})
+	}
+}
+
+func TestEncodeNodeMaxDepth(t *testing.T) {
+	deep := func(wrap func(value interface{}) interface{}) interface{} {
+		var value interface{} = 1
+		for i := 0; i < maxNestingDepth*3; i++ {
+			value = wrap(value)
+		}
+		return value
+	}
+
+	for _, tc := range []struct {
+		name  string
+		value interface{}
+	}{
+		{"nested nodes", deep(func(v interface{}) interface{} { return Node{Value: v} })},
+		{"nested pointers to nodes", deep(func(v interface{}) interface{} { return &Node{Value: v} })},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := Marshal(tc.value); err == nil {
+				t.Errorf("Expected an error for a value nested deeper than %d",
+					maxNestingDepth)
+			}
+		})
+	}
+}
+
+// A Node, or pointer to a Node, that is found inside another Node is unpacked
+// the same way a Node found anywhere else is: as the value it wraps, taking the
+// comments of the outermost of them.
+func TestEncodeNestedNode(t *testing.T) {
+	inner := &Node{Value: 3}
+	inner.Cm.Before = "# Inner\n"
+	outer := &Node{Value: inner}
+	outer.Cm.Before = "# Outer\n"
+
+	for _, tc := range []struct {
+		name     string
+		value    interface{}
+		expected string
+	}{
+		{"node in node", &Node{Value: Node{Value: 3}}, "3"},
+		{"pointer in pointer to node", &Node{Value: &Node{Value: 3}}, "3"},
+		{"node in map", map[string]interface{}{"a": &Node{Value: 3}}, "{\n  a: 3\n}"},
+		{"node in slice", []interface{}{Node{Value: 3}}, "[\n  3\n]"},
+		{"comments of the outermost node", outer, "# Outer\n3"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b, err := Marshal(tc.value)
+			if err != nil || string(b) != tc.expected {
+				t.Errorf("Expected:\n%s\nGot:\n%s\nError: %v\n", tc.expected, b, err)
+			}
+		})
+	}
+}

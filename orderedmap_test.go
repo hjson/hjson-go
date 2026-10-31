@@ -138,3 +138,109 @@ func TestUnmarshalHJSON_2(t *testing.T) {
 
 	verifyContent(t, &om, `{"B":"first","C":3,"sub":{"z":7,"y":8},"A":2}`)
 }
+
+func TestZeroValueOrderedMap(t *testing.T) {
+	// An OrderedMap that was not made by NewOrderedMap() has no map to put
+	// values in. Insert() and Set(), which is Insert() at the end, create one.
+	// Every other operation on such an OrderedMap worked already.
+
+	t.Run("Set", func(t *testing.T) {
+		var om OrderedMap
+		if oldVal, found := om.Set("B", "first"); oldVal != nil || found {
+			t.Error("Set returned a value for a key that was not there")
+		}
+		if oldVal, found := om.Set("A", 2); oldVal != nil || found {
+			t.Error("Set returned a value for a key that was not there")
+		}
+		if oldVal, found := om.Set("B", "second"); oldVal != "first" || !found {
+			t.Errorf("Set returned %v, %v; want first, true", oldVal, found)
+		}
+		verifyContent(t, &om, `{"B":"second","A":2}`)
+	})
+
+	t.Run("Insert", func(t *testing.T) {
+		om := &OrderedMap{}
+		om.Insert(0, "B", "first")
+		om.Insert(0, "A", 2)
+		verifyContent(t, om, `{"A":2,"B":"first"}`)
+	})
+
+	t.Run("as a struct field", func(t *testing.T) {
+		var holder struct {
+			Meta OrderedMap `json:"meta"`
+		}
+		holder.Meta.Set("a", 1)
+		b, err := Marshal(holder)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(b) != "{\n  meta: {\n    a: 1\n  }\n}" {
+			t.Errorf("Expected:\n%s\n\nGot:\n%s\n", "{\n  meta: {\n    a: 1\n  }\n}", b)
+		}
+	})
+
+	t.Run("keys given without a map", func(t *testing.T) {
+		om := OrderedMap{Keys: []string{"a"}}
+		om.Set("b", 2)
+		if !reflect.DeepEqual(om.Keys, []string{"a", "b"}) {
+			t.Errorf("Keys is %v; want [a b]", om.Keys)
+		}
+		if v, found := om.AtKey("b"); v != 2 || !found {
+			t.Errorf("AtKey returned %v, %v; want 2, true", v, found)
+		}
+		// The map says which keys exist, the Keys slice only their order, so a
+		// key that is only in Keys still reads as missing.
+		if v, found := om.AtKey("a"); v != nil || found {
+			t.Errorf("AtKey returned %v, %v; want nil, false", v, found)
+		}
+	})
+
+	t.Run("delete after insert", func(t *testing.T) {
+		var om OrderedMap
+		om.Set("a", 1)
+		if v, found := om.DeleteKey("a"); v != 1 || !found {
+			t.Errorf("DeleteKey returned %v, %v; want 1, true", v, found)
+		}
+		if om.Len() != 0 {
+			t.Errorf("Len is %d; want 0", om.Len())
+		}
+		verifyContent(t, &om, `{}`)
+	})
+
+	t.Run("reading does not create a map", func(t *testing.T) {
+		var om OrderedMap
+		om.Len()
+		om.AtKey("a")
+		om.DeleteKey("a")
+		if _, err := Marshal(&om); err != nil {
+			t.Fatal(err)
+		}
+		if om.Map != nil {
+			t.Errorf("Map was made by a read: %v", om.Map)
+		}
+	})
+
+	t.Run("through a Node", func(t *testing.T) {
+		n := Node{Value: &OrderedMap{}}
+		if _, found, err := n.SetKey("a", 1); err != nil || found {
+			t.Errorf("SetKey returned %v; %v; want false, nil", found, err)
+		}
+		b, err := Marshal(n)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(b) != "{\n  a: 1\n}" {
+			t.Errorf("Got:\n%s\n", b)
+		}
+	})
+
+	t.Run("index out of range still panics", func(t *testing.T) {
+		defer func() {
+			if recover() == nil {
+				t.Error("Insert did not panic for an index past the end")
+			}
+		}()
+		om := &OrderedMap{}
+		om.Insert(1, "a", 1)
+	})
+}

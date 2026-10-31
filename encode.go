@@ -277,9 +277,16 @@ func (e *hjsonEncoder) unpackNode(value reflect.Value, cm Comments) (reflect.Val
 				cm = node.Cm
 			}
 		} else if pNode, ok := value.Interface().(*Node); ok {
-			value = reflect.ValueOf(pNode.Value)
-			if e.Comments {
-				cm = pNode.Cm
+			// A nil pointer to a Node wraps nothing, just like a Node whose
+			// Value is nil. Leaving the value invalid makes str() write a
+			// null, as it does for a nil pointer of any other type.
+			if pNode == nil {
+				value = reflect.Value{}
+			} else {
+				value = reflect.ValueOf(pNode.Value)
+				if e.Comments {
+					cm = pNode.Cm
+				}
 			}
 		}
 	}

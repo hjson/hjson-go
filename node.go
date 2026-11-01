@@ -166,7 +166,7 @@ func (c *Node) Append(value interface{}) error {
 // already exists in the OrderedMap, the new value is set but the position of
 // the key is not changed. Otherwise the value to insert is wrapped in a new
 // Node. If this Node contains []interface{}, the key is ignored. Returns the
-// old value and true if the key already exists in the/ OrderedMap, nil and
+// old value and true if the key already exists in the OrderedMap, nil and
 // false otherwise.
 func (c *Node) Insert(index int, key string, value interface{}) (interface{}, bool, error) {
 	if c == nil {

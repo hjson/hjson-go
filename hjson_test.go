@@ -1866,6 +1866,36 @@ func TestExponentNeedsDigits(t *testing.T) {
 	}
 }
 
+func TestFractionNeedsDigits(t *testing.T) {
+	// a decimal point with no following digit is a quoteless string, for both
+	// plain and ordered destinations
+	for _, s := range []string{"1.", "1.e2", "-1.", "1.e"} {
+		var m map[string]interface{}
+		if err := Unmarshal([]byte("{\n  k: "+s+"\n}"), &m); err != nil {
+			t.Fatalf("%q: %v", s, err)
+		}
+		if m["k"] != s {
+			t.Fatalf("%q: got %#v", s, m["k"])
+		}
+
+		var om OrderedMap
+		if err := Unmarshal([]byte("{\n  k: "+s+"\n}"), &om); err != nil {
+			t.Fatalf("%q (ordered): %v", s, err)
+		}
+		if om.Map["k"] != s {
+			t.Fatalf("%q (ordered): got %#v", s, om.Map["k"])
+		}
+	}
+
+	var m map[string]interface{}
+	if err := Unmarshal([]byte("{\n  k: 1.5\n}"), &m); err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprintf("%v", m["k"]) != "1.5" {
+		t.Fatalf("1.5: got %#v", m["k"])
+	}
+}
+
 func TestUnmarshalNilSpecialDestinations(t *testing.T) {
 	for _, tc := range []struct {
 		name string

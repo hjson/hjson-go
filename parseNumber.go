@@ -71,7 +71,13 @@ func tryParseNumber(text []byte, stopAtNext, useJSONNumber bool) (interface{}, e
 		leadingZeros--
 	} // single 0 is allowed
 	if p.ch == '.' {
-		for p.next() && p.ch >= '0' && p.ch <= '9' {
+		p.next()
+		// a fraction needs at least one digit
+		if p.ch < '0' || p.ch > '9' {
+			return 0, errors.New("Invalid number")
+		}
+		for p.ch >= '0' && p.ch <= '9' {
+			p.next()
 		}
 	}
 	if p.ch == 'e' || p.ch == 'E' {

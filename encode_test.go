@@ -655,6 +655,26 @@ func TestQuoteAmbiguousStrings(t *testing.T) {
 	}
 }
 
+func TestQuoteNumberOutOfFloat64Range(t *testing.T) {
+	// A number that is out of the float64 range cannot be read back into a
+	// float64, so a string that spells one has to be quoted: written out
+	// without quotes it reads back as a number that fails to unmarshal.
+	for _, s := range []string{"1e400", "1e309", "-1e999"} {
+		buf, err := Marshal(s)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+		if string(buf) != `"`+s+`"` {
+			t.Errorf("Marshal(%q) = %s, want %q", s, string(buf), `"`+s+`"`)
+		}
+		var result interface{}
+		if err := Unmarshal(buf, &result); err != nil {
+			t.Errorf("Unmarshal(%s): %v", string(buf), err)
+		}
+	}
+}
+
 func marshalUnmarshal(t *testing.T, input string) {
 	buf, err := Marshal(input)
 	if err != nil {

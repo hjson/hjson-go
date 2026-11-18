@@ -127,4 +127,12 @@
     g: -1.
     h: 1.e
   }
+
+  # Strings containing numbers that don't fit into a float64
+  oob:
+  {
+    a: "1e400"
+    b: "1e309"
+    c: "-1e999"
+  }
 }

@@ -59,6 +59,11 @@
   notml2: "  \n"
   notml3: "\n  \n  \n  \n"
   notml4: "\t\n"
+  oob: {
+    a: "1e400"
+    b: "1e309"
+    c: "-1e999"
+  }
   sci: {
     a: 1e
     b: 1E

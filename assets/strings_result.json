@@ -76,6 +76,11 @@
       0.5
     ]
   },
+  "oob": {
+    "a": "1e400",
+    "b": "1e309",
+    "c": "-1e999"
+  },
   "special": {
     "true": "true",
     "false": "false",

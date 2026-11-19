@@ -37,7 +37,11 @@ func (p *parseNumber) peek(offs int) byte {
 }
 
 func startsWithNumber(text []byte) bool {
-	if _, err := tryParseNumber(text, true, false); err == nil {
+	// The json.Number path does not convert the text to a float64, so a
+	// number that is out of the float64 range counts as a number here. Such
+	// a string has to be quoted when it is written out, because it cannot
+	// be read back into a float64.
+	if _, err := tryParseNumber(text, true, true); err == nil {
 		return true
 	}
 	return false

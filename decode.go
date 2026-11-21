@@ -477,7 +477,10 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 	chf := p.ch
 	var node Node
 	value := new(bytes.Buffer)
-	value.WriteByte(p.ch)
+	// p.ch is 0 at the end of the input, which must not end up in the value.
+	if p.ch != 0 {
+		value.WriteByte(p.ch)
+	}
 
 	var newT reflect.Type
 	if !p.nodeDestination {

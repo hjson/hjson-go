@@ -1913,33 +1913,3 @@ func TestUnmarshalNilSpecialDestinations(t *testing.T) {
 		})
 	}
 }
-
-func TestMissingValueAtEndOfInput(t *testing.T) {
-	// a key with no value before the end of the input gives an empty string,
-	// like hjson-js, instead of the end-of-input marker (a NUL byte)
-	for _, s := range []string{"k:", "k: ", "k:\n", "k: # c", "k: // c", "k: /* c */", "a: 1\nk:"} {
-		var m map[string]interface{}
-		if err := Unmarshal([]byte(s), &m); err != nil {
-			t.Fatalf("%q: %v", s, err)
-		}
-		if m["k"] != "" {
-			t.Fatalf("%q: got %#v", s, m["k"])
-		}
-
-		var om OrderedMap
-		if err := Unmarshal([]byte(s), &om); err != nil {
-			t.Fatalf("%q (ordered): %v", s, err)
-		}
-		if om.Map["k"] != "" {
-			t.Fatalf("%q (ordered): got %#v", s, om.Map["k"])
-		}
-
-		var st struct{ K string }
-		if err := Unmarshal([]byte(s), &st); err != nil {
-			t.Fatalf("%q (struct): %v", s, err)
-		}
-		if st.K != "" {
-			t.Fatalf("%q (struct): got %q", s, st.K)
-		}
-	}
-}

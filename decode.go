@@ -471,16 +471,18 @@ func (p *hjsonParser) readTfnns(dest reflect.Value, t reflect.Type) (interface{}
 	// returns string, (json.Number or float64), true, false, or null.
 	// Or wraps the value in a Node.
 
+	// p.ch is 0 at the end of the input, there is no value here.
+	if p.ch == 0 {
+		return nil, p.errAt("End of input when expecting value")
+	}
+
 	if isPunctuatorChar(p.ch) {
 		return nil, p.errAt("Found a punctuator character '" + string(p.ch) + "' when expecting a quoteless string (check your syntax)")
 	}
 	chf := p.ch
 	var node Node
 	value := new(bytes.Buffer)
-	// p.ch is 0 at the end of the input, which must not end up in the value.
-	if p.ch != 0 {
-		value.WriteByte(p.ch)
-	}
+	value.WriteByte(p.ch)
 
 	var newT reflect.Type
 	if !p.nodeDestination {

@@ -10,6 +10,7 @@ comments6_test.hjson
 comments7_test.hjson
 comments_test.hjson
 empty_test.hjson
+empty2_test.hjson
 failCharset1_test.hjson
 failCharset2_test.hjson
 failJSON02_test.json
@@ -47,6 +48,8 @@ failMLStr1_test.hjson
 failObj1_test.hjson
 failObj2_test.hjson
 failObj3_test.hjson
+failObj4_test.hjson
+failObj5_test.hjson
 failStr1a_test.hjson
 failStr1b_test.hjson
 failStr1c_test.hjson

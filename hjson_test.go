@@ -1913,3 +1913,24 @@ func TestUnmarshalNilSpecialDestinations(t *testing.T) {
 		})
 	}
 }
+
+func TestMissingValueAtEndOfInput(t *testing.T) {
+	var m map[string]interface{}
+	var b []byte = []byte("key1: value1\nkey2:")
+	if err := Unmarshal(b, &m); err == nil {
+		t.Fatalf("map: Expected an error for a key missing a value")
+	}
+
+	var om OrderedMap
+	if err := Unmarshal(b, &om); err == nil {
+		t.Fatalf("OrderedMap: Expected an error for a key missing a value")
+	}
+
+	var st struct {
+		Key1 string
+		Key2 string
+	}
+	if err := Unmarshal(b, &st); err == nil {
+		t.Fatalf("Struct: Expected an error for a key missing a value")
+	}
+}

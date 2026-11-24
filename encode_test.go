@@ -1087,3 +1087,25 @@ func TestEncodeNestedNode(t *testing.T) {
 		})
 	}
 }
+
+func TestMarshalSingleLineMultilineStringRoundTrip(t *testing.T) {
+	// A tab at the start would be skipped by the parser, and a quote at the end
+	// would merge with the closing quotes, if these were written as '''...'''.
+	for _, s := range []string{"\tfoo", "\t{}'", "a\tb'", "a\tb''", "\t", "a\nb'", "\tfoo\nbar'"} {
+		for _, opt := range []EncoderOptions{DefaultOptions(), {Eol: "\n", EmitRootBraces: true, IndentBy: "  "}} {
+			src := map[string]interface{}{"k": s, "l": []interface{}{s, 1.5}}
+			buf, err := MarshalWithOptions(src, opt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var dst map[string]interface{}
+			if err := Unmarshal(buf, &dst); err != nil {
+				t.Errorf("%q: %v\n%s", s, err, buf)
+				continue
+			}
+			if !reflect.DeepEqual(src, dst) {
+				t.Errorf("%q: expected %#v, got %#v\n%s", s, src, dst, buf)
+			}
+		}
+	}
+}

@@ -153,7 +153,7 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool,
 
 		if !needsEscape.MatchString(value) {
 			e.WriteString(separator + `"` + value + `"`)
-		} else if !needsEscapeML.MatchString(value) && !isRootObject {
+		} else if !needsEscapeML.MatchString(value) && !isRootObject && mlStringFits(value) {
 			e.mlString(value, separator, keyComment)
 		} else {
 			e.WriteString(separator + `"` + e.quoteReplace(value) + `"`)
@@ -162,6 +162,18 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool,
 		// return without quotes
 		e.WriteString(separator + value)
 	}
+}
+
+// mlStringFits tells if value survives being written as a multiline string.
+// A single-line value is written right after the opening quotes and right
+// before the closing quotes, so the parser would skip its leading whitespace
+// and would take a trailing single quote as part of the closing quotes.
+func mlStringFits(value string) bool {
+	if strings.Contains(value, "\n") {
+		return true
+	}
+	firstRune, _ := utf8.DecodeRuneInString(value)
+	return !unicode.IsSpace(firstRune) && value[len(value)-1] != '\''
 }
 
 func (e *hjsonEncoder) mlString(value string, separator string, keyComment string) {

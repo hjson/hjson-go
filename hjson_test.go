@@ -15,6 +15,8 @@ import (
 	"testing"
 )
 
+const WRITE_FACIT = false
+
 func fixEOL(data []byte) []byte {
 	// The output from Marshal() always uses Unix EOL, but git might have
 	// converted files to Windows EOL on Windows, therefore we convert all
@@ -128,24 +130,30 @@ func run(t *testing.T, file string) {
 	cm3OK := bytes.Equal(cm3, actualCm3)
 	if !hjsonOK {
 		t.Errorf("%s\n---hjson expected\n%s\n---hjson actual\n%s\n---\n", name, rhjson, actualHjson)
-		//		err = ioutil.WriteFile(fmt.Sprintf("./assets/sorted/%s_result.hjson", name), actualHjson, 0644)
-		//		if err != nil {
-		//			t.Error(err)
-		//		}
+		if WRITE_FACIT {
+			err = ioutil.WriteFile(fmt.Sprintf("./assets/sorted/%s_result.hjson", name), actualHjson, 0644)
+			if err != nil {
+				t.Error(err)
+			}
+		}
 	}
 	if !jsonOK {
 		t.Errorf("%s\n---json expected\n%s\n---json actual\n%s\n---\n", name, rjson, actualJSON)
-		//		err = ioutil.WriteFile(fmt.Sprintf("./assets/sorted/%s_result.json", name), actualJSON, 0644)
-		//		if err != nil {
-		//			t.Error(err)
-		//		}
+		if WRITE_FACIT {
+			err = ioutil.WriteFile(fmt.Sprintf("./assets/sorted/%s_result.json", name), actualJSON, 0644)
+			if err != nil {
+				t.Error(err)
+			}
+		}
 	}
 	if !cm2OK {
 		t.Errorf("%s\n---cm2 expected\n%s\n---cm2 actual\n%s\n---\n", name, cm2, actualCm2)
-		//		err = ioutil.WriteFile(fmt.Sprintf("./assets/comments2/%s_result.hjson", name), actualCm2, 0644)
-		//		if err != nil {
-		//			t.Error(err)
-		//		}
+		if WRITE_FACIT {
+			err = ioutil.WriteFile(fmt.Sprintf("./assets/comments2/%s_result.hjson", name), actualCm2, 0644)
+			if err != nil {
+				t.Error(err)
+			}
+		}
 	}
 	{
 		var roundTrip interface{}
@@ -160,10 +168,12 @@ func run(t *testing.T, file string) {
 	}
 	if !cm3OK {
 		t.Errorf("%s\n---cm3 expected\n%s\n---cm3 actual\n%s\n---\n", name, cm3, actualCm3)
-		//		err = ioutil.WriteFile(fmt.Sprintf("./assets/comments3/%s_result.hjson", name), actualCm3, 0644)
-		//		if err != nil {
-		//			t.Error(err)
-		//		}
+		if WRITE_FACIT {
+			err = ioutil.WriteFile(fmt.Sprintf("./assets/comments3/%s_result.hjson", name), actualCm3, 0644)
+			if err != nil {
+				t.Error(err)
+			}
+		}
 	}
 	{
 		var roundTrip interface{}

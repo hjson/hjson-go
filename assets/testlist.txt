@@ -96,12 +96,4 @@ strings3_test.hjson
 strings4_test.hjson
 strings_test.hjson
 trail_test.hjson
-stringify/quotes_all_test.hjson
-stringify/quotes_always_test.hjson
-stringify/quotes_keys_test.hjson
-stringify/quotes_strings_ml_test.json
-stringify/quotes_strings_test.hjson
 windowseol_test.hjson
-extra/notabs_test.json
-extra/root_test.hjson
-extra/separator_test.json

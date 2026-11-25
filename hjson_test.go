@@ -193,7 +193,7 @@ func TestHjson(t *testing.T) {
 	files := strings.Split(string(getContent("assets/testlist.txt")), "\n")
 
 	for _, file := range files {
-		if file != "" && !strings.HasPrefix(file, "stringify/quotes") && !strings.HasPrefix(file, "extra/") {
+		if file != "" {
 			run(t, file)
 		}
 	}

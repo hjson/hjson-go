@@ -15,7 +15,9 @@ import (
 	"testing"
 )
 
-const WRITE_FACIT = false
+// writeFacit makes TestHjson overwrite each result file that does not match the
+// actual output, and create the result files of a new test case.
+const writeFacit = false
 
 func fixEOL(data []byte) []byte {
 	// The output from Marshal() always uses Unix EOL, but git might have
@@ -24,28 +26,43 @@ func fixEOL(data []byte) []byte {
 	return bytes.Replace(data, []byte("\r\n"), []byte("\n"), -1)
 }
 
-func getContent(file string) []byte {
+func getContent(t *testing.T, file string) []byte {
+	t.Helper()
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	return fixEOL(data)
 }
 
-func getTestContent(name string) []byte {
+func getTestContent(t *testing.T, name string) []byte {
+	t.Helper()
 	p := fmt.Sprintf("./assets/%s_test.hjson", name)
 	if _, err := os.Stat(p); os.IsNotExist(err) {
 		p = fmt.Sprintf("./assets/%s_test.json", name)
 	}
-	return getContent(p)
+	return getContent(t, p)
 }
 
-func getResultContent(name string) ([]byte, []byte, []byte, []byte) {
+// getResultFile returns nil for a missing file when writeFacit is set, so that
+// run creates the file instead of failing.
+func getResultFile(t *testing.T, file string) []byte {
+	t.Helper()
+	if writeFacit {
+		if _, err := os.Stat(file); os.IsNotExist(err) {
+			return nil
+		}
+	}
+	return getContent(t, file)
+}
+
+func getResultContent(t *testing.T, name string) ([]byte, []byte, []byte, []byte) {
+	t.Helper()
 	p1 := fmt.Sprintf("./assets/sorted/%s_result.json", name)
 	p2 := fmt.Sprintf("./assets/sorted/%s_result.hjson", name)
 	p3 := fmt.Sprintf("./assets/comments2/%s_result.hjson", name)
 	p4 := fmt.Sprintf("./assets/comments3/%s_result.hjson", name)
-	return getContent(p1), getContent(p2), getContent(p3), getContent(p4)
+	return getResultFile(t, p1), getResultFile(t, p2), getResultFile(t, p3), getResultFile(t, p4)
 }
 
 func fixJSON(data []byte) []byte {
@@ -62,7 +79,7 @@ func run(t *testing.T, file string) {
 	t.Logf("running %s", name)
 	shouldFail := strings.HasPrefix(file, "fail")
 
-	testContent := getTestContent(name)
+	testContent := getTestContent(t, name)
 	var data interface{}
 	if err := Unmarshal(testContent, &data); err != nil {
 		if !shouldFail {
@@ -74,7 +91,7 @@ func run(t *testing.T, file string) {
 		return
 	}
 
-	rjson, rhjson, cm2, cm3 := getResultContent(name)
+	rjson, rhjson, cm2, cm3 := getResultContent(t, name)
 
 	actualHjson, err := Marshal(data)
 	if err != nil {
@@ -130,7 +147,7 @@ func run(t *testing.T, file string) {
 	cm3OK := bytes.Equal(cm3, actualCm3)
 	if !hjsonOK {
 		t.Errorf("%s\n---hjson expected\n%s\n---hjson actual\n%s\n---\n", name, rhjson, actualHjson)
-		if WRITE_FACIT {
+		if writeFacit {
 			err = ioutil.WriteFile(fmt.Sprintf("./assets/sorted/%s_result.hjson", name), actualHjson, 0644)
 			if err != nil {
 				t.Error(err)
@@ -139,7 +156,7 @@ func run(t *testing.T, file string) {
 	}
 	if !jsonOK {
 		t.Errorf("%s\n---json expected\n%s\n---json actual\n%s\n---\n", name, rjson, actualJSON)
-		if WRITE_FACIT {
+		if writeFacit {
 			err = ioutil.WriteFile(fmt.Sprintf("./assets/sorted/%s_result.json", name), actualJSON, 0644)
 			if err != nil {
 				t.Error(err)
@@ -148,7 +165,7 @@ func run(t *testing.T, file string) {
 	}
 	if !cm2OK {
 		t.Errorf("%s\n---cm2 expected\n%s\n---cm2 actual\n%s\n---\n", name, cm2, actualCm2)
-		if WRITE_FACIT {
+		if writeFacit {
 			err = ioutil.WriteFile(fmt.Sprintf("./assets/comments2/%s_result.hjson", name), actualCm2, 0644)
 			if err != nil {
 				t.Error(err)
@@ -168,7 +185,7 @@ func run(t *testing.T, file string) {
 	}
 	if !cm3OK {
 		t.Errorf("%s\n---cm3 expected\n%s\n---cm3 actual\n%s\n---\n", name, cm3, actualCm3)
-		if WRITE_FACIT {
+		if writeFacit {
 			err = ioutil.WriteFile(fmt.Sprintf("./assets/comments3/%s_result.hjson", name), actualCm3, 0644)
 			if err != nil {
 				t.Error(err)
@@ -190,11 +207,14 @@ func run(t *testing.T, file string) {
 
 func TestHjson(t *testing.T) {
 
-	files := strings.Split(string(getContent("assets/testlist.txt")), "\n")
+	files := strings.Split(string(getContent(t, "assets/testlist.txt")), "\n")
 
 	for _, file := range files {
 		if file != "" {
-			run(t, file)
+			// A subtest, so that a missing file fails only its own entry.
+			t.Run(file, func(t *testing.T) {
+				run(t, file)
+			})
 		}
 	}
 }

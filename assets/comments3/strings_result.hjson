@@ -83,6 +83,9 @@
   foo4a: "asdf'''\nasdf"
   foo4b: "asdf\n'''asdf"
 
+  foo5a: "#a\\b'"
+  foo5b: "\ta\\b"
+
   # in arrays
   arr:
   [

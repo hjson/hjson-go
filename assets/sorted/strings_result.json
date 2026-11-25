@@ -14,6 +14,8 @@
   "foo3b": "'''asdf",
   "foo4a": "asdf'''\nasdf",
   "foo4b": "asdf\n'''asdf",
+  "foo5a": "#a\\b'",
+  "foo5b": "\ta\\b",
   "multiline1": "first line\n  indented line\nlast line",
   "multiline2": "first line\n  indented line\nlast line",
   "multiline3": "first line\n  indented line\nlast line\n",

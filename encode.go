@@ -188,20 +188,24 @@ func (e *hjsonEncoder) mlString(value string, separator string, keyComment strin
 		e.WriteString(separator + "'''")
 		e.WriteString(a[0])
 	} else {
+		// The opening quotes stay on the current line if it holds only
+		// indentation (an array element) or the end of the key comment.
+		// Otherwise, after a key, they go on a line of their own.
+		out := e.Bytes()
+		indent := string(out[bytes.LastIndexByte(out, '\n')+1:])
+		if !strings.Contains(keyComment, "\n") && strings.Trim(indent, " \t") != "" {
+			indent = e.BaseIndentation + strings.Repeat(e.IndentBy, e.indent+1)
+			e.WriteString(e.Eol + indent)
+		}
 		// The parser strips as many whitespace bytes from the start of each line
 		// as there are bytes before the opening quotes on their line, so that is
 		// how far each line must be indented.
-		var indent, emptyIndent string
-		if i := strings.LastIndex(keyComment, "\n"); i >= 0 {
-			// The opening quotes follow the last line of the key comment.
-			indent = keyComment[i+1:]
-			if strings.Trim(indent, " \t") != "" {
-				indent = strings.Repeat(" ", len(indent))
-			}
-		} else {
-			indent = e.BaseIndentation + strings.Repeat(e.IndentBy, e.indent+1)
+		if strings.Trim(indent, " \t") != "" {
+			indent = strings.Repeat(" ", len(indent))
+		}
+		emptyIndent := ""
+		if strings.HasPrefix(indent, e.BaseIndentation) {
 			emptyIndent = e.BaseIndentation
-			e.WriteString(e.Eol + indent)
 		}
 		e.WriteString("'''")
 		for _, v := range a {

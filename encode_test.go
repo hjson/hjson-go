@@ -704,6 +704,35 @@ func TestMarshalUnmarshal(t *testing.T) {
 	marshalUnmarshal(t, "0\r\n")
 }
 
+func TestMarshalKeywordFollowedByUnicodeSpace(t *testing.T) {
+	// The decoder trims Unicode whitespace from a quoteless value, so a
+	// keyword followed by such a space and then a punctuator or a comment
+	// must be quoted.
+	for _, input := range []string{
+		"true\u00a0]",
+		"false\u3000}",
+		"null\u2000,",
+		"true\u00a0# a",
+		"null\u1680// a",
+	} {
+		value := map[string]interface{}{"F": input}
+		buf, err := Marshal(value)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+		var out map[string]interface{}
+		err = Unmarshal(buf, &out)
+		if err != nil {
+			t.Errorf("Unmarshal of %q failed: %v", buf, err)
+			continue
+		}
+		if !reflect.DeepEqual(out, value) {
+			t.Errorf("Expected: %#v  Got: %#v", value, out)
+		}
+	}
+}
+
 func TestCircularReference(t *testing.T) {
 	timeout := time.After(3 * time.Second)
 	done := make(chan bool)

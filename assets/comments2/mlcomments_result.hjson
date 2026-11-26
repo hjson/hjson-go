@@ -31,16 +31,14 @@ second line
           '''
   arr: [
     # deeper than the encoder indents
-        
-      '''
-      	starts with a tab
-      second line
-      '''
+        '''
+        	starts with a tab
+        second line
+        '''
     # shallower than the encoder indents
-
-      '''
-        starts with two spaces
-      second line
-      '''
+'''
+  starts with two spaces
+second line
+'''
   ]
 }

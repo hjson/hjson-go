@@ -1,15 +1,13 @@
 {
   arr: [
-    
-      '''
-      	starts with a tab
-      second line
-      '''
-    
-      '''
-        starts with two spaces
-      second line
-      '''
+    '''
+    	starts with a tab
+    second line
+    '''
+    '''
+      starts with two spaces
+    second line
+    '''
   ]
   block:
     '''

@@ -80,6 +80,7 @@ failStr9a_test.hjson
 int64_test.hjson
 kan_test.hjson
 keys_test.hjson
+mlcomments_test.hjson
 mltabs_test.json
 oa_test.hjson
 pass1_test.json

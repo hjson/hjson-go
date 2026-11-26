@@ -1,0 +1,45 @@
+{
+  # A comment between a key and a multiline string, where the opening
+  # quotes are not indented as the encoder would indent them.
+
+  # deeper than the encoder indents
+  deeper: # c
+        '''
+        	starts with a tab
+        second line
+        '''
+
+  # shallower than the encoder indents
+  shallower: # c
+'''
+  starts with two spaces
+second line
+'''
+
+  # indented with tabs
+  tabs: # c
+		'''
+			starts with a tab
+		second line
+		'''
+
+  # a block comment ends on the line of the opening quotes
+  block: /* c
+     c */ '''
+          	starts with a tab
+          second line
+          '''
+
+  arr: [
+    # deeper than the encoder indents
+        '''
+        	starts with a tab
+        second line
+        '''
+    # shallower than the encoder indents
+'''
+  starts with two spaces
+second line
+'''
+  ]
+}

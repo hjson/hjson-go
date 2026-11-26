@@ -1,0 +1,34 @@
+{
+  arr: [
+    
+      '''
+      	starts with a tab
+      second line
+      '''
+    
+      '''
+        starts with two spaces
+      second line
+      '''
+  ]
+  block:
+    '''
+    	starts with a tab
+    second line
+    '''
+  deeper:
+    '''
+    	starts with a tab
+    second line
+    '''
+  shallower:
+    '''
+      starts with two spaces
+    second line
+    '''
+  tabs:
+    '''
+    	starts with a tab
+    second line
+    '''
+}

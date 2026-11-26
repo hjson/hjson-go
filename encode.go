@@ -188,19 +188,30 @@ func (e *hjsonEncoder) mlString(value string, separator string, keyComment strin
 		e.WriteString(separator + "'''")
 		e.WriteString(a[0])
 	} else {
-		if !strings.Contains(keyComment, "\n") {
-			e.writeIndent(e.indent + 1)
+		// The parser strips as many whitespace bytes from the start of each line
+		// as there are bytes before the opening quotes on their line, so that is
+		// how far each line must be indented.
+		var indent, emptyIndent string
+		if i := strings.LastIndex(keyComment, "\n"); i >= 0 {
+			// The opening quotes follow the last line of the key comment.
+			indent = keyComment[i+1:]
+			if strings.Trim(indent, " \t") != "" {
+				indent = strings.Repeat(" ", len(indent))
+			}
+		} else {
+			indent = e.BaseIndentation + strings.Repeat(e.IndentBy, e.indent+1)
+			emptyIndent = e.BaseIndentation
+			e.WriteString(e.Eol + indent)
 		}
 		e.WriteString("'''")
 		for _, v := range a {
-			indent := e.indent + 1
 			if len(v) == 0 {
-				indent = 0
+				e.WriteString(e.Eol + emptyIndent)
+			} else {
+				e.WriteString(e.Eol + indent + v)
 			}
-			e.writeIndent(indent)
-			e.WriteString(v)
 		}
-		e.writeIndent(e.indent + 1)
+		e.WriteString(e.Eol + indent)
 	}
 	e.WriteString("'''")
 }

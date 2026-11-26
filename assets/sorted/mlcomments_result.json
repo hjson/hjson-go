@@ -1,0 +1,10 @@
+{
+  "arr": [
+    "\tstarts with a tab\nsecond line",
+    "  starts with two spaces\nsecond line"
+  ],
+  "block": "\tstarts with a tab\nsecond line",
+  "deeper": "\tstarts with a tab\nsecond line",
+  "shallower": "  starts with two spaces\nsecond line",
+  "tabs": "\tstarts with a tab\nsecond line"
+}

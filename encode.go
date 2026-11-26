@@ -83,8 +83,10 @@ func init() {
 	needsQuotes = regexp.MustCompile(`^\s|^"|^'|^#|^/\*|^//|^\{|^\}|^\[|^\]|^:|^,|\s$|[\x00-\x1f\x7f-\x9f\x{00ad}\x{0600}-\x{0604}\x{070f}\x{17b4}\x{17b5}\x{200c}-\x{200f}\x{2028}-\x{202f}\x{2060}-\x{206f}\x{feff}\x{fff0}-\x{ffff}]`)
 	// needsEscapeML tests if the string can be written as a multiline string (like needsEscape but without \n, \\, \", \t)
 	needsEscapeML = regexp.MustCompile(`'''|^[\s]+$|[\x00-\x08\x0b-\x1f` + commonRange + `]`)
-	// starts with a keyword and optionally is followed by a comment
-	startsWithKeyword = regexp.MustCompile(`^(true|false|null)\s*((,|\]|\}|#|//|/\*).*)?$`)
+	// starts with a keyword and optionally is followed by a comment. The
+	// decoder trims Unicode whitespace (strings.TrimSpace) after a keyword, so
+	// \p{Z} and U+0085 are needed here because \s only matches ASCII.
+	startsWithKeyword = regexp.MustCompile(`^(true|false|null)[\s\x{0085}\p{Z}]*((,|\]|\}|#|//|/\*).*)?$`)
 	needsEscapeName = regexp.MustCompile(`[,\{\[\}\]\s:#"']|//|/\*`)
 }
 

@@ -1964,3 +1964,60 @@ func TestMissingValueAtEndOfInput(t *testing.T) {
 		t.Fatalf("Struct: Expected an error for a key missing a value")
 	}
 }
+
+func TestByteOrderMark(t *testing.T) {
+	// A UTF-8 BOM is ignored, for every kind of destination.
+	for _, input := range []string{"", "{a: 1}", "a: 1", "# c\n{a: 1}\n", "[1, 2]", "text", `"quoted"`} {
+		bomInput := []byte("\xef\xbb\xbf" + input)
+
+		var want, got interface{}
+		errWant := Unmarshal([]byte(input), &want)
+		errGot := Unmarshal(bomInput, &got)
+		if (errWant == nil) != (errGot == nil) || !reflect.DeepEqual(want, got) {
+			t.Errorf("%q: expected %#v (%v), got %#v (%v)", input, want, errWant, got, errGot)
+		}
+
+		var wantNode, gotNode Node
+		errWant = Unmarshal([]byte(input), &wantNode)
+		errGot = Unmarshal(bomInput, &gotNode)
+		if (errWant == nil) != (errGot == nil) || !reflect.DeepEqual(wantNode, gotNode) {
+			t.Errorf("%q: expected node %#v (%v), got %#v (%v)", input, wantNode, errWant, gotNode, errGot)
+		}
+
+		var wantOM, gotOM OrderedMap
+		errWant = Unmarshal([]byte(input), &wantOM)
+		errGot = Unmarshal(bomInput, &gotOM)
+		if (errWant == nil) != (errGot == nil) || !reflect.DeepEqual(wantOM, gotOM) {
+			t.Errorf("%q: expected ordered map %#v (%v), got %#v (%v)", input, wantOM, errWant, gotOM, errGot)
+		}
+	}
+
+	// Only a BOM at the very start is skipped.
+	const bom = "\xef\xbb\xbf"
+	var str string
+	if err := Unmarshal([]byte(bom+bom+"a"), &str); err != nil || str != bom+"a" {
+		t.Errorf("Expected %q, got %q (%v)", bom+"a", str, err)
+	}
+
+	// UTF-16 and UTF-32 BOMs are rejected.
+	for input, encoding := range map[string]string{
+		"\xfe\xff\x00{\x00}":            "UTF-16BE",
+		"\xff\xfe{\x00}\x00":            "UTF-16LE",
+		"\xff\xfe":                      "UTF-16LE",
+		"\x00\x00\xfe\xff\x00\x00\x00{": "UTF-32BE",
+		"\xff\xfe\x00\x00{\x00\x00\x00": "UTF-32LE",
+		"\xff\xfe\x00\x00":              "UTF-32LE",
+	} {
+		var dest interface{}
+		err := Unmarshal([]byte(input), &dest)
+		if err == nil || !strings.Contains(err.Error(), encoding+" byte order mark") {
+			t.Errorf("%q: expected an error about a %s byte order mark, got %v", input, encoding, err)
+		}
+	}
+
+	// Incomplete BOMs are not BOMs, and must not cause a panic.
+	for _, input := range []string{"\xef", "\xef\xbb", "\xfe", "\xff", "\x00\x00\xfe"} {
+		var dest interface{}
+		_ = Unmarshal([]byte(input), &dest)
+	}
+}

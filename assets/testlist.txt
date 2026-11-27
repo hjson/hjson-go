@@ -95,6 +95,7 @@ stringify1_test.hjson
 strings2_test.hjson
 strings3_test.hjson
 strings4_test.hjson
+strings5_test.hjson
 strings_test.hjson
 trail_test.hjson
 windowseol_test.hjson

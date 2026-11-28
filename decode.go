@@ -1007,6 +1007,35 @@ func orderedUnmarshal(
 	return value, nil
 }
 
+// skipByteOrderMark returns data without a UTF-8 byte order mark (BOM) at its
+// start, since some editors and tools (e.g. Windows PowerShell 5.1) write one.
+// It returns an error if data starts with a UTF-16 or UTF-32 BOM, because the
+// input must be UTF-8 and would otherwise be parsed into garbage. The bytes
+// 0xfe and 0xff are never part of valid UTF-8, so UTF-8 input cannot be
+// mistaken for UTF-16 or UTF-32.
+func skipByteOrderMark(data []byte) ([]byte, error) {
+	if bytes.HasPrefix(data, []byte("\xef\xbb\xbf")) {
+		return data[3:], nil
+	}
+
+	var encoding string
+	// Check UTF-32 first, since the UTF-32LE BOM starts with the UTF-16LE BOM.
+	switch {
+	case bytes.HasPrefix(data, []byte("\x00\x00\xfe\xff")):
+		encoding = "UTF-32BE"
+	case bytes.HasPrefix(data, []byte("\xff\xfe\x00\x00")):
+		encoding = "UTF-32LE"
+	case bytes.HasPrefix(data, []byte("\xfe\xff")):
+		encoding = "UTF-16BE"
+	case bytes.HasPrefix(data, []byte("\xff\xfe")):
+		encoding = "UTF-16LE"
+	default:
+		return data, nil
+	}
+
+	return nil, fmt.Errorf("The input starts with a %s byte order mark, but Hjson input must be UTF-8 encoded", encoding)
+}
+
 // UnmarshalWithOptions parses the Hjson-encoded data and stores the result
 // in the value pointed to by v.
 //
@@ -1022,9 +1051,18 @@ func orderedUnmarshal(
 // Comments can be read from the Hjson-encoded data, but only if the input
 // argument v is of type *hjson.Node or **hjson.Node.
 //
+// A UTF-8 byte order mark (BOM) at the start of data is ignored. An error is
+// returned if data starts with a UTF-16 or UTF-32 BOM, because the input must
+// be UTF-8 encoded.
+//
 // For more details about the output from this function, see the documentation
 // for json.Unmarshal().
 func UnmarshalWithOptions(data []byte, v interface{}, options DecoderOptions) error {
+	data, err := skipByteOrderMark(data)
+	if err != nil {
+		return err
+	}
+
 	inOM, destinationIsOrderedMap := v.(*OrderedMap)
 	if !destinationIsOrderedMap {
 		pInOM, ok := v.(**OrderedMap)

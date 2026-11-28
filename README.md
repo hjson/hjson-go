@@ -133,6 +133,8 @@ func main() {
 }
 ```
 
+The unmarshal functions ignore a UTF-8 byte order mark (BOM) at the start of the input, since some editors and tools write one (for example Windows PowerShell 5.1 when writing UTF-8). If the input instead starts with a UTF-16 or UTF-32 BOM, an error is returned, since that input is not UTF-8 encoded. Note that Windows PowerShell 5.1 writes UTF-16 by default when using `>` or *Out-File*. The marshal functions never write a BOM, so if a file that started with a BOM is read and then written back, the BOM is removed.
+
 ## Unmarshal to Go structs
 
 If you prefer, you can also unmarshal to Go structs (including structs implementing the json.Unmarshaler interface or the encoding.TextUnmarshaler interface). The Go JSON package is used for this, so the same rules apply. Specifically for the "json" key in struct field tags. For more details about this type of unmarshalling, see the [documentation for json.Unmarshal()](https://pkg.go.dev/encoding/json#Unmarshal).

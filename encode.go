@@ -142,6 +142,9 @@ func (e *hjsonEncoder) quote(value string, separator string, isRootObject bool,
 	if e.QuoteAlways ||
 		hasCommentAfter ||
 		needsQuotes.MatchString(value) ||
+		// A root string containing ':' could be read back as a root object
+		// without braces ("a: b" would become {"a": "b"}).
+		(isRootObject && strings.Contains(value, ":")) ||
 		unicode.IsSpace(firstRune) ||
 		unicode.IsSpace(lastRune) ||
 		(e.QuoteAmbiguousStrings && (startsWithNumber([]byte(value)) ||
